@@ -1,5 +1,5 @@
-// =========================================================
-// CONFIGURAÇÃO BASE DA API
+﻿// =========================================================
+// CONFIGURAÃ‡ÃƒO BASE DA API
 // =========================================================
 const API_URL = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
 
@@ -13,50 +13,124 @@ const navButtons = document.querySelectorAll(".nav-btn");
 const logoutBtn = document.getElementById("logout-btn");
 
 // =========================================================
-// CONTROLES DE EDIÇÃO
+// CONTROLES DE EDIÃ‡ÃƒO
 // =========================================================
 let editandoVeiculoId = null;
 let editandoMotoristaId = null;
 let editandoLancamentoId = null;
 
 // =========================================================
-// DEFINIÇÃO DAS PÁGINAS DO SISTEMA
+// DEFINIÃ‡ÃƒO DAS PÃGINAS DO SISTEMA
 // =========================================================
 const pages = {
   dashboard: {
     title: "Dashboard",
-    subtitle: "Visão geral da operação e do financeiro",
+    subtitle: "VisÃ£o geral da operaÃ§Ã£o e do financeiro",
     render: () => `
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-label">Veículos</div>
-          <div class="kpi-value">Ativo</div>
-        </div>
+      <div class="dashboard-grid">
+        <section class="kpi-card dashboard-hero">
+          <div class="kpi-label">Saldo do periodo</div>
+          <div class="kpi-value" id="dashboard-saldo">R$ 0,00</div>
+          <div class="dashboard-note" id="dashboard-periodo">Carregando dados...</div>
+        </section>
 
-        <div class="kpi-card">
-          <div class="kpi-label">Motoristas</div>
-          <div class="kpi-value">Ativo</div>
-        </div>
+        <section class="kpi-card">
+          <div class="kpi-label">Receitas</div>
+          <div class="kpi-value positive" id="dashboard-receitas">R$ 0,00</div>
+          <div class="dashboard-note" id="dashboard-receitas-qtd">0 lancamentos</div>
+        </section>
 
-        <div class="kpi-card">
-          <div class="kpi-label">Lançamentos</div>
-          <div class="kpi-value">Ativo</div>
-        </div>
+        <section class="kpi-card">
+          <div class="kpi-label">Despesas</div>
+          <div class="kpi-value negative" id="dashboard-despesas">R$ 0,00</div>
+          <div class="dashboard-note" id="dashboard-despesas-qtd">0 lancamentos</div>
+        </section>
 
-        <div class="kpi-card">
-          <div class="kpi-label">Mapa</div>
-          <div class="kpi-value">Futuro</div>
-        </div>
+        <section class="kpi-card">
+          <div class="kpi-label">Frota ativa</div>
+          <div class="kpi-value" id="dashboard-frota-ativa">0</div>
+          <div class="dashboard-note" id="dashboard-frota-total">0 veiculos cadastrados</div>
+        </section>
       </div>
+
+      <div class="dashboard-layout">
+        <section class="panel-box">
+          <div class="table-toolbar">
+            <div>
+              <h3 style="margin:0;">Resumo da frota</h3>
+              <span>Status operacional dos veiculos</span>
+            </div>
+          </div>
+
+          <div class="status-summary">
+            <div class="status-line">
+              <span>Ativos</span>
+              <strong id="dashboard-veiculos-ativos">0</strong>
+            </div>
+            <div class="status-line">
+              <span>Manutencao</span>
+              <strong id="dashboard-veiculos-manutencao">0</strong>
+            </div>
+            <div class="status-line">
+              <span>Inativos</span>
+              <strong id="dashboard-veiculos-inativos">0</strong>
+            </div>
+            <div class="status-line">
+              <span>Motoristas</span>
+              <strong id="dashboard-motoristas">0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-box">
+          <div class="table-toolbar">
+            <div>
+              <h3 style="margin:0;">Financeiro por classificacao</h3>
+              <span>Maiores valores cadastrados</span>
+            </div>
+          </div>
+
+          <div id="dashboard-classificacoes" class="ranking-list">
+            <p class="empty-row">Carregando...</p>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel-box">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Ultimos lancamentos</h3>
+            <span id="dashboard-total-lancamentos">0 registros</span>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Classificacao</th>
+                <th>Descricao</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-ultimos-lancamentos">
+              <tr>
+                <td colspan="4" class="empty-row">Carregando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     `
   },
 
   veiculos: {
-    title: "Veículos",
-    subtitle: "Gestão visual da frota",
+    title: "VeÃ­culos",
+    subtitle: "GestÃ£o visual da frota",
     render: () => `
       <div class="panel-box">
-        <button class="primary-btn" id="btn-novo-veiculo">+ Cadastrar veículo</button>
+        <button class="primary-btn" id="btn-novo-veiculo">+ Cadastrar veÃ­culo</button>
       </div>
 
       <div class="panel-box">
@@ -77,9 +151,9 @@ const pages = {
             <label>Tipo</label>
             <select id="filtro-veiculo-tipo">
               <option value="">Todos</option>
-              <option value="Caminhão">Caminhão</option>
+              <option value="CaminhÃ£o">CaminhÃ£o</option>
               <option value="Carro">Carro</option>
-              <option value="Máquina">Máquina</option>
+              <option value="MÃ¡quina">MÃ¡quina</option>
             </select>
           </div>
 
@@ -88,7 +162,7 @@ const pages = {
             <select id="filtro-veiculo-status">
               <option value="">Todos</option>
               <option value="Ativo">Ativo</option>
-              <option value="Manutenção">Manutenção</option>
+              <option value="ManutenÃ§Ã£o">ManutenÃ§Ã£o</option>
               <option value="Inativo">Inativo</option>
             </select>
           </div>
@@ -102,7 +176,7 @@ const pages = {
 
       <div class="kpi-grid" style="margin-bottom:18px;">
         <div class="kpi-card">
-          <div class="kpi-label">Total de veículos</div>
+          <div class="kpi-label">Total de veÃ­culos</div>
           <div class="kpi-value" id="veiculos-total">0</div>
         </div>
 
@@ -112,7 +186,7 @@ const pages = {
         </div>
 
         <div class="kpi-card">
-          <div class="kpi-label">Em manutenção</div>
+          <div class="kpi-label">Em manutenÃ§Ã£o</div>
           <div class="kpi-value" id="veiculos-manutencao">0</div>
         </div>
 
@@ -141,24 +215,24 @@ const pages = {
   },
 
   lancamentos: {
-    title: "Lançamentos",
-    subtitle: "Cadastro, conferência e filtros",
+    title: "LanÃ§amentos",
+    subtitle: "Cadastro, conferÃªncia e filtros",
     render: () => `
       <div class="content-grid">
         <div class="panel-box">
-          <h3 id="titulo-form-lancamento">Novo lançamento</h3>
+          <h3 id="titulo-form-lancamento">Novo lanÃ§amento</h3>
 
           <form id="form-lancamento" class="form-grid">
             <div class="field full">
-              <label for="classificacao">Classificação</label>
+              <label for="classificacao">ClassificaÃ§Ã£o</label>
               <select id="classificacao" required>
                 <option value="">Selecione...</option>
               </select>
             </div>
 
             <div class="field full">
-              <label for="descricao">Descrição</label>
-              <input type="text" id="descricao" placeholder="Digite a descrição" required />
+              <label for="descricao">DescriÃ§Ã£o</label>
+              <input type="text" id="descricao" placeholder="Digite a descriÃ§Ã£o" required />
             </div>
 
             <div class="field">
@@ -172,8 +246,8 @@ const pages = {
             </div>
 
             <div class="field full btn-row">
-              <button type="submit" class="primary-btn" id="btn-salvar-lancamento">Salvar lançamento</button>
-              <button type="button" class="ghost-btn" id="btn-cancelar-edicao-lancamento" style="display:none;">Cancelar edição</button>
+              <button type="submit" class="primary-btn" id="btn-salvar-lancamento">Salvar lanÃ§amento</button>
+              <button type="button" class="ghost-btn" id="btn-cancelar-edicao-lancamento" style="display:none;">Cancelar ediÃ§Ã£o</button>
             </div>
           </form>
 
@@ -185,7 +259,7 @@ const pages = {
 
           <div class="form-grid">
             <div class="field full">
-              <label for="filtro-classificacao">Classificação</label>
+              <label for="filtro-classificacao">ClassificaÃ§Ã£o</label>
               <select id="filtro-classificacao">
                 <option value="">Todas</option>
               </select>
@@ -202,8 +276,8 @@ const pages = {
             </div>
 
             <div class="field full">
-              <label for="filtro-descricao">Descrição</label>
-              <input type="text" id="filtro-descricao" placeholder="Buscar descrição" />
+              <label for="filtro-descricao">DescriÃ§Ã£o</label>
+              <input type="text" id="filtro-descricao" placeholder="Buscar descriÃ§Ã£o" />
             </div>
 
             <div class="field full btn-row">
@@ -226,12 +300,12 @@ const pages = {
         </div>
 
         <div class="kpi-card">
-          <div class="kpi-label">Maior lançamento</div>
+          <div class="kpi-label">Maior lanÃ§amento</div>
           <div class="kpi-value" id="maior-valor">R$ 0,00</div>
         </div>
 
         <div class="kpi-card">
-          <div class="kpi-label">Menor lançamento</div>
+          <div class="kpi-label">Menor lanÃ§amento</div>
           <div class="kpi-value" id="menor-valor">R$ 0,00</div>
         </div>
       </div>
@@ -239,7 +313,7 @@ const pages = {
       <div class="panel-box">
         <div class="table-toolbar">
           <div>
-            <h3 style="margin:0;">Conferência de lançamentos</h3>
+            <h3 style="margin:0;">ConferÃªncia de lanÃ§amentos</h3>
             <span id="total-registros">0 registros</span>
           </div>
 
@@ -255,15 +329,15 @@ const pages = {
               <tr>
                 <th>ID</th>
                 <th>Data</th>
-                <th>Classificação</th>
-                <th>Descrição</th>
+                <th>ClassificaÃ§Ã£o</th>
+                <th>DescriÃ§Ã£o</th>
                 <th>Valor</th>
-                <th>Ações</th>
+                <th>AÃ§Ãµes</th>
               </tr>
             </thead>
             <tbody id="tabela-lancamentos">
               <tr>
-                <td colspan="6" class="empty-row">Nenhum lançamento encontrado.</td>
+                <td colspan="6" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
               </tr>
             </tbody>
           </table>
@@ -274,7 +348,7 @@ const pages = {
         <div class="modal-content modal-xl">
           <div class="table-toolbar">
             <div>
-              <h3 style="margin:0;">Conferência completa de lançamentos</h3>
+              <h3 style="margin:0;">ConferÃªncia completa de lanÃ§amentos</h3>
               <span id="total-registros-modal">0 registros</span>
             </div>
 
@@ -290,15 +364,15 @@ const pages = {
                 <tr>
                   <th>ID</th>
                   <th>Data</th>
-                  <th>Classificação</th>
-                  <th>Descrição</th>
+                  <th>ClassificaÃ§Ã£o</th>
+                  <th>DescriÃ§Ã£o</th>
                   <th>Valor</th>
-                  <th>Ações</th>
+                  <th>AÃ§Ãµes</th>
                 </tr>
               </thead>
               <tbody id="tabela-lancamentos-modal">
                 <tr>
-                  <td colspan="6" class="empty-row">Nenhum lançamento encontrado.</td>
+                  <td colspan="6" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
                 </tr>
               </tbody>
             </table>
@@ -310,18 +384,18 @@ const pages = {
 
   mapa: {
     title: "Mapa",
-    subtitle: "Localização operacional em tempo real",
+    subtitle: "LocalizaÃ§Ã£o operacional em tempo real",
     render: () => `
       <div class="panel-box">
         <h3>Mapa em tempo real</h3>
-        <p>Aqui ficará a visualização dos caminhões em tempo real.</p>
+        <p>Aqui ficarÃ¡ a visualizaÃ§Ã£o dos caminhÃµes em tempo real.</p>
       </div>
     `
   }
 };
 
 // =========================================================
-// FUNÇÕES AUXILIARES GERAIS
+// FUNÃ‡Ã•ES AUXILIARES GERAIS
 // =========================================================
 function normalizarNumero(valor) {
   if (valor === null || valor === undefined || valor === "") return 0;
@@ -349,8 +423,27 @@ function formatarValor(valor) {
   });
 }
 
+function normalizarTexto(texto) {
+  return String(texto || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function lancamentoEhReceita(item) {
+  const texto = normalizarTexto(`${item.classificacao || ""} ${item.descricao || ""}`);
+  return texto.includes("receita") || texto.includes("recebimento") || texto.includes("servicos prestados");
+}
+
+function formatarDataCurta(dataIso) {
+  if (!dataIso) return "-";
+  const partes = String(dataIso).split("-");
+  if (partes.length !== 3) return dataIso;
+  return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
 // =========================================================
-// FUNÇÕES DE API
+// FUNÃ‡Ã•ES DE API
 // =========================================================
 async function apiGet(url) {
   const response = await fetch(`${API_URL}${url}`);
@@ -366,17 +459,17 @@ async function apiDelete(url) {
 }
 
 // =========================================================
-// MÓDULO DE VEÍCULOS
+// MÃ“DULO DE VEÃCULOS
 // =========================================================
 async function carregarVeiculos() {
   return apiGet("/veiculos");
 }
 
 function iconePorTipo(tipo) {
-  if (tipo === "Caminhão") return "🚛";
-  if (tipo === "Carro") return "🚗";
-  if (tipo === "Máquina") return "🚜";
-  return "🚘";
+  if (tipo === "CaminhÃ£o") return "ðŸš›";
+  if (tipo === "Carro") return "ðŸš—";
+  if (tipo === "MÃ¡quina") return "ðŸšœ";
+  return "ðŸš˜";
 }
 
 function arquivoParaBase64(arquivo) {
@@ -440,7 +533,7 @@ function atualizarTotalizadoresVeiculos(veiculos) {
 
   total.textContent = veiculos.length;
   ativos.textContent = veiculos.filter(v => v.status === "Ativo").length;
-  manutencao.textContent = veiculos.filter(v => v.status === "Manutenção").length;
+  manutencao.textContent = veiculos.filter(v => v.status === "ManutenÃ§Ã£o").length;
   inativos.textContent = veiculos.filter(v => v.status === "Inativo").length;
 }
 
@@ -454,19 +547,19 @@ async function renderizarVeiculos() {
   atualizarTotalizadoresVeiculos(veiculos);
 
   if (!veiculos.length) {
-    container.innerHTML = `<div class="panel-box"><p>Nenhum veículo encontrado.</p></div>`;
+    container.innerHTML = `<div class="panel-box"><p>Nenhum veÃ­culo encontrado.</p></div>`;
     return;
   }
 
   container.innerHTML = veiculos.map(v => {
     const statusClass = (v.status || "").toLowerCase() === "ativo"
       ? "ativo"
-      : (v.status || "").toLowerCase() === "manutenção"
+      : (v.status || "").toLowerCase() === "manutenÃ§Ã£o"
       ? "manutencao"
       : "inativo";
 
     const topoCard = v.foto
-      ? `<img src="${v.foto}" alt="Foto do veículo" class="vehicle-photo">`
+      ? `<img src="${v.foto}" alt="Foto do veÃ­culo" class="vehicle-photo">`
       : `<div class="vehicle-thumb-fallback">${iconePorTipo(v.tipo)}</div>`;
 
     return `
@@ -497,7 +590,7 @@ async function renderizarVeiculos() {
           <span class="status-badge ${statusClass}">${v.status || ""}</span>
 
           <div class="vehicle-observacao">
-            ${v.observacao ? v.observacao : "Sem observações."}
+            ${v.observacao ? v.observacao : "Sem observaÃ§Ãµes."}
           </div>
 
           <div class="action-row">
@@ -521,7 +614,7 @@ function abrirFormVeiculo(
   modelo = "",
   ano = "",
   placa = "",
-  tipo = "Caminhão",
+  tipo = "CaminhÃ£o",
   status = "Ativo",
   observacao = "",
   foto = ""
@@ -529,11 +622,11 @@ function abrirFormVeiculo(
   const container = document.getElementById("form-veiculo-container");
   if (!container) return;
 
-  const titulo = editandoVeiculoId ? "Alterar veículo" : "Novo veículo";
-  const textoBotao = editandoVeiculoId ? "Salvar alteração" : "Salvar";
+  const titulo = editandoVeiculoId ? "Alterar veÃ­culo" : "Novo veÃ­culo";
+  const textoBotao = editandoVeiculoId ? "Salvar alteraÃ§Ã£o" : "Salvar";
 
   const previewInicial = foto
-    ? `<img src="${foto}" alt="Prévia da foto">`
+    ? `<img src="${foto}" alt="PrÃ©via da foto">`
     : `<span>Sem foto selecionada</span>`;
 
   container.innerHTML = `
@@ -569,9 +662,9 @@ function abrirFormVeiculo(
         <div class="field">
           <label>Tipo</label>
           <select id="v-tipo">
-            <option value="Caminhão" ${tipo === "Caminhão" ? "selected" : ""}>Caminhão</option>
+            <option value="CaminhÃ£o" ${tipo === "CaminhÃ£o" ? "selected" : ""}>CaminhÃ£o</option>
             <option value="Carro" ${tipo === "Carro" ? "selected" : ""}>Carro</option>
-            <option value="Máquina" ${tipo === "Máquina" ? "selected" : ""}>Máquina</option>
+            <option value="MÃ¡quina" ${tipo === "MÃ¡quina" ? "selected" : ""}>MÃ¡quina</option>
           </select>
         </div>
 
@@ -579,24 +672,24 @@ function abrirFormVeiculo(
           <label>Status</label>
           <select id="v-status">
             <option value="Ativo" ${status === "Ativo" ? "selected" : ""}>Ativo</option>
-            <option value="Manutenção" ${status === "Manutenção" ? "selected" : ""}>Manutenção</option>
+            <option value="ManutenÃ§Ã£o" ${status === "ManutenÃ§Ã£o" ? "selected" : ""}>ManutenÃ§Ã£o</option>
             <option value="Inativo" ${status === "Inativo" ? "selected" : ""}>Inativo</option>
           </select>
         </div>
 
         <div class="field full">
-          <label>Observação</label>
+          <label>ObservaÃ§Ã£o</label>
           <input id="v-observacao" value="${observacao}" />
         </div>
 
         <div class="field full">
-          <label>Foto do veículo</label>
+          <label>Foto do veÃ­culo</label>
           <input type="file" id="v-foto-arquivo" accept="image/*" />
           <input type="hidden" id="v-foto-base64" value="${foto}" />
         </div>
 
         <div class="field full">
-          <label>Prévia</label>
+          <label>PrÃ©via</label>
           <div class="photo-preview-box" id="v-foto-preview">
             ${previewInicial}
           </div>
@@ -620,7 +713,7 @@ function abrirFormVeiculo(
 
     const base64 = await arquivoParaBase64(arquivo);
     inputBase64.value = base64;
-    preview.innerHTML = `<img src="${base64}" alt="Prévia da foto">`;
+    preview.innerHTML = `<img src="${base64}" alt="PrÃ©via da foto">`;
   });
 
   document.getElementById("salvar-veiculo").onclick = async () => {
@@ -669,7 +762,7 @@ window.editarVeiculoPorId = async (id) => {
     veiculo.modelo || "",
     veiculo.ano || "",
     veiculo.placa || "",
-    veiculo.tipo || "Caminhão",
+    veiculo.tipo || "CaminhÃ£o",
     veiculo.status || "Ativo",
     veiculo.observacao || "",
     veiculo.foto || ""
@@ -677,14 +770,14 @@ window.editarVeiculoPorId = async (id) => {
 };
 
 window.excluirVeiculo = async (id) => {
-  if (!confirm("Deseja excluir este veículo?")) return;
+  if (!confirm("Deseja excluir este veÃ­culo?")) return;
 
   await apiDelete(`/veiculos/${id}`);
   await renderizarVeiculos();
 };
 
 // =========================================================
-// MÓDULO DE MOTORISTAS
+// MÃ“DULO DE MOTORISTAS
 // =========================================================
 async function carregarMotoristas() {
   return apiGet("/motoristas");
@@ -708,7 +801,7 @@ async function renderizarMotoristas() {
           <th>Nome</th>
           <th>Telefone</th>
           <th>CNH</th>
-          <th>Ações</th>
+          <th>AÃ§Ãµes</th>
         </tr>
       </thead>
 
@@ -736,7 +829,7 @@ function abrirFormMotorista(nome = "", telefone = "", cnh = "") {
   if (!container) return;
 
   const titulo = editandoMotoristaId ? "Alterar motorista" : "Novo motorista";
-  const textoBotao = editandoMotoristaId ? "Salvar alteração" : "Salvar";
+  const textoBotao = editandoMotoristaId ? "Salvar alteraÃ§Ã£o" : "Salvar";
 
   container.innerHTML = `
     <div class="panel-box">
@@ -815,7 +908,7 @@ window.excluirMotorista = async (id) => {
 };
 
 // =========================================================
-// MÓDULO DE LANÇAMENTOS
+// MÃ“DULO DE LANÃ‡AMENTOS
 // =========================================================
 async function carregarClassificacoes() {
   const classificacaoSelect = document.getElementById("classificacao");
@@ -845,16 +938,16 @@ function preencherFormLancamento(item) {
   document.getElementById("valor").value = normalizarNumero(item.valor);
   document.getElementById("data").value = item.data;
 
-  document.getElementById("titulo-form-lancamento").textContent = "Alterar lançamento";
-  document.getElementById("btn-salvar-lancamento").textContent = "Salvar alteração";
+  document.getElementById("titulo-form-lancamento").textContent = "Alterar lanÃ§amento";
+  document.getElementById("btn-salvar-lancamento").textContent = "Salvar alteraÃ§Ã£o";
   document.getElementById("btn-cancelar-edicao-lancamento").style.display = "inline-block";
 }
 
 function resetFormLancamento() {
   editandoLancamentoId = null;
   document.getElementById("form-lancamento").reset();
-  document.getElementById("titulo-form-lancamento").textContent = "Novo lançamento";
-  document.getElementById("btn-salvar-lancamento").textContent = "Salvar lançamento";
+  document.getElementById("titulo-form-lancamento").textContent = "Novo lanÃ§amento";
+  document.getElementById("btn-salvar-lancamento").textContent = "Salvar lanÃ§amento";
   document.getElementById("btn-cancelar-edicao-lancamento").style.display = "none";
 }
 
@@ -951,7 +1044,7 @@ function renderizarTabela(lancamentos) {
   if (!lancamentos.length) {
     tabelaLancamentos.innerHTML = `
       <tr>
-        <td colspan="6" class="empty-row">Nenhum lançamento encontrado.</td>
+        <td colspan="6" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
       </tr>
     `;
     totalRegistros.textContent = "0 registros";
@@ -989,7 +1082,7 @@ window.editarLancamentoPorId = async (id) => {
 };
 
 window.excluirLancamento = async (id) => {
-  if (!confirm("Deseja excluir este lançamento?")) return;
+  if (!confirm("Deseja excluir este lanÃ§amento?")) return;
 
   await apiDelete(`/lancamentos/${id}`);
   await carregarLancamentos();
@@ -1046,13 +1139,13 @@ async function iniciarModuloLancamentos() {
     const resultado = await response.json();
 
     if (!response.ok) {
-      mensagem.textContent = resultado.detail || "Erro ao salvar lançamento.";
+      mensagem.textContent = resultado.detail || "Erro ao salvar lanÃ§amento.";
       return;
     }
 
     mensagem.textContent = editandoLancamentoId
-      ? "Lançamento alterado com sucesso."
-      : "Lançamento salvo com sucesso.";
+      ? "LanÃ§amento alterado com sucesso."
+      : "LanÃ§amento salvo com sucesso.";
 
     resetFormLancamento();
     await carregarLancamentos();
@@ -1074,7 +1167,117 @@ async function iniciarModuloLancamentos() {
 }
 
 // =========================================================
-// NAVEGAÇÃO ENTRE ABAS
+// MODULO DE DASHBOARD
+// =========================================================
+async function iniciarDashboard() {
+  const [lancamentos, veiculos, motoristas] = await Promise.all([
+    apiGet("/lancamentos"),
+    apiGet("/veiculos"),
+    apiGet("/motoristas")
+  ]);
+
+  const receitas = lancamentos.filter(lancamentoEhReceita);
+  const despesas = lancamentos.filter(item => !lancamentoEhReceita(item));
+  const totalReceitas = receitas.reduce((total, item) => total + normalizarNumero(item.valor), 0);
+  const totalDespesas = despesas.reduce((total, item) => total + normalizarNumero(item.valor), 0);
+  const saldo = totalReceitas - totalDespesas;
+
+  const ativos = veiculos.filter(v => v.status === "Ativo").length;
+  const manutencao = veiculos.filter(v => normalizarTexto(v.status) === "manutencao").length;
+  const inativos = veiculos.filter(v => v.status === "Inativo").length;
+
+  const saldoEl = document.getElementById("dashboard-saldo");
+  saldoEl.textContent = formatarValor(saldo);
+  saldoEl.classList.toggle("negative", saldo < 0);
+  saldoEl.classList.toggle("positive", saldo >= 0);
+
+  document.getElementById("dashboard-periodo").textContent = `${lancamentos.length} lancamento(s) cadastrados`;
+  document.getElementById("dashboard-receitas").textContent = formatarValor(totalReceitas);
+  document.getElementById("dashboard-receitas-qtd").textContent = `${receitas.length} lancamento(s)`;
+  document.getElementById("dashboard-despesas").textContent = formatarValor(totalDespesas);
+  document.getElementById("dashboard-despesas-qtd").textContent = `${despesas.length} lancamento(s)`;
+  document.getElementById("dashboard-frota-ativa").textContent = ativos;
+  document.getElementById("dashboard-frota-total").textContent = `${veiculos.length} veiculo(s) cadastrados`;
+  document.getElementById("dashboard-veiculos-ativos").textContent = ativos;
+  document.getElementById("dashboard-veiculos-manutencao").textContent = manutencao;
+  document.getElementById("dashboard-veiculos-inativos").textContent = inativos;
+  document.getElementById("dashboard-motoristas").textContent = motoristas.length;
+
+  renderizarRankingClassificacoes(lancamentos);
+  renderizarUltimosLancamentosDashboard(lancamentos);
+}
+
+function renderizarRankingClassificacoes(lancamentos) {
+  const container = document.getElementById("dashboard-classificacoes");
+  if (!container) return;
+
+  if (!lancamentos.length) {
+    container.innerHTML = `<p class="empty-row">Nenhum lancamento cadastrado.</p>`;
+    return;
+  }
+
+  const totais = new Map();
+  lancamentos.forEach((item) => {
+    const classificacao = item.classificacao || "Sem classificacao";
+    const atual = totais.get(classificacao) || 0;
+    totais.set(classificacao, atual + normalizarNumero(item.valor));
+  });
+
+  const ranking = Array.from(totais.entries())
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 5);
+
+  const maiorValor = Math.max(...ranking.map(([, valor]) => Math.abs(valor)), 1);
+
+  container.innerHTML = ranking.map(([classificacao, valor]) => {
+    const largura = Math.max((Math.abs(valor) / maiorValor) * 100, 6);
+
+    return `
+      <div class="ranking-item">
+        <div class="ranking-row">
+          <span>${classificacao}</span>
+          <strong>${formatarValor(valor)}</strong>
+        </div>
+        <div class="ranking-bar">
+          <span style="width:${largura}%"></span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderizarUltimosLancamentosDashboard(lancamentos) {
+  const tabela = document.getElementById("dashboard-ultimos-lancamentos");
+  const total = document.getElementById("dashboard-total-lancamentos");
+  if (!tabela || !total) return;
+
+  total.textContent = `${lancamentos.length} registro(s)`;
+
+  const ultimos = [...lancamentos]
+    .sort((a, b) => String(b.data || "").localeCompare(String(a.data || "")))
+    .slice(0, 8);
+
+  if (!ultimos.length) {
+    tabela.innerHTML = `
+      <tr>
+        <td colspan="4" class="empty-row">Nenhum lancamento encontrado.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  tabela.innerHTML = ultimos.map((item) => `
+    <tr>
+      <td>${formatarDataCurta(item.data)}</td>
+      <td>${item.classificacao || ""}</td>
+      <td>${item.descricao || ""}</td>
+      <td class="${lancamentoEhReceita(item) ? "positive" : "negative"}">${formatarValor(item.valor)}</td>
+    </tr>
+  `).join("");
+}
+
+// =========================================================
+// NAVEGAÃ‡ÃƒO ENTRE ABAS
 // =========================================================
 async function loadPage(pageKey) {
   const page = pages[pageKey];
@@ -1083,6 +1286,10 @@ async function loadPage(pageKey) {
   pageTitle.textContent = page.title;
   pageSubtitle.textContent = page.subtitle;
   pageContent.innerHTML = page.render();
+
+  if (pageKey === "dashboard") {
+    await iniciarDashboard();
+  }
 
   if (pageKey === "lancamentos") {
     await iniciarModuloLancamentos();
@@ -1124,6 +1331,6 @@ logoutBtn.addEventListener("click", () => {
 });
 
 // =========================================================
-// INICIALIZAÇÃO DO SISTEMA
+// INICIALIZAÃ‡ÃƒO DO SISTEMA
 // =========================================================
 loadPage("dashboard");
