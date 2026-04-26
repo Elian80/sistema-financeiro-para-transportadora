@@ -18,6 +18,8 @@ const logoutBtn = document.getElementById("logout-btn");
 let editandoVeiculoId = null;
 let editandoMotoristaId = null;
 let editandoLancamentoId = null;
+let editandoPlanoContaId = null;
+let cacheVeiculos = [];
 
 // =========================================================
 // DEFINIÃ‡ÃƒO DAS PÃGINAS DO SISTEMA
@@ -110,13 +112,14 @@ const pages = {
               <tr>
                 <th>Data</th>
                 <th>Classificacao</th>
+                <th>Veiculo</th>
                 <th>Descricao</th>
                 <th>Valor</th>
               </tr>
             </thead>
             <tbody id="dashboard-ultimos-lancamentos">
               <tr>
-                <td colspan="4" class="empty-row">Carregando...</td>
+                <td colspan="5" class="empty-row">Carregando...</td>
               </tr>
             </tbody>
           </table>
@@ -135,7 +138,6 @@ const pages = {
 
       <div class="panel-box">
         <h3>Filtros</h3>
-
         <div class="form-grid">
           <div class="field">
             <label>Nome</label>
@@ -214,6 +216,43 @@ const pages = {
     `
   },
 
+  planoContas: {
+    title: "Plano de contas",
+    subtitle: "Cadastro das classificacoes usadas nos lancamentos",
+    render: () => `
+      <div class="content-grid">
+        <div class="panel-box">
+          <h3 id="titulo-form-plano-conta">Nova classificacao</h3>
+
+          <form id="form-plano-conta" class="form-grid">
+            <div class="field full">
+              <label for="plano-conta-nome">Classificacao</label>
+              <input id="plano-conta-nome" placeholder="Ex.: 1.6 PEDAGIO" required />
+            </div>
+
+            <div class="field full btn-row">
+              <button type="submit" class="primary-btn" id="btn-salvar-plano-conta">Salvar classificacao</button>
+              <button type="button" class="ghost-btn" id="btn-cancelar-plano-conta" style="display:none;">Cancelar edicao</button>
+            </div>
+          </form>
+
+          <p id="mensagem-plano-conta" class="mensagem"></p>
+        </div>
+
+        <div class="panel-box">
+          <div class="table-toolbar">
+            <div>
+              <h3 style="margin:0;">Classificacoes cadastradas</h3>
+              <span>Itens criados alem da lista base</span>
+            </div>
+          </div>
+
+          <div id="lista-plano-contas" class="table-wrap"></div>
+        </div>
+      </div>
+    `
+  },
+
   lancamentos: {
     title: "LanÃ§amentos",
     subtitle: "Cadastro, conferÃªncia e filtros",
@@ -245,6 +284,37 @@ const pages = {
               <input type="date" id="data" required />
             </div>
 
+            <div class="field full">
+              <label for="veiculo-id">Veiculo vinculado (opcional)</label>
+              <select id="veiculo-id">
+                <option value="">Sem vinculo</option>
+              </select>
+            </div>
+
+            <div id="campos-combustivel" class="fuel-fields field full" style="display:none;">
+              <div class="form-grid compact-grid">
+                <div class="field">
+                  <label for="kilometragem">Kilometragem</label>
+                  <input type="number" id="kilometragem" step="0.1" placeholder="0" />
+                </div>
+
+                <div class="field">
+                  <label for="litros">Litros</label>
+                  <input type="number" id="litros" step="0.001" placeholder="0,000" />
+                </div>
+
+                <div class="field">
+                  <label for="numero-nf">Numero da NF</label>
+                  <input type="text" id="numero-nf" placeholder="NF" />
+                </div>
+
+                <div class="field">
+                  <label for="data-nf">Data da NF</label>
+                  <input type="date" id="data-nf" />
+                </div>
+              </div>
+            </div>
+
             <div class="field full btn-row">
               <button type="submit" class="primary-btn" id="btn-salvar-lancamento">Salvar lanÃ§amento</button>
               <button type="button" class="ghost-btn" id="btn-cancelar-edicao-lancamento" style="display:none;">Cancelar ediÃ§Ã£o</button>
@@ -256,7 +326,9 @@ const pages = {
 
         <div class="panel-box">
           <h3>Filtros</h3>
+          <button type="button" class="ghost-btn filter-toggle" id="btn-toggle-filtros">Mostrar filtros</button>
 
+          <div id="painel-filtros-lancamentos" class="filters-panel" style="display:none;">
           <div class="form-grid">
             <div class="field full">
               <label for="filtro-classificacao">ClassificaÃ§Ã£o</label>
@@ -280,10 +352,18 @@ const pages = {
               <input type="text" id="filtro-descricao" placeholder="Buscar descriÃ§Ã£o" />
             </div>
 
+
+            <div class="field full">
+              <label for="filtro-veiculo-id">Veiculo</label>
+              <select id="filtro-veiculo-id">
+                <option value="">Todos</option>
+              </select>
+            </div>
             <div class="field full btn-row">
               <button id="btn-filtrar" class="ghost-btn" type="button">Filtrar</button>
               <button id="btn-limpar" class="ghost-btn" type="button">Limpar filtros</button>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -330,6 +410,7 @@ const pages = {
                 <th>ID</th>
                 <th>Data</th>
                 <th>ClassificaÃ§Ã£o</th>
+                <th>Veiculo</th>
                 <th>DescriÃ§Ã£o</th>
                 <th>Valor</th>
                 <th>AÃ§Ãµes</th>
@@ -337,7 +418,7 @@ const pages = {
             </thead>
             <tbody id="tabela-lancamentos">
               <tr>
-                <td colspan="6" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
+                <td colspan="7" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
               </tr>
             </tbody>
           </table>
@@ -365,6 +446,7 @@ const pages = {
                   <th>ID</th>
                   <th>Data</th>
                   <th>ClassificaÃ§Ã£o</th>
+                <th>Veiculo</th>
                   <th>DescriÃ§Ã£o</th>
                   <th>Valor</th>
                   <th>AÃ§Ãµes</th>
@@ -372,7 +454,7 @@ const pages = {
               </thead>
               <tbody id="tabela-lancamentos-modal">
                 <tr>
-                  <td colspan="6" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
+                  <td colspan="7" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
                 </tr>
               </tbody>
             </table>
@@ -442,6 +524,17 @@ function formatarDataCurta(dataIso) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
+function classificacaoEhCombustivel(valor) {
+  return normalizarTexto(valor).includes("combustivel");
+}
+
+function nomeVeiculoPorId(veiculoId) {
+  if (!veiculoId) return "-";
+  const veiculo = cacheVeiculos.find(item => item.id === Number(veiculoId));
+  if (!veiculo) return "-";
+  return `${veiculo.nome || veiculo.modelo || "Veiculo"}${veiculo.placa ? ` (${veiculo.placa})` : ""}`;
+}
+
 // =========================================================
 // FUNÃ‡Ã•ES DE API
 // =========================================================
@@ -456,6 +549,22 @@ async function apiDelete(url) {
   });
 
   return response.json();
+}
+
+async function apiSend(url, method, payload) {
+  const response = await fetch(`${API_URL}${url}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const resultado = await response.json();
+
+  if (!response.ok) {
+    throw new Error(resultado.detail || "Erro ao salvar dados.");
+  }
+
+  return resultado;
 }
 
 // =========================================================
@@ -908,6 +1017,112 @@ window.excluirMotorista = async (id) => {
 };
 
 // =========================================================
+// MODULO DE PLANO DE CONTAS
+// =========================================================
+async function carregarPlanoContas() {
+  return apiGet("/plano-contas");
+}
+
+async function renderizarPlanoContas() {
+  const container = document.getElementById("lista-plano-contas");
+  if (!container) return;
+
+  const itens = await carregarPlanoContas();
+
+  if (!itens.length) {
+    container.innerHTML = `<div class="panel-box"><p>Nenhuma classificacao personalizada cadastrada.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Classificacao</th>
+          <th>Acoes</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itens.map(item => `
+          <tr>
+            <td>${item.id}</td>
+            <td>${item.nome}</td>
+            <td>
+              <div class="action-row">
+                <button class="small-btn edit-btn" onclick="editarPlanoConta(${item.id})">Editar</button>
+                <button class="small-btn delete-btn" onclick="excluirPlanoConta(${item.id})">Excluir</button>
+              </div>
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+async function iniciarPlanoContas() {
+  const form = document.getElementById("form-plano-conta");
+  const inputNome = document.getElementById("plano-conta-nome");
+  const mensagem = document.getElementById("mensagem-plano-conta");
+  const titulo = document.getElementById("titulo-form-plano-conta");
+  const botaoSalvar = document.getElementById("btn-salvar-plano-conta");
+  const botaoCancelar = document.getElementById("btn-cancelar-plano-conta");
+
+  await renderizarPlanoContas();
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    try {
+      const payload = { nome: inputNome.value.trim() };
+      const url = editandoPlanoContaId ? `/plano-contas/${editandoPlanoContaId}` : "/plano-contas";
+      const method = editandoPlanoContaId ? "PUT" : "POST";
+
+      await apiSend(url, method, payload);
+
+      editandoPlanoContaId = null;
+      form.reset();
+      titulo.textContent = "Nova classificacao";
+      botaoSalvar.textContent = "Salvar classificacao";
+      botaoCancelar.style.display = "none";
+      mensagem.textContent = "Classificacao salva com sucesso.";
+      await renderizarPlanoContas();
+    } catch (erro) {
+      mensagem.textContent = erro.message;
+    }
+  });
+
+  botaoCancelar.addEventListener("click", () => {
+    editandoPlanoContaId = null;
+    form.reset();
+    titulo.textContent = "Nova classificacao";
+    botaoSalvar.textContent = "Salvar classificacao";
+    botaoCancelar.style.display = "none";
+    mensagem.textContent = "";
+  });
+}
+
+window.editarPlanoConta = async (id) => {
+  const itens = await carregarPlanoContas();
+  const item = itens.find(registro => registro.id === id);
+  if (!item) return;
+
+  editandoPlanoContaId = id;
+  document.getElementById("plano-conta-nome").value = item.nome;
+  document.getElementById("titulo-form-plano-conta").textContent = "Alterar classificacao";
+  document.getElementById("btn-salvar-plano-conta").textContent = "Salvar alteracao";
+  document.getElementById("btn-cancelar-plano-conta").style.display = "inline-block";
+};
+
+window.excluirPlanoConta = async (id) => {
+  if (!confirm("Deseja excluir esta classificacao?")) return;
+
+  await apiDelete(`/plano-contas/${id}`);
+  await renderizarPlanoContas();
+};
+
+// =========================================================
 // MÃ“DULO DE LANÃ‡AMENTOS
 // =========================================================
 async function carregarClassificacoes() {
@@ -932,11 +1147,58 @@ async function carregarClassificacoes() {
   });
 }
 
+async function carregarVeiculosLancamento() {
+  const selectVeiculo = document.getElementById("veiculo-id");
+  const filtroVeiculo = document.getElementById("filtro-veiculo-id");
+
+  cacheVeiculos = await carregarVeiculos();
+
+  if (selectVeiculo) {
+    selectVeiculo.innerHTML = `<option value="">Sem vinculo</option>`;
+  }
+
+  if (filtroVeiculo) {
+    filtroVeiculo.innerHTML = `<option value="">Todos</option>`;
+  }
+
+  cacheVeiculos.forEach((veiculo) => {
+    const texto = `${veiculo.nome || veiculo.modelo || "Veiculo"}${veiculo.placa ? ` - ${veiculo.placa}` : ""}`;
+
+    if (selectVeiculo) {
+      const option = document.createElement("option");
+      option.value = veiculo.id;
+      option.textContent = texto;
+      selectVeiculo.appendChild(option);
+    }
+
+    if (filtroVeiculo) {
+      const option = document.createElement("option");
+      option.value = veiculo.id;
+      option.textContent = texto;
+      filtroVeiculo.appendChild(option);
+    }
+  });
+}
+
+function alternarCamposCombustivel() {
+  const classificacao = document.getElementById("classificacao")?.value || "";
+  const campos = document.getElementById("campos-combustivel");
+  if (!campos) return;
+
+  campos.style.display = classificacaoEhCombustivel(classificacao) ? "block" : "none";
+}
+
 function preencherFormLancamento(item) {
   document.getElementById("classificacao").value = item.classificacao;
   document.getElementById("descricao").value = item.descricao;
   document.getElementById("valor").value = normalizarNumero(item.valor);
   document.getElementById("data").value = item.data;
+  document.getElementById("veiculo-id").value = item.veiculo_id || "";
+  document.getElementById("kilometragem").value = item.kilometragem || "";
+  document.getElementById("litros").value = item.litros || "";
+  document.getElementById("numero-nf").value = item.numero_nf || "";
+  document.getElementById("data-nf").value = item.data_nf || "";
+  alternarCamposCombustivel();
 
   document.getElementById("titulo-form-lancamento").textContent = "Alterar lanÃ§amento";
   document.getElementById("btn-salvar-lancamento").textContent = "Salvar alteraÃ§Ã£o";
@@ -949,6 +1211,7 @@ function resetFormLancamento() {
   document.getElementById("titulo-form-lancamento").textContent = "Novo lanÃ§amento";
   document.getElementById("btn-salvar-lancamento").textContent = "Salvar lanÃ§amento";
   document.getElementById("btn-cancelar-edicao-lancamento").style.display = "none";
+  alternarCamposCombustivel();
 }
 
 function atualizarTotalizadores(lancamentos) {
@@ -1044,7 +1307,7 @@ function renderizarTabela(lancamentos) {
   if (!lancamentos.length) {
     tabelaLancamentos.innerHTML = `
       <tr>
-        <td colspan="6" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
+        <td colspan="7" class="empty-row">Nenhum lanÃ§amento encontrado.</td>
       </tr>
     `;
     totalRegistros.textContent = "0 registros";
@@ -1057,6 +1320,7 @@ function renderizarTabela(lancamentos) {
       <td>${item.id}</td>
       <td>${item.data}</td>
       <td>${item.classificacao}</td>
+      <td>${nomeVeiculoPorId(item.veiculo_id)}</td>
       <td>${item.descricao}</td>
       <td>${formatarValor(item.valor)}</td>
       <td>
@@ -1093,6 +1357,7 @@ async function carregarLancamentos() {
   const filtroDataInicial = document.getElementById("filtro-data-inicial");
   const filtroDataFinal = document.getElementById("filtro-data-final");
   const filtroDescricao = document.getElementById("filtro-descricao");
+  const filtroVeiculo = document.getElementById("filtro-veiculo-id");
 
   const params = new URLSearchParams();
 
@@ -1100,6 +1365,7 @@ async function carregarLancamentos() {
   if (filtroDataInicial.value) params.append("data_inicial", filtroDataInicial.value);
   if (filtroDataFinal.value) params.append("data_final", filtroDataFinal.value);
   if (filtroDescricao.value.trim()) params.append("descricao", filtroDescricao.value.trim());
+  if (filtroVeiculo?.value) params.append("veiculo_id", filtroVeiculo.value);
 
   const url = params.toString() ? `/lancamentos?${params.toString()}` : "/lancamentos";
   const lancamentos = await apiGet(url);
@@ -1109,6 +1375,7 @@ async function carregarLancamentos() {
 
 async function iniciarModuloLancamentos() {
   await carregarClassificacoes();
+  await carregarVeiculosLancamento();
   await carregarLancamentos();
 
   const form = document.getElementById("form-lancamento");
@@ -1116,6 +1383,18 @@ async function iniciarModuloLancamentos() {
   const btnFiltrar = document.getElementById("btn-filtrar");
   const btnLimpar = document.getElementById("btn-limpar");
   const btnCancelarEdicao = document.getElementById("btn-cancelar-edicao-lancamento");
+  const btnToggleFiltros = document.getElementById("btn-toggle-filtros");
+  const painelFiltros = document.getElementById("painel-filtros-lancamentos");
+  const classificacaoSelect = document.getElementById("classificacao");
+
+  classificacaoSelect.addEventListener("change", alternarCamposCombustivel);
+  alternarCamposCombustivel();
+
+  btnToggleFiltros.addEventListener("click", () => {
+    const mostrar = painelFiltros.style.display === "none";
+    painelFiltros.style.display = mostrar ? "block" : "none";
+    btnToggleFiltros.textContent = mostrar ? "Ocultar filtros" : "Mostrar filtros";
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1124,7 +1403,18 @@ async function iniciarModuloLancamentos() {
       classificacao: document.getElementById("classificacao").value,
       descricao: document.getElementById("descricao").value.trim(),
       valor: normalizarNumero(document.getElementById("valor").value),
-      data: document.getElementById("data").value
+      data: document.getElementById("data").value,
+      veiculo_id: document.getElementById("veiculo-id").value
+        ? Number(document.getElementById("veiculo-id").value)
+        : null,
+      kilometragem: document.getElementById("kilometragem").value
+        ? normalizarNumero(document.getElementById("kilometragem").value)
+        : null,
+      litros: document.getElementById("litros").value
+        ? normalizarNumero(document.getElementById("litros").value)
+        : null,
+      numero_nf: document.getElementById("numero-nf").value.trim(),
+      data_nf: document.getElementById("data-nf").value || null
     };
 
     const url = editandoLancamentoId ? `/lancamentos/${editandoLancamentoId}` : "/lancamentos";
@@ -1158,6 +1448,7 @@ async function iniciarModuloLancamentos() {
     document.getElementById("filtro-data-inicial").value = "";
     document.getElementById("filtro-data-final").value = "";
     document.getElementById("filtro-descricao").value = "";
+    document.getElementById("filtro-veiculo-id").value = "";
     await carregarLancamentos();
   });
 
@@ -1175,6 +1466,7 @@ async function iniciarDashboard() {
     apiGet("/veiculos"),
     apiGet("/motoristas")
   ]);
+  cacheVeiculos = veiculos;
 
   const receitas = lancamentos.filter(lancamentoEhReceita);
   const despesas = lancamentos.filter(item => !lancamentoEhReceita(item));
@@ -1260,7 +1552,7 @@ function renderizarUltimosLancamentosDashboard(lancamentos) {
   if (!ultimos.length) {
     tabela.innerHTML = `
       <tr>
-        <td colspan="4" class="empty-row">Nenhum lancamento encontrado.</td>
+        <td colspan="5" class="empty-row">Nenhum lancamento encontrado.</td>
       </tr>
     `;
     return;
@@ -1270,6 +1562,7 @@ function renderizarUltimosLancamentosDashboard(lancamentos) {
     <tr>
       <td>${formatarDataCurta(item.data)}</td>
       <td>${item.classificacao || ""}</td>
+      <td>${nomeVeiculoPorId(item.veiculo_id)}</td>
       <td>${item.descricao || ""}</td>
       <td class="${lancamentoEhReceita(item) ? "positive" : "negative"}">${formatarValor(item.valor)}</td>
     </tr>
@@ -1293,6 +1586,10 @@ async function loadPage(pageKey) {
 
   if (pageKey === "lancamentos") {
     await iniciarModuloLancamentos();
+  }
+
+  if (pageKey === "planoContas") {
+    await iniciarPlanoContas();
   }
 
   if (pageKey === "veiculos") {

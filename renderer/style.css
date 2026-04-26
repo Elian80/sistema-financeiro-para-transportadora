@@ -257,6 +257,10 @@ select {
   gap: 16px;
 }
 
+.compact-grid {
+  margin-top: 8px;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -294,6 +298,21 @@ option {
   border-radius: 20px;
   padding: 18px;
   margin-bottom: 18px;
+}
+
+.filter-toggle {
+  margin-bottom: 16px;
+}
+
+.filters-panel {
+  margin-top: 4px;
+}
+
+.fuel-fields {
+  padding: 16px;
+  border: 1px solid rgba(79, 140, 255, 0.22);
+  border-radius: 16px;
+  background: rgba(79, 140, 255, 0.06);
 }
 
 .content-grid {

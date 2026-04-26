@@ -39,6 +39,7 @@ FRONTEND_DIR = Path(__file__).parent.parent / "renderer"
 ARQUIVO_LANCAMENTOS = DATA_DIR / "lancamentos.json"
 ARQUIVO_VEICULOS = DATA_DIR / "veiculos.json"
 ARQUIVO_MOTORISTAS = DATA_DIR / "motoristas.json"
+ARQUIVO_PLANO_CONTAS = DATA_DIR / "plano_contas.json"
 
 # =========================================================
 # CLASSIFICAÇÕES
@@ -80,8 +81,13 @@ class LancamentoIn(BaseModel):
     descricao: str = Field(..., min_length=1)
     valor: float
     data: date
+    veiculo_id: Optional[int] = None
+    kilometragem: Optional[float] = None
+    litros: Optional[float] = None
+    numero_nf: str = ""
+    data_nf: Optional[date] = None
 
-    @field_validator("classificacao", "descricao")
+    @field_validator("classificacao", "descricao", "numero_nf")
     @classmethod
     def limpar_texto(cls, value: str) -> str:
         return value.strip()
@@ -93,6 +99,15 @@ class LancamentoIn(BaseModel):
         if value is None:
             raise ValueError("Valor obrigatório.")
         return float(value)
+
+
+class PlanoContaIn(BaseModel):
+    nome: str = Field(..., min_length=1)
+
+    @field_validator("nome")
+    @classmethod
+    def limpar_nome(cls, value: str) -> str:
+        return value.strip()
 
 
 class VeiculoIn(BaseModel):
@@ -205,6 +220,18 @@ def buscar_por_id(lista, item_id: int):
     return None
 
 
+def listar_classificacoes_ativas():
+    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
+    nomes = list(CLASSIFICACOES)
+
+    for item in plano_contas:
+        nome = item.get("nome", "").strip()
+        if nome and nome not in nomes:
+            nomes.append(nome)
+
+    return nomes
+
+
 def normalizar_veiculo_antigo(item: dict) -> dict:
     """
     Garante compatibilidade com veículos antigos salvos antes da nova estrutura.
@@ -232,7 +259,74 @@ def listar_classificacoes():
     """
     Retorna a lista de classificações usadas nos lançamentos.
     """
-    return CLASSIFICACOES
+    return listar_classificacoes_ativas()
+
+
+@app.get("/plano-contas")
+def listar_plano_contas():
+    """
+    Lista classificacoes cadastradas no plano de contas.
+    """
+    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
+    plano_contas.sort(key=lambda x: x.get("nome", "").lower())
+    return plano_contas
+
+
+@app.post("/plano-contas")
+def criar_plano_conta(dados: PlanoContaIn):
+    """
+    Cria uma nova classificacao no plano de contas.
+    """
+    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
+
+    if any(item.get("nome", "").lower() == dados.nome.lower() for item in plano_contas):
+        raise HTTPException(status_code=400, detail="Classificacao ja cadastrada.")
+
+    if any(item.lower() == dados.nome.lower() for item in CLASSIFICACOES):
+        raise HTTPException(status_code=400, detail="Esta classificacao ja existe na lista base.")
+
+    novo_item = {"id": proximo_id(plano_contas), "nome": dados.nome}
+    plano_contas.append(novo_item)
+    salvar_json(ARQUIVO_PLANO_CONTAS, plano_contas)
+    return novo_item
+
+
+@app.put("/plano-contas/{plano_conta_id}")
+def atualizar_plano_conta(plano_conta_id: int, dados: PlanoContaIn):
+    """
+    Atualiza uma classificacao do plano de contas.
+    """
+    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
+    item = buscar_por_id(plano_contas, plano_conta_id)
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Classificacao nao encontrada.")
+
+    if any(registro.get("id") != plano_conta_id and registro.get("nome", "").lower() == dados.nome.lower() for registro in plano_contas):
+        raise HTTPException(status_code=400, detail="Classificacao ja cadastrada.")
+
+    if any(nome.lower() == dados.nome.lower() for nome in CLASSIFICACOES):
+        raise HTTPException(status_code=400, detail="Esta classificacao ja existe na lista base.")
+
+    item["nome"] = dados.nome
+    salvar_json(ARQUIVO_PLANO_CONTAS, plano_contas)
+    return item
+
+
+@app.delete("/plano-contas/{plano_conta_id}")
+def excluir_plano_conta(plano_conta_id: int):
+    """
+    Exclui uma classificacao cadastrada no plano de contas.
+    """
+    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
+    item = buscar_por_id(plano_contas, plano_conta_id)
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Classificacao nao encontrada.")
+
+    plano_contas = [registro for registro in plano_contas if registro.get("id") != plano_conta_id]
+    salvar_json(ARQUIVO_PLANO_CONTAS, plano_contas)
+    return {"mensagem": "Classificacao excluida com sucesso."}
 
 
 # =========================================================
@@ -244,7 +338,8 @@ def listar_lancamentos(
     classificacao: Optional[str] = None,
     data_inicial: Optional[date] = None,
     data_final: Optional[date] = None,
-    descricao: Optional[str] = None
+    descricao: Optional[str] = None,
+    veiculo_id: Optional[int] = None
 ):
     """
     Lista lançamentos com filtros opcionais.
@@ -282,6 +377,12 @@ def listar_lancamentos(
             if descricao_lower in item.get("descricao", "").lower()
         ]
 
+    if veiculo_id:
+        lancamentos = [
+            item for item in lancamentos
+            if item.get("veiculo_id") == veiculo_id
+        ]
+
     # Ordena do mais novo para o mais antigo.
     lancamentos.sort(key=lambda x: x.get("data", ""), reverse=True)
 
@@ -293,7 +394,7 @@ def criar_lancamento(dados: LancamentoIn):
     """
     Cria um novo lançamento.
     """
-    if dados.classificacao not in CLASSIFICACOES:
+    if dados.classificacao not in listar_classificacoes_ativas():
         raise HTTPException(status_code=400, detail="Classificação inválida.")
 
     lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
@@ -304,6 +405,11 @@ def criar_lancamento(dados: LancamentoIn):
         "descricao": dados.descricao,
         "valor": float(dados.valor),
         "data": str(dados.data),
+        "veiculo_id": dados.veiculo_id,
+        "kilometragem": dados.kilometragem,
+        "litros": dados.litros,
+        "numero_nf": dados.numero_nf,
+        "data_nf": str(dados.data_nf) if dados.data_nf else "",
     }
 
     lancamentos.append(novo_lancamento)
@@ -317,7 +423,7 @@ def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
     """
     Atualiza um lançamento existente.
     """
-    if dados.classificacao not in CLASSIFICACOES:
+    if dados.classificacao not in listar_classificacoes_ativas():
         raise HTTPException(status_code=400, detail="Classificação inválida.")
 
     lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
@@ -330,6 +436,11 @@ def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
     lancamento["descricao"] = dados.descricao
     lancamento["valor"] = float(dados.valor)
     lancamento["data"] = str(dados.data)
+    lancamento["veiculo_id"] = dados.veiculo_id
+    lancamento["kilometragem"] = dados.kilometragem
+    lancamento["litros"] = dados.litros
+    lancamento["numero_nf"] = dados.numero_nf
+    lancamento["data_nf"] = str(dados.data_nf) if dados.data_nf else ""
 
     salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
     return lancamento
