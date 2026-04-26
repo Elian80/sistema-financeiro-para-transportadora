@@ -1,0 +1,15 @@
+{
+  "name": "financeiro",
+  "version": "1.0.0",
+  "description": "Sistema desktop financeiro",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "web": "cd python && python -m uvicorn web:app --host 127.0.0.1 --port 8000 --reload"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^41.2.1"
+  }
+}

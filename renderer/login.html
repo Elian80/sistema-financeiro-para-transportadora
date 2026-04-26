@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Login - Projeto Financeiro</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card">
+      <div class="login-left">
+        <div class="brand-badge">F</div>
+        <h1>ADÉLIA TRANSPORTES</h1>
+        <p>
+          Sistema de gestão operacional, financeira e de frota.
+        </p>
+
+        <div class="login-info">
+          <div class="info-box">
+            <strong>Controle central</strong>
+            <span>Financeiro, veículos e operação em um só lugar.</span>
+          </div>
+
+          <div class="info-box">
+            <strong>Base futura</strong>
+            <span>Preparado para app Android, QR Code e mapa em tempo real.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="login-right">
+        <div class="form-box">
+          <h2>Entrar</h2>
+          <p class="subtitle">Use seu login e senha para acessar.</p>
+
+          <form id="login-form">
+            <label for="usuario">Login</label>
+            <input type="text" id="usuario" placeholder="Digite seu login" />
+
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" placeholder="Digite sua senha" />
+
+            <button type="submit">Acessar sistema</button>
+          </form>
+
+          <p id="erro-login" class="erro-login"></p>
+
+          <div class="login-demo">
+            <span>Teste inicial</span>
+            <strong>Login: teste | Senha: teste</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="login.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>

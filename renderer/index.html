@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Projeto Financeiro</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">F</div>
+        <div>
+          <h1>Financeiro</h1>
+          <p>Gestão operacional</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+        <button class="nav-btn" data-page="veiculos">Veículos</button>
+        <button class="nav-btn" data-page="motoristas">Motoristas</button>
+        <button class="nav-btn" data-page="lancamentos">Lançamentos</button>
+        <button class="nav-btn" data-page="mapa">Mapa</button>
+      </nav>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div>
+          <h2 id="page-title">Dashboard</h2>
+          <p id="page-subtitle">Visão geral da operação e do financeiro</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="ghost-btn" id="logout-btn">Sair</button>
+        </div>
+      </header>
+
+      <section id="page-content" class="page-content"></section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>
