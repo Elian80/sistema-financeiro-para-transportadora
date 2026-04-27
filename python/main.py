@@ -40,6 +40,7 @@ ARQUIVO_LANCAMENTOS = DATA_DIR / "lancamentos.json"
 ARQUIVO_VEICULOS = DATA_DIR / "veiculos.json"
 ARQUIVO_MOTORISTAS = DATA_DIR / "motoristas.json"
 ARQUIVO_PLANO_CONTAS = DATA_DIR / "plano_contas.json"
+ARQUIVO_CONTAS_RECEBER = DATA_DIR / "contas_receber.json"
 
 # =========================================================
 # CLASSIFICAÇÕES
@@ -166,6 +167,34 @@ class PlanoContaIn(BaseModel):
         return value.strip()
 
 
+class ContaReceberIn(BaseModel):
+    data_inicio: date
+    contrato: str = ""
+    cte_ticket: str = ""
+    valor: float = 0
+    carga: str = ""
+    ton_qnt: str = ""
+    tomador: str = ""
+    origem_destino: str = ""
+    bonificacao: float = 0
+    veiculo_id: Optional[int] = None
+    descontos: float = 0
+    desconto_classificacao: str = ""
+
+    @field_validator(
+        "contrato",
+        "cte_ticket",
+        "carga",
+        "ton_qnt",
+        "tomador",
+        "origem_destino",
+        "desconto_classificacao",
+    )
+    @classmethod
+    def limpar_textos_conta_receber(cls, value: str) -> str:
+        return value.strip()
+
+
 class VeiculoIn(BaseModel):
     nome: str = Field(..., min_length=1)
     marca: str = Field(..., min_length=1)
@@ -286,6 +315,10 @@ def listar_classificacoes_ativas():
             nomes.append(nome)
 
     return nomes
+
+
+def classificacao_eh_despesa(nome: str) -> bool:
+    return nome.strip().startswith("2.")
 
 
 def normalizar_veiculo_antigo(item: dict) -> dict:
@@ -535,6 +568,143 @@ def excluir_lancamento(lancamento_id: int):
 # =========================================================
 # VEÍCULOS
 # =========================================================
+
+# =========================================================
+# CONTAS A RECEBER
+# =========================================================
+
+def calcular_total_conta_receber(item: dict) -> float:
+    valor = float(item.get("valor") or 0)
+    bonificacao = float(item.get("bonificacao") or 0)
+    descontos = float(item.get("descontos") or 0)
+    return valor + bonificacao - descontos
+
+
+@app.get("/contas-receber")
+def listar_contas_receber(
+    data_inicial: Optional[date] = None,
+    data_final: Optional[date] = None,
+    contrato: Optional[str] = None,
+    tomador: Optional[str] = None,
+    veiculo_id: Optional[int] = None,
+):
+    """
+    Lista contas a receber com filtros opcionais.
+    """
+    contas = ler_json(ARQUIVO_CONTAS_RECEBER)
+
+    for item in contas:
+        item["data_inicio"] = str(item.get("data_inicio", ""))
+        item["valor_total_receber"] = calcular_total_conta_receber(item)
+
+    if data_inicial:
+        data_inicial_str = str(data_inicial)
+        contas = [item for item in contas if item.get("data_inicio", "") >= data_inicial_str]
+
+    if data_final:
+        data_final_str = str(data_final)
+        contas = [item for item in contas if item.get("data_inicio", "") <= data_final_str]
+
+    if contrato:
+        contrato_lower = contrato.strip().lower()
+        contas = [item for item in contas if contrato_lower in item.get("contrato", "").lower()]
+
+    if tomador:
+        tomador_lower = tomador.strip().lower()
+        contas = [item for item in contas if tomador_lower in item.get("tomador", "").lower()]
+
+    if veiculo_id:
+        contas = [item for item in contas if item.get("veiculo_id") == veiculo_id]
+
+    contas.sort(key=lambda x: x.get("data_inicio", ""), reverse=True)
+    return contas
+
+
+@app.post("/contas-receber")
+def criar_conta_receber(dados: ContaReceberIn):
+    """
+    Cria um novo registro de conta a receber.
+    """
+    if dados.desconto_classificacao:
+        if dados.desconto_classificacao not in listar_classificacoes_ativas():
+            raise HTTPException(status_code=400, detail="Classificacao do desconto invalida.")
+        if not classificacao_eh_despesa(dados.desconto_classificacao):
+            raise HTTPException(status_code=400, detail="Use uma classificacao de despesa para o desconto.")
+
+    contas = ler_json(ARQUIVO_CONTAS_RECEBER)
+
+    nova_conta = {
+        "id": proximo_id(contas),
+        "data_inicio": str(dados.data_inicio),
+        "contrato": dados.contrato,
+        "cte_ticket": dados.cte_ticket,
+        "valor": float(dados.valor or 0),
+        "carga": dados.carga,
+        "ton_qnt": dados.ton_qnt,
+        "tomador": dados.tomador,
+        "origem_destino": dados.origem_destino,
+        "bonificacao": float(dados.bonificacao or 0),
+        "veiculo_id": dados.veiculo_id,
+        "descontos": float(dados.descontos or 0),
+        "desconto_classificacao": dados.desconto_classificacao,
+    }
+    nova_conta["valor_total_receber"] = calcular_total_conta_receber(nova_conta)
+
+    contas.append(nova_conta)
+    salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
+    return nova_conta
+
+
+@app.put("/contas-receber/{conta_id}")
+def atualizar_conta_receber(conta_id: int, dados: ContaReceberIn):
+    """
+    Atualiza um registro de conta a receber.
+    """
+    if dados.desconto_classificacao:
+        if dados.desconto_classificacao not in listar_classificacoes_ativas():
+            raise HTTPException(status_code=400, detail="Classificacao do desconto invalida.")
+        if not classificacao_eh_despesa(dados.desconto_classificacao):
+            raise HTTPException(status_code=400, detail="Use uma classificacao de despesa para o desconto.")
+
+    contas = ler_json(ARQUIVO_CONTAS_RECEBER)
+    conta = buscar_por_id(contas, conta_id)
+
+    if not conta:
+        raise HTTPException(status_code=404, detail="Conta a receber nao encontrada.")
+
+    conta["data_inicio"] = str(dados.data_inicio)
+    conta["contrato"] = dados.contrato
+    conta["cte_ticket"] = dados.cte_ticket
+    conta["valor"] = float(dados.valor or 0)
+    conta["carga"] = dados.carga
+    conta["ton_qnt"] = dados.ton_qnt
+    conta["tomador"] = dados.tomador
+    conta["origem_destino"] = dados.origem_destino
+    conta["bonificacao"] = float(dados.bonificacao or 0)
+    conta["veiculo_id"] = dados.veiculo_id
+    conta["descontos"] = float(dados.descontos or 0)
+    conta["desconto_classificacao"] = dados.desconto_classificacao
+    conta["valor_total_receber"] = calcular_total_conta_receber(conta)
+
+    salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
+    return conta
+
+
+@app.delete("/contas-receber/{conta_id}")
+def excluir_conta_receber(conta_id: int):
+    """
+    Exclui uma conta a receber.
+    """
+    contas = ler_json(ARQUIVO_CONTAS_RECEBER)
+    conta = buscar_por_id(contas, conta_id)
+
+    if not conta:
+        raise HTTPException(status_code=404, detail="Conta a receber nao encontrada.")
+
+    contas = [item for item in contas if item.get("id") != conta_id]
+    salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
+    return {"mensagem": "Conta a receber excluida com sucesso."}
+
 
 @app.get("/veiculos")
 def listar_veiculos():

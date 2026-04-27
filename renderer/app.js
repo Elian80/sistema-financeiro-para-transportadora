@@ -19,6 +19,7 @@ let editandoVeiculoId = null;
 let editandoMotoristaId = null;
 let editandoLancamentoId = null;
 let editandoPlanoContaId = null;
+let editandoContaReceberId = null;
 let cacheVeiculos = [];
 
 // =========================================================
@@ -474,6 +475,210 @@ const pages = {
           </div>
         </div>
       </div>
+    `
+  },
+
+  contasReceber: {
+    title: "Contas a receber",
+    subtitle: "Controle de contratos, tickets, descontos e valores a receber",
+    render: () => `
+      <section class="receivable-layout">
+        <div class="panel-box">
+          <div class="table-toolbar">
+            <div>
+              <h3 style="margin:0;" id="titulo-form-conta-receber">Nova conta a receber</h3>
+              <span>Preencha os dados conforme a planilha operacional</span>
+            </div>
+          </div>
+
+          <form id="form-conta-receber" class="form-grid">
+            <div class="field">
+              <label for="cr-data-inicio">Data inicio</label>
+              <input type="date" id="cr-data-inicio" required />
+            </div>
+
+            <div class="field">
+              <label for="cr-contrato">Contrato</label>
+              <input id="cr-contrato" placeholder="Contrato" />
+            </div>
+
+            <div class="field">
+              <label for="cr-cte-ticket">No CTE / Ticket</label>
+              <input id="cr-cte-ticket" placeholder="CTE ou ticket" />
+            </div>
+
+            <div class="field">
+              <label for="cr-valor">Valor</label>
+              <input type="number" id="cr-valor" step="0.01" placeholder="0.00" />
+            </div>
+
+            <div class="field">
+              <label for="cr-carga">Carga</label>
+              <input id="cr-carga" placeholder="Carga" />
+            </div>
+
+            <div class="field">
+              <label for="cr-ton-qnt">Ton/Qnt</label>
+              <input id="cr-ton-qnt" placeholder="Tonelada ou quantidade" />
+            </div>
+
+            <div class="field">
+              <label for="cr-tomador">Tomador</label>
+              <input id="cr-tomador" placeholder="Tomador" />
+            </div>
+
+            <div class="field">
+              <label for="cr-origem-destino">Origem x destino</label>
+              <input id="cr-origem-destino" placeholder="Origem x destino" />
+            </div>
+
+            <div class="field">
+              <label for="cr-bonificacao">Bonificacao</label>
+              <input type="number" id="cr-bonificacao" step="0.01" placeholder="0.00" />
+            </div>
+
+            <div class="field">
+              <label for="cr-veiculo-id">Veiculo</label>
+              <select id="cr-veiculo-id">
+                <option value="">Sem vinculo</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="cr-descontos">Descontos</label>
+              <input type="number" id="cr-descontos" step="0.01" placeholder="0.00" />
+            </div>
+
+            <div class="field">
+              <label for="cr-desconto-classificacao">Classificacao do desconto</label>
+              <select id="cr-desconto-classificacao">
+                <option value="">Sem classificacao</option>
+              </select>
+            </div>
+
+            <div class="field full">
+              <div class="receivable-total-box">
+                <span>Valor total a receber</span>
+                <strong id="cr-total-preview">R$ 0,00</strong>
+              </div>
+            </div>
+
+            <div class="field full btn-row">
+              <button type="submit" class="primary-btn" id="btn-salvar-conta-receber">Salvar conta</button>
+              <button type="button" class="ghost-btn" id="btn-cancelar-conta-receber" style="display:none;">Cancelar edicao</button>
+            </div>
+          </form>
+
+          <p id="mensagem-conta-receber" class="mensagem"></p>
+        </div>
+
+        <div class="panel-box">
+          <div class="table-toolbar">
+            <div>
+              <h3 style="margin:0;">Filtros</h3>
+              <span>Localize contas por periodo, contrato, tomador ou veiculo</span>
+            </div>
+          </div>
+
+          <button type="button" class="ghost-btn filter-toggle" id="btn-toggle-filtros-contas-receber">Mostrar filtros</button>
+
+          <div id="painel-filtros-contas-receber" class="filters-panel" style="display:none;">
+            <div class="form-grid">
+              <div class="field">
+                <label for="cr-filtro-data-inicial">Data inicial</label>
+                <input type="date" id="cr-filtro-data-inicial" />
+              </div>
+
+              <div class="field">
+                <label for="cr-filtro-data-final">Data final</label>
+                <input type="date" id="cr-filtro-data-final" />
+              </div>
+
+              <div class="field">
+                <label for="cr-filtro-contrato">Contrato</label>
+                <input id="cr-filtro-contrato" placeholder="Buscar contrato" />
+              </div>
+
+              <div class="field">
+                <label for="cr-filtro-tomador">Tomador</label>
+                <input id="cr-filtro-tomador" placeholder="Buscar tomador" />
+              </div>
+
+              <div class="field full">
+                <label for="cr-filtro-veiculo-id">Veiculo</label>
+                <select id="cr-filtro-veiculo-id">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+
+              <div class="field full btn-row">
+                <button type="button" class="ghost-btn" id="btn-filtrar-contas-receber">Filtrar</button>
+                <button type="button" class="ghost-btn" id="btn-limpar-contas-receber">Limpar filtros</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="kpi-grid" style="margin-bottom:18px;">
+        <div class="kpi-card">
+          <div class="kpi-label">Registros</div>
+          <div class="kpi-value" id="cr-total-registros-kpi">0</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Valor bruto</div>
+          <div class="kpi-value" id="cr-total-bruto-kpi">R$ 0,00</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Descontos</div>
+          <div class="kpi-value negative" id="cr-total-descontos-kpi">R$ 0,00</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Total a receber</div>
+          <div class="kpi-value positive" id="cr-total-receber-kpi">R$ 0,00</div>
+        </div>
+      </div>
+
+      <section class="panel-box">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Conferencia de contas a receber</h3>
+            <span id="cr-total-registros">0 registros</span>
+          </div>
+
+          <button type="button" class="primary-btn" id="btn-imprimir-contas-receber">Imprimir</button>
+        </div>
+
+        <div class="table-wrap receivable-table-wrap">
+          <table class="data-table receivable-table" id="tabela-impressao-contas-receber">
+            <thead>
+              <tr>
+                <th>Data inicio</th>
+                <th>Contrato</th>
+                <th>No CTE / Ticket</th>
+                <th>Valor</th>
+                <th>Carga</th>
+                <th>Ton/Qnt</th>
+                <th>Tomador</th>
+                <th>Origem x destino</th>
+                <th>Bonificacao</th>
+                <th>Veiculo</th>
+                <th>Descontos</th>
+                <th>Valor total a receber</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-contas-receber">
+              <tr>
+                <td colspan="13" class="empty-row">Nenhuma conta a receber encontrada.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     `
   },
 
@@ -1501,6 +1706,269 @@ async function iniciarModuloLancamentos() {
 }
 
 // =========================================================
+// MODULO DE CONTAS A RECEBER
+// =========================================================
+async function carregarOpcoesContasReceber() {
+  const selectVeiculo = document.getElementById("cr-veiculo-id");
+  const filtroVeiculo = document.getElementById("cr-filtro-veiculo-id");
+  const selectDesconto = document.getElementById("cr-desconto-classificacao");
+
+  const [veiculos, classificacoes] = await Promise.all([
+    carregarVeiculos(),
+    apiGet("/classificacoes")
+  ]);
+
+  cacheVeiculos = veiculos;
+
+  if (selectVeiculo) selectVeiculo.innerHTML = `<option value="">Sem vinculo</option>`;
+  if (filtroVeiculo) filtroVeiculo.innerHTML = `<option value="">Todos</option>`;
+  if (selectDesconto) selectDesconto.innerHTML = `<option value="">Sem classificacao</option>`;
+
+  veiculos.forEach((veiculo) => {
+    const texto = `${veiculo.nome || veiculo.modelo || "Veiculo"}${veiculo.placa ? ` - ${veiculo.placa}` : ""}`;
+
+    if (selectVeiculo) {
+      const option = document.createElement("option");
+      option.value = veiculo.id;
+      option.textContent = texto;
+      selectVeiculo.appendChild(option);
+    }
+
+    if (filtroVeiculo) {
+      const option = document.createElement("option");
+      option.value = veiculo.id;
+      option.textContent = texto;
+      filtroVeiculo.appendChild(option);
+    }
+  });
+
+  classificacoes
+    .filter((classificacao) => String(classificacao).trim().startsWith("2."))
+    .forEach((classificacao) => {
+    if (!selectDesconto) return;
+    const option = document.createElement("option");
+    option.value = classificacao;
+    option.textContent = classificacao;
+    selectDesconto.appendChild(option);
+  });
+}
+
+function calcularTotalReceberFormulario() {
+  const valor = normalizarNumero(document.getElementById("cr-valor")?.value);
+  const bonificacao = normalizarNumero(document.getElementById("cr-bonificacao")?.value);
+  const descontos = normalizarNumero(document.getElementById("cr-descontos")?.value);
+  return valor + bonificacao - descontos;
+}
+
+function atualizarTotalReceberPreview() {
+  const preview = document.getElementById("cr-total-preview");
+  if (!preview) return;
+  preview.textContent = formatarValor(calcularTotalReceberFormulario());
+}
+
+function montarPayloadContaReceber() {
+  return {
+    data_inicio: document.getElementById("cr-data-inicio").value,
+    contrato: document.getElementById("cr-contrato").value.trim(),
+    cte_ticket: document.getElementById("cr-cte-ticket").value.trim(),
+    valor: normalizarNumero(document.getElementById("cr-valor").value),
+    carga: document.getElementById("cr-carga").value.trim(),
+    ton_qnt: document.getElementById("cr-ton-qnt").value.trim(),
+    tomador: document.getElementById("cr-tomador").value.trim(),
+    origem_destino: document.getElementById("cr-origem-destino").value.trim(),
+    bonificacao: normalizarNumero(document.getElementById("cr-bonificacao").value),
+    veiculo_id: document.getElementById("cr-veiculo-id").value
+      ? Number(document.getElementById("cr-veiculo-id").value)
+      : null,
+    descontos: normalizarNumero(document.getElementById("cr-descontos").value),
+    desconto_classificacao: document.getElementById("cr-desconto-classificacao").value
+  };
+}
+
+function preencherFormContaReceber(item) {
+  document.getElementById("cr-data-inicio").value = item.data_inicio || "";
+  document.getElementById("cr-contrato").value = item.contrato || "";
+  document.getElementById("cr-cte-ticket").value = item.cte_ticket || "";
+  document.getElementById("cr-valor").value = normalizarNumero(item.valor);
+  document.getElementById("cr-carga").value = item.carga || "";
+  document.getElementById("cr-ton-qnt").value = item.ton_qnt || "";
+  document.getElementById("cr-tomador").value = item.tomador || "";
+  document.getElementById("cr-origem-destino").value = item.origem_destino || "";
+  document.getElementById("cr-bonificacao").value = normalizarNumero(item.bonificacao);
+  document.getElementById("cr-veiculo-id").value = item.veiculo_id || "";
+  document.getElementById("cr-descontos").value = normalizarNumero(item.descontos);
+  document.getElementById("cr-desconto-classificacao").value = item.desconto_classificacao || "";
+
+  document.getElementById("titulo-form-conta-receber").textContent = "Alterar conta a receber";
+  document.getElementById("btn-salvar-conta-receber").textContent = "Salvar alteracao";
+  document.getElementById("btn-cancelar-conta-receber").style.display = "inline-block";
+  atualizarTotalReceberPreview();
+}
+
+function resetFormContaReceber() {
+  editandoContaReceberId = null;
+  document.getElementById("form-conta-receber").reset();
+  document.getElementById("titulo-form-conta-receber").textContent = "Nova conta a receber";
+  document.getElementById("btn-salvar-conta-receber").textContent = "Salvar conta";
+  document.getElementById("btn-cancelar-conta-receber").style.display = "none";
+  atualizarTotalReceberPreview();
+}
+
+function atualizarKpisContasReceber(contas) {
+  const totalRegistros = document.getElementById("cr-total-registros-kpi");
+  const totalBruto = document.getElementById("cr-total-bruto-kpi");
+  const totalDescontos = document.getElementById("cr-total-descontos-kpi");
+  const totalReceber = document.getElementById("cr-total-receber-kpi");
+
+  if (!totalRegistros || !totalBruto || !totalDescontos || !totalReceber) return;
+
+  const bruto = contas.reduce((total, item) => total + normalizarNumero(item.valor), 0);
+  const descontos = contas.reduce((total, item) => total + normalizarNumero(item.descontos), 0);
+  const receber = contas.reduce((total, item) => total + normalizarNumero(item.valor_total_receber), 0);
+
+  totalRegistros.textContent = String(contas.length);
+  totalBruto.textContent = formatarValor(bruto);
+  totalDescontos.textContent = formatarValor(descontos);
+  totalReceber.textContent = formatarValor(receber);
+}
+
+function renderizarTabelaContasReceber(contas) {
+  const tabela = document.getElementById("tabela-contas-receber");
+  const total = document.getElementById("cr-total-registros");
+  if (!tabela || !total) return;
+
+  atualizarKpisContasReceber(contas);
+
+  if (!contas.length) {
+    tabela.innerHTML = `<tr><td colspan="13" class="empty-row">Nenhuma conta a receber encontrada.</td></tr>`;
+    total.textContent = "0 registros";
+    return;
+  }
+
+  tabela.innerHTML = contas.map((item) => {
+    const descontoDetalhe = item.desconto_classificacao
+      ? `<small>${item.desconto_classificacao}</small>`
+      : "";
+
+    return `
+      <tr>
+        <td>${formatarDataCurta(item.data_inicio)}</td>
+        <td>${item.contrato || ""}</td>
+        <td>${item.cte_ticket || ""}</td>
+        <td>${formatarValor(item.valor)}</td>
+        <td>${item.carga || ""}</td>
+        <td>${item.ton_qnt || ""}</td>
+        <td>${item.tomador || ""}</td>
+        <td>${item.origem_destino || ""}</td>
+        <td>${formatarValor(item.bonificacao)}</td>
+        <td>${nomeVeiculoPorId(item.veiculo_id)}</td>
+        <td>${formatarValor(item.descontos)}${descontoDetalhe}</td>
+        <td class="positive"><strong>${formatarValor(item.valor_total_receber)}</strong></td>
+        <td>
+          <div class="action-row">
+            <button class="small-btn edit-btn" onclick="editarContaReceberPorId(${item.id})">Editar</button>
+            <button class="small-btn delete-btn" onclick="excluirContaReceber(${item.id})">Excluir</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  total.textContent = `${contas.length} registro(s)`;
+}
+
+async function carregarContasReceber() {
+  const params = new URLSearchParams();
+  const dataInicial = document.getElementById("cr-filtro-data-inicial")?.value || "";
+  const dataFinal = document.getElementById("cr-filtro-data-final")?.value || "";
+  const contrato = document.getElementById("cr-filtro-contrato")?.value.trim() || "";
+  const tomador = document.getElementById("cr-filtro-tomador")?.value.trim() || "";
+  const veiculoId = document.getElementById("cr-filtro-veiculo-id")?.value || "";
+
+  if (dataInicial) params.append("data_inicial", dataInicial);
+  if (dataFinal) params.append("data_final", dataFinal);
+  if (contrato) params.append("contrato", contrato);
+  if (tomador) params.append("tomador", tomador);
+  if (veiculoId) params.append("veiculo_id", veiculoId);
+
+  const url = params.toString() ? `/contas-receber?${params.toString()}` : "/contas-receber";
+  const contas = await apiGet(url);
+  renderizarTabelaContasReceber(contas);
+}
+
+window.editarContaReceberPorId = async (id) => {
+  const contas = await apiGet("/contas-receber");
+  const item = contas.find(registro => registro.id === id);
+  if (!item) return;
+
+  editandoContaReceberId = item.id;
+  preencherFormContaReceber(item);
+};
+
+window.excluirContaReceber = async (id) => {
+  if (!confirm("Deseja excluir esta conta a receber?")) return;
+
+  await apiDelete(`/contas-receber/${id}`);
+  await carregarContasReceber();
+};
+
+async function iniciarContasReceber() {
+  await carregarOpcoesContasReceber();
+  await carregarContasReceber();
+
+  const form = document.getElementById("form-conta-receber");
+  const mensagem = document.getElementById("mensagem-conta-receber");
+  const btnCancelar = document.getElementById("btn-cancelar-conta-receber");
+  const btnFiltrar = document.getElementById("btn-filtrar-contas-receber");
+  const btnLimpar = document.getElementById("btn-limpar-contas-receber");
+  const btnImprimir = document.getElementById("btn-imprimir-contas-receber");
+  const btnToggleFiltros = document.getElementById("btn-toggle-filtros-contas-receber");
+  const painelFiltros = document.getElementById("painel-filtros-contas-receber");
+
+  ["cr-valor", "cr-bonificacao", "cr-descontos"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", atualizarTotalReceberPreview);
+  });
+  atualizarTotalReceberPreview();
+
+  btnToggleFiltros.addEventListener("click", () => {
+    const mostrar = painelFiltros.style.display === "none";
+    painelFiltros.style.display = mostrar ? "block" : "none";
+    btnToggleFiltros.textContent = mostrar ? "Ocultar filtros" : "Mostrar filtros";
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const url = editandoContaReceberId ? `/contas-receber/${editandoContaReceberId}` : "/contas-receber";
+    const method = editandoContaReceberId ? "PUT" : "POST";
+
+    try {
+      await apiSend(url, method, montarPayloadContaReceber());
+      mensagem.textContent = editandoContaReceberId
+        ? "Conta a receber alterada com sucesso."
+        : "Conta a receber salva com sucesso.";
+      resetFormContaReceber();
+      await carregarContasReceber();
+    } catch (error) {
+      mensagem.textContent = error.message;
+    }
+  });
+
+  btnCancelar.addEventListener("click", resetFormContaReceber);
+  btnFiltrar.addEventListener("click", carregarContasReceber);
+  btnImprimir.addEventListener("click", () => imprimirElementoPorId("tabela-impressao-contas-receber"));
+
+  btnLimpar.addEventListener("click", async () => {
+    document.getElementById("cr-filtro-data-inicial").value = "";
+    document.getElementById("cr-filtro-data-final").value = "";
+    document.getElementById("cr-filtro-contrato").value = "";
+    document.getElementById("cr-filtro-tomador").value = "";
+    document.getElementById("cr-filtro-veiculo-id").value = "";
+    await carregarContasReceber();
+  });
+}
+
+// =========================================================
 // MODULO DE DASHBOARD
 // =========================================================
 async function iniciarDashboard() {
@@ -1633,6 +2101,10 @@ async function loadPage(pageKey) {
 
   if (pageKey === "planoContas") {
     await iniciarPlanoContas();
+  }
+
+  if (pageKey === "contasReceber") {
+    await iniciarContasReceber();
   }
 
   if (pageKey === "veiculos") {
