@@ -4,7 +4,9 @@
   }
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    navigator.serviceWorker.register("/sw.js").then((registration) => {
+      registration.update();
+    }).catch(() => {
       // O app continua funcionando mesmo se o navegador bloquear o PWA.
     });
   });
