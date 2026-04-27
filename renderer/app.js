@@ -220,6 +220,19 @@ const pages = {
     title: "Plano de contas",
     subtitle: "Cadastro das classificacoes usadas nos lancamentos",
     render: () => `
+      <section class="panel-box">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Plano base</h3>
+            <span>Grupos organizam o plano; apenas subclasses entram nos lancamentos</span>
+          </div>
+        </div>
+
+        <div id="estrutura-plano-contas" class="account-plan-grid">
+          <p class="empty-row">Carregando...</p>
+        </div>
+      </section>
+
       <div class="content-grid">
         <div class="panel-box">
           <h3 id="titulo-form-plano-conta">Nova classificacao</h3>
@@ -242,7 +255,7 @@ const pages = {
         <div class="panel-box">
           <div class="table-toolbar">
             <div>
-              <h3 style="margin:0;">Classificacoes cadastradas</h3>
+              <h3 style="margin:0;">Classificacoes personalizadas</h3>
               <span>Itens criados alem da lista base</span>
             </div>
           </div>
@@ -1023,6 +1036,35 @@ async function carregarPlanoContas() {
   return apiGet("/plano-contas");
 }
 
+async function carregarEstruturaPlanoContas() {
+  return apiGet("/plano-contas/estrutura");
+}
+
+async function renderizarEstruturaPlanoContas() {
+  const container = document.getElementById("estrutura-plano-contas");
+  if (!container) return;
+
+  const estrutura = await carregarEstruturaPlanoContas();
+  const grupos = estrutura.grupos || [];
+
+  if (!grupos.length) {
+    container.innerHTML = `<p class="empty-row">Nenhum grupo do plano base encontrado.</p>`;
+    return;
+  }
+
+  container.innerHTML = grupos.map((grupo) => `
+    <article class="account-group">
+      <div class="account-group-title">
+        <strong>${grupo.codigo}. ${grupo.nome}</strong>
+        <span>${(grupo.itens || []).length} classificacao(oes)</span>
+      </div>
+      <div class="account-items">
+        ${(grupo.itens || []).map((item) => `<span>${item}</span>`).join("")}
+      </div>
+    </article>
+  `).join("");
+}
+
 async function renderizarPlanoContas() {
   const container = document.getElementById("lista-plano-contas");
   if (!container) return;
@@ -1069,6 +1111,7 @@ async function iniciarPlanoContas() {
   const botaoSalvar = document.getElementById("btn-salvar-plano-conta");
   const botaoCancelar = document.getElementById("btn-cancelar-plano-conta");
 
+  await renderizarEstruturaPlanoContas();
   await renderizarPlanoContas();
 
   form.addEventListener("submit", async (event) => {

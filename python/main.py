@@ -68,6 +68,62 @@ CLASSIFICACOES = [
     "4.2 MELHORIA DE BEM",
 ]
 
+PLANO_CONTAS_BASE = [
+    {
+        "codigo": "1",
+        "nome": "CUSTO DOS SERVICOS",
+        "itens": [
+            "1.1 COMBUSTIVEL",
+            "1.2 IMPOSTO S/ NF",
+            "1.3 MANUTENCAO MECANICA",
+            "1.4 MANUTENCAO PNEUS",
+            "1.5 SALARIO + ENCAGOS FOLHA PGTO",
+            "1.6 PEDAGIO",
+            "1.7 RASTREADOR",
+            "1.8 SEGURO FRETE",
+        ],
+    },
+    {
+        "codigo": "2",
+        "nome": "DESPESAS",
+        "itens": [
+            "2.1 DESPESA COM DOC - CRLV",
+            "2.2 DESPESA SEGURANCA DO TRABALHO",
+            "2.3 DESPESAS BANCARIAS",
+            "2.4 DESPESAS TAXA / ANUIDADE",
+            "2.5 EMPRESTIMOS",
+            "2.6 MULTAS / JUROS - ATRASO",
+            "2.7 MULTAS DE TRANSITO",
+            "2.8 SEGURO VEICULO",
+            "2.9 LAVACAO",
+            "2.10 OUTRAS DESPESAS",
+        ],
+    },
+    {
+        "codigo": "3",
+        "nome": "RECEITAS",
+        "itens": [
+            "3.1 RECEBIMENTO SERVICOS PRESTADOS",
+            "3.2 OUTRAS RECEITAS",
+        ],
+    },
+    {
+        "codigo": "4",
+        "nome": "INVESTIMENTOS",
+        "itens": [
+            "4.1 COMPRA DE BEM",
+            "4.2 MELHORIA DE BEM",
+            "4.3 ESTOQUE",
+        ],
+    },
+]
+
+CLASSIFICACOES = [
+    item
+    for grupo in PLANO_CONTAS_BASE
+    for item in grupo["itens"]
+]
+
 STATUS_VEICULO_VALIDOS = {"Ativo", "Manutenção", "Inativo"}
 
 
@@ -270,6 +326,19 @@ def listar_plano_contas():
     plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
     plano_contas.sort(key=lambda x: x.get("nome", "").lower())
     return plano_contas
+
+
+@app.get("/plano-contas/estrutura")
+def listar_estrutura_plano_contas():
+    """
+    Retorna o plano base agrupado e as classificacoes personalizadas.
+    """
+    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
+    plano_contas.sort(key=lambda x: x.get("nome", "").lower())
+    return {
+        "grupos": PLANO_CONTAS_BASE,
+        "personalizadas": plano_contas,
+    }
 
 
 @app.post("/plano-contas")

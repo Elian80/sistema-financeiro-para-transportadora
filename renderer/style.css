@@ -484,6 +484,55 @@ option {
   background: linear-gradient(90deg, #4f8cff, #7ef0a8);
 }
 
+.account-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.account-group {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.account-group-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.account-group-title strong {
+  color: var(--text);
+}
+
+.account-group-title span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.account-items {
+  display: grid;
+  gap: 8px;
+}
+
+.account-items span {
+  color: #d5def3;
+  font-size: 13px;
+  line-height: 1.35;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.account-items span:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 .table-toolbar {
   display: flex;
   justify-content: space-between;
