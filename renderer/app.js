@@ -1,5 +1,5 @@
 // =========================================================
-// CONFIGURAÇÃO BASE DA API
+// CONFIGURACAO BASE DA API
 // =========================================================
 const API_URL = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
 
@@ -11,25 +11,39 @@ const pageTitle = document.getElementById("page-title");
 const pageSubtitle = document.getElementById("page-subtitle");
 const navButtons = document.querySelectorAll(".nav-btn");
 const logoutBtn = document.getElementById("logout-btn");
+const themeToggleBtn = document.getElementById("theme-toggle-btn");
 
 // =========================================================
-// CONTROLES DE EDIÇÃO
+// CONTROLES DE EDICAO
 // =========================================================
 let editandoVeiculoId = null;
 let editandoMotoristaId = null;
 let editandoLancamentoId = null;
 let editandoPlanoContaId = null;
 let editandoContaReceberId = null;
+let editandoAtivoId = null;
+let editandoPassivoId = null;
+let editandoProdutoId = null;
 let cacheVeiculos = [];
 
 // =========================================================
-// DEFINIÇÃO DAS PÁGINAS DO SISTEMA
+// DEFINICAO DAS PAGINAS DO SISTEMA
 // =========================================================
 const pages = {
   dashboard: {
     title: "Dashboard",
-    subtitle: "Visão geral da operação e do financeiro",
+    subtitle: "Visao geral da operacao e do financeiro",
     render: () => `
+      <section class="panel-box">
+        <div class="form-grid">
+          <div class="field"><label>Data inicial</label><input type="date" id="dash-data-inicial" /></div>
+          <div class="field"><label>Data final</label><input type="date" id="dash-data-final" /></div>
+          <div class="field"><label>Veiculo</label><select id="dash-veiculo-id"><option value="">Todos</option></select></div>
+          <div class="field"><label>Empresa ID</label><input type="number" id="dash-empresa-id" placeholder="Opcional" /></div>
+          <div class="field full btn-row"><button type="button" class="primary-btn" id="btn-dashboard-filtrar">Atualizar dashboard</button></div>
+        </div>
+      </section>
+
       <div class="dashboard-grid">
         <section class="kpi-card dashboard-hero">
           <div class="kpi-label">Saldo do periodo</div>
@@ -55,6 +69,26 @@ const pages = {
           <div class="dashboard-note" id="dashboard-frota-total">0 veiculos cadastrados</div>
         </section>
       </div>
+
+      <div class="kpi-grid" style="margin-bottom:18px;">
+        <section class="kpi-card"><div class="kpi-label">Custos operacionais</div><div class="kpi-value negative" id="dashboard-custos">R$ 0,00</div></section>
+        <section class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="dashboard-investimentos">R$ 0,00</div></section>
+        <section class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="dashboard-lucro-bruto">R$ 0,00</div></section>
+        <section class="kpi-card"><div class="kpi-label">Lucro liquido</div><div class="kpi-value" id="dashboard-lucro-liquido">R$ 0,00</div></section>
+        <section class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value warning" id="dashboard-contas-pendentes">R$ 0,00</div></section>
+        <section class="kpi-card"><div class="kpi-label">Total de ativos</div><div class="kpi-value positive" id="dashboard-total-ativos">R$ 0,00</div></section>
+        <section class="kpi-card"><div class="kpi-label">Total de passivos</div><div class="kpi-value negative" id="dashboard-total-passivos">R$ 0,00</div></section>
+        <section class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="dashboard-patrimonio">R$ 0,00</div></section>
+      </div>
+
+      <section class="report-charts">
+        <div class="panel-box"><h3>Receitas x despesas</h3><canvas id="dash-chart-receitas-despesas" height="150"></canvas></div>
+        <div class="panel-box"><h3>Custos por veiculo</h3><canvas id="dash-chart-custos-veiculo" height="150"></canvas></div>
+        <div class="panel-box"><h3>Despesas por classificacao</h3><canvas id="dash-chart-despesas-classificacao" height="150"></canvas></div>
+        <div class="panel-box"><h3>Faturamento mensal</h3><canvas id="dash-chart-faturamento-mensal" height="150"></canvas></div>
+        <div class="panel-box"><h3>Saldo acumulado</h3><canvas id="dash-chart-saldo-acumulado" height="150"></canvas></div>
+        <div class="panel-box"><h3>Contas a receber</h3><canvas id="dash-chart-contas-receber" height="150"></canvas></div>
+      </section>
 
       <div class="dashboard-layout">
         <section class="panel-box">
@@ -130,11 +164,11 @@ const pages = {
   },
 
   veiculos: {
-    title: "Veículos",
-    subtitle: "Gestão visual da frota",
+    title: "Veiculos",
+    subtitle: "Gestao visual da frota",
     render: () => `
       <div class="panel-box">
-        <button class="primary-btn" id="btn-novo-veiculo">+ Cadastrar veículos</button>
+        <button class="primary-btn" id="btn-novo-veiculo">+ Cadastrar veiculos</button>
       </div>
 
       <div class="panel-box">
@@ -154,9 +188,9 @@ const pages = {
             <label>Tipo</label>
             <select id="filtro-veiculo-tipo">
               <option value="">Todos</option>
-              <option value="Caminhão">Caminhão</option>
+              <option value="Caminhao">Caminhao</option>
               <option value="Carro">Carro</option>
-              <option value="Máquina">Máquina</option>
+              <option value="Maquina">Maquina</option>
             </select>
           </div>
 
@@ -165,7 +199,7 @@ const pages = {
             <select id="filtro-veiculo-status">
               <option value="">Todos</option>
               <option value="Ativo">Ativo</option>
-              <option value="Manutenção">Manutenção</option>
+              <option value="Manutencao">Manutencao</option>
               <option value="Inativo">Inativo</option>
             </select>
           </div>
@@ -179,7 +213,7 @@ const pages = {
 
       <div class="kpi-grid" style="margin-bottom:18px;">
         <div class="kpi-card">
-          <div class="kpi-label">Total de veículos</div>
+          <div class="kpi-label">Total de veiculos</div>
           <div class="kpi-value" id="veiculos-total">0</div>
         </div>
 
@@ -189,7 +223,7 @@ const pages = {
         </div>
 
         <div class="kpi-card">
-          <div class="kpi-label">Em manutenção</div>
+          <div class="kpi-label">Em manutencao</div>
           <div class="kpi-value" id="veiculos-manutencao">0</div>
         </div>
 
@@ -268,24 +302,24 @@ const pages = {
   },
 
   lancamentos: {
-    title: "Lançamentos",
-    subtitle: "Cadastro, conferência e filtros",
+    title: "Lancamentos",
+    subtitle: "Cadastro, conferencia e filtros",
     render: () => `
       <div class="content-grid">
         <div class="panel-box">
-          <h3 id="titulo-form-lancamento">Novo lançamento</h3>
+          <h3 id="titulo-form-lancamento">Novo lancamento</h3>
 
           <form id="form-lancamento" class="form-grid">
             <div class="field full">
-              <label for="classificacao">Classificação</label>
+              <label for="classificacao">Classificacao</label>
               <select id="classificacao" required>
                 <option value="">Selecione...</option>
               </select>
             </div>
 
             <div class="field full">
-              <label for="descricao">Descrição</label>
-              <input type="text" id="descricao" placeholder="Digite a descrição" required />
+              <label for="descricao">Descricao</label>
+              <input type="text" id="descricao" placeholder="Digite a descricao" required />
             </div>
 
             <div class="field">
@@ -311,8 +345,8 @@ const pages = {
             </div>
 
             <div class="field">
-              <label for="obra-servico">Obra/serviço (opcional)</label>
-              <input type="text" id="obra-servico" placeholder="Obra ou serviço" />
+              <label for="obra-servico">Obra/servico (opcional)</label>
+              <input type="text" id="obra-servico" placeholder="Obra ou servico" />
             </div>
 
             <div id="campos-combustivel" class="fuel-fields field full" style="display:none;">
@@ -340,8 +374,8 @@ const pages = {
             </div>
 
             <div class="field full btn-row">
-              <button type="submit" class="primary-btn" id="btn-salvar-lancamento">Salvar lançamento</button>
-              <button type="button" class="ghost-btn" id="btn-cancelar-edicao-lancamento" style="display:none;">Cancelar edição</button>
+              <button type="submit" class="primary-btn" id="btn-salvar-lancamento">Salvar lancamento</button>
+              <button type="button" class="ghost-btn" id="btn-cancelar-edicao-lancamento" style="display:none;">Cancelar edicao</button>
             </div>
           </form>
 
@@ -355,7 +389,7 @@ const pages = {
           <div id="painel-filtros-lancamentos" class="filters-panel" style="display:none;">
           <div class="form-grid">
             <div class="field full">
-              <label for="filtro-classificacao">Classificação</label>
+              <label for="filtro-classificacao">Classificacao</label>
               <select id="filtro-classificacao">
                 <option value="">Todas</option>
               </select>
@@ -372,8 +406,8 @@ const pages = {
             </div>
 
             <div class="field full">
-              <label for="filtro-descricao">Descrição</label>
-              <input type="text" id="filtro-descricao" placeholder="Buscar descrição" />
+              <label for="filtro-descricao">Descricao</label>
+              <input type="text" id="filtro-descricao" placeholder="Buscar descricao" />
             </div>
 
 
@@ -404,12 +438,12 @@ const pages = {
         </div>
 
         <div class="kpi-card">
-          <div class="kpi-label">Maior lançamento</div>
+          <div class="kpi-label">Maior lancamento</div>
           <div class="kpi-value" id="maior-valor">R$ 0,00</div>
         </div>
 
         <div class="kpi-card">
-          <div class="kpi-label">Menor lançamento</div>
+          <div class="kpi-label">Menor lancamento</div>
           <div class="kpi-value" id="menor-valor">R$ 0,00</div>
         </div>
       </div>
@@ -417,7 +451,7 @@ const pages = {
       <div class="panel-box">
         <div class="table-toolbar">
           <div>
-            <h3 style="margin:0;">Conferência de lançamentos</h3>
+            <h3 style="margin:0;">Conferencia de lancamentos</h3>
             <span id="total-registros">0 registros</span>
           </div>
 
@@ -433,16 +467,16 @@ const pages = {
               <tr>
                 <th>ID</th>
                 <th>Data</th>
-                <th>Classificação</th>
+                <th>Classificacao</th>
                 <th>Veiculo</th>
-                <th>Descrição</th>
+                <th>Descricao</th>
                 <th>Valor</th>
-                <th>Ações</th>
+                <th>Acoes</th>
               </tr>
             </thead>
             <tbody id="tabela-lancamentos">
               <tr>
-                <td colspan="7" class="empty-row">Nenhum lançamento encontrado.</td>
+                <td colspan="7" class="empty-row">Nenhum lancamento encontrado.</td>
               </tr>
             </tbody>
           </table>
@@ -453,7 +487,7 @@ const pages = {
         <div class="modal-content modal-xl">
           <div class="table-toolbar">
             <div>
-              <h3 style="margin:0;">Conferência completa de lançamentos</h3>
+              <h3 style="margin:0;">Conferencia completa de lancamentos</h3>
               <span id="total-registros-modal">0 registros</span>
             </div>
 
@@ -469,16 +503,16 @@ const pages = {
                 <tr>
                   <th>ID</th>
                   <th>Data</th>
-                  <th>Classificação</th>
+                  <th>Classificacao</th>
                 <th>Veiculo</th>
-                  <th>Descrição</th>
+                  <th>Descricao</th>
                   <th>Valor</th>
-                  <th>Ações</th>
+                  <th>Acoes</th>
                 </tr>
               </thead>
               <tbody id="tabela-lancamentos-modal">
                 <tr>
-                  <td colspan="7" class="empty-row">Nenhum lançamento encontrado.</td>
+                  <td colspan="7" class="empty-row">Nenhum lancamento encontrado.</td>
                 </tr>
               </tbody>
             </table>
@@ -706,14 +740,137 @@ const pages = {
     `
   },
 
+  ativosPassivos: {
+    title: "Ativos e Passivos",
+    subtitle: "Patrimonio, financiamentos, emprestimos e saldo devedor",
+    render: () => `
+      <div class="kpi-grid" style="margin-bottom:18px;">
+        <div class="kpi-card"><div class="kpi-label">Total de ativos</div><div class="kpi-value positive" id="ap-total-ativos">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total de passivos</div><div class="kpi-value negative" id="ap-total-passivos">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="ap-patrimonio">R$ 0,00</div></div>
+      </div>
+
+      <div class="content-grid">
+        <section class="panel-box">
+          <h3 id="titulo-form-ativo">Novo ativo</h3>
+          <form id="form-ativo" class="form-grid">
+            <div class="field"><label>Nome</label><input id="ativo-nome" required /></div>
+            <div class="field"><label>Tipo</label><select id="ativo-tipo"><option>Veiculo</option><option>Maquina</option><option>Equipamento</option><option>Imovel</option><option>Outro</option></select></div>
+            <div class="field"><label>Valor</label><input type="number" step="0.01" id="ativo-valor" /></div>
+            <div class="field"><label>Data aquisicao</label><input type="date" id="ativo-data" /></div>
+            <div class="field"><label>Veiculo vinculado</label><select id="ativo-veiculo-id"><option value="">Sem vinculo</option></select></div>
+            <div class="field"><label>Status</label><input id="ativo-status" value="Ativo" /></div>
+            <div class="field full"><label>Observacao</label><input id="ativo-observacao" /></div>
+            <div class="field full btn-row"><button class="primary-btn" type="submit">Salvar ativo</button><button class="ghost-btn" type="button" id="btn-cancelar-ativo" style="display:none;">Cancelar</button></div>
+          </form>
+          <p id="mensagem-ativo" class="mensagem"></p>
+        </section>
+
+        <section class="panel-box">
+          <h3 id="titulo-form-passivo">Novo passivo</h3>
+          <form id="form-passivo" class="form-grid">
+            <div class="field"><label>Nome</label><input id="passivo-nome" required /></div>
+            <div class="field"><label>Tipo</label><select id="passivo-tipo"><option>Financiamento</option><option>Emprestimo</option><option>Divida</option><option>Imposto a pagar</option><option>Outro</option></select></div>
+            <div class="field"><label>Valor total</label><input type="number" step="0.01" id="passivo-valor-total" /></div>
+            <div class="field"><label>Valor pago</label><input type="number" step="0.01" id="passivo-valor-pago" /></div>
+            <div class="field"><label>Data inicio</label><input type="date" id="passivo-data-inicio" /></div>
+            <div class="field"><label>Vencimento</label><input type="date" id="passivo-data-vencimento" /></div>
+            <div class="field"><label>Status</label><input id="passivo-status" value="Pendente" /></div>
+            <div class="field full"><label>Observacao</label><input id="passivo-observacao" /></div>
+            <div class="field full btn-row"><button class="primary-btn" type="submit">Salvar passivo</button><button class="ghost-btn" type="button" id="btn-cancelar-passivo" style="display:none;">Cancelar</button></div>
+          </form>
+          <p id="mensagem-passivo" class="mensagem"></p>
+        </section>
+      </div>
+
+      <section class="panel-box"><h3>Ativos</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>Tipo</th><th>Valor</th><th>Data</th><th>Status</th><th>Acoes</th></tr></thead><tbody id="tabela-ativos"></tbody></table></div></section>
+      <section class="panel-box"><h3>Passivos</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>Tipo</th><th>Total</th><th>Pago</th><th>Saldo</th><th>Vencimento</th><th>Acoes</th></tr></thead><tbody id="tabela-passivos"></tbody></table></div></section>
+    `
+  },
+
+  estoque: {
+    title: "Estoque",
+    subtitle: "Produtos, movimentacoes e alertas de estoque baixo",
+    render: () => `
+      <div class="kpi-grid" style="margin-bottom:18px;">
+        <div class="kpi-card"><div class="kpi-label">Produtos</div><div class="kpi-value" id="est-total-produtos">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Valor em estoque</div><div class="kpi-value positive" id="est-valor-total">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Estoque baixo</div><div class="kpi-value warning" id="est-baixo">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Ultimas movimentacoes</div><div class="kpi-value" id="est-ultimas">0</div></div>
+      </div>
+
+      <section class="panel-box">
+        <h3 id="titulo-form-produto">Novo produto</h3>
+        <form id="form-produto" class="form-grid">
+          <div class="field"><label>Nome</label><input id="produto-nome" required /></div>
+          <div class="field"><label>Categoria</label><input id="produto-categoria" /></div>
+          <div class="field"><label>Unidade</label><input id="produto-unidade" value="un" /></div>
+          <div class="field"><label>Quantidade atual</label><input type="number" step="0.001" id="produto-quantidade" /></div>
+          <div class="field"><label>Valor custo</label><input type="number" step="0.01" id="produto-valor" /></div>
+          <div class="field"><label>Estoque minimo</label><input type="number" step="0.001" id="produto-minimo" /></div>
+          <div class="field full"><label>Observacao</label><input id="produto-observacao" /></div>
+          <div class="field full btn-row"><button class="primary-btn" type="submit">Salvar produto</button><button class="ghost-btn" type="button" id="btn-cancelar-produto" style="display:none;">Cancelar</button></div>
+        </form>
+        <p id="mensagem-produto" class="mensagem"></p>
+      </section>
+
+      <section class="panel-box">
+        <h3>Filtros</h3>
+        <div class="form-grid">
+          <div class="field"><label>Nome</label><input id="filtro-produto-nome" /></div>
+          <div class="field"><label>Categoria</label><input id="filtro-produto-categoria" /></div>
+          <div class="field"><label>Somente baixo</label><select id="filtro-produto-baixo"><option value="">Todos</option><option value="true">Sim</option></select></div>
+          <div class="field btn-row"><button class="ghost-btn" id="btn-filtrar-estoque" type="button">Filtrar</button><button class="ghost-btn" id="btn-limpar-estoque" type="button">Limpar</button></div>
+        </div>
+      </section>
+
+      <section class="panel-box"><h3>Produtos</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>Categoria</th><th>Qtd.</th><th>Custo</th><th>Total</th><th>Minimo</th><th>Acoes</th></tr></thead><tbody id="tabela-produtos"></tbody></table></div></section>
+
+      <section class="panel-box">
+        <h3>Movimentar estoque</h3>
+        <form id="form-movimentacao" class="form-grid">
+          <div class="field"><label>Produto</label><select id="mov-produto-id"></select></div>
+          <div class="field"><label>Tipo</label><select id="mov-tipo"><option>Entrada</option><option>Saida</option><option>Ajuste</option></select></div>
+          <div class="field"><label>Quantidade</label><input type="number" step="0.001" id="mov-quantidade" required /></div>
+          <div class="field"><label>Valor unitario</label><input type="number" step="0.01" id="mov-valor" /></div>
+          <div class="field"><label>Data</label><input type="date" id="mov-data" required /></div>
+          <div class="field"><label>Observacao</label><input id="mov-observacao" /></div>
+          <div class="field full"><button class="primary-btn" type="submit">Registrar movimentacao</button></div>
+        </form>
+        <p id="mensagem-movimentacao" class="mensagem"></p>
+      </section>
+
+      <section class="panel-box"><h3>Historico de movimentacoes</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Valor unitario</th><th>Observacao</th></tr></thead><tbody id="tabela-movimentacoes"></tbody></table></div></section>
+    `
+  },
+
+  configuracoes: {
+    title: "Configuracoes",
+    subtitle: "Preferencias locais da empresa e aparencia",
+    render: () => `
+      <section class="panel-box">
+        <form id="form-configuracoes" class="form-grid">
+          <div class="field"><label>Nome da empresa</label><input id="config-empresa" /></div>
+          <div class="field"><label>Logo da empresa</label><input id="config-logo" placeholder="URL ou base64" /></div>
+          <div class="field"><label>Tema</label><select id="config-tema"><option value="dark">Escuro</option><option value="light">Claro</option></select></div>
+          <div class="field"><label>Cor principal</label><input type="color" id="config-cor" value="#4f8cff" /></div>
+          <div class="field"><label>Moeda</label><input id="config-moeda" value="BRL" /></div>
+          <div class="field full"><label>Dados do relatorio</label><input id="config-relatorio" placeholder="Rodape ou observacoes dos relatorios" /></div>
+          <div class="field full"><button class="primary-btn" type="submit">Salvar configuracoes</button></div>
+        </form>
+        <p id="mensagem-configuracoes" class="mensagem"></p>
+      </section>
+    `
+  },
+
   relatorios: {
-    title: "Relatórios",
-    subtitle: "Indicadores financeiros, gráficos e exportações",
+    title: "Relatorios",
+    subtitle: "Indicadores financeiros, graficos e exportacoes",
     render: () => `
       <section class="panel-box">
         <div class="table-toolbar">
           <div>
-            <h3 style="margin:0;">Filtros do relatório</h3>
+            <h3 style="margin:0;">Filtros do relatorio</h3>
             <span>Use os mesmos filtros para tela, PDF e Excel</span>
           </div>
         </div>
@@ -730,14 +887,14 @@ const pages = {
           </div>
 
           <div class="field">
-            <label for="rel-veiculo-id">Veículo</label>
+            <label for="rel-veiculo-id">Veiculo</label>
             <select id="rel-veiculo-id">
               <option value="">Todos</option>
             </select>
           </div>
 
           <div class="field">
-            <label for="rel-classificacao">Classificação</label>
+            <label for="rel-classificacao">Classificacao</label>
             <select id="rel-classificacao">
               <option value="">Todas</option>
             </select>
@@ -749,12 +906,12 @@ const pages = {
           </div>
 
           <div class="field">
-            <label for="rel-obra-servico">Obra/serviço</label>
+            <label for="rel-obra-servico">Obra/servico</label>
             <input id="rel-obra-servico" placeholder="Opcional" />
           </div>
 
           <div class="field full btn-row">
-            <button type="button" class="primary-btn" id="btn-gerar-relatorio">Gerar relatório</button>
+            <button type="button" class="primary-btn" id="btn-gerar-relatorio">Gerar relatorio</button>
             <button type="button" class="ghost-btn" id="btn-exportar-pdf">Exportar PDF</button>
             <button type="button" class="ghost-btn" id="btn-exportar-excel">Exportar Excel</button>
           </div>
@@ -769,31 +926,31 @@ const pages = {
         <div class="kpi-card"><div class="kpi-label">Despesas</div><div class="kpi-value negative" id="rel-despesas">R$ 0,00</div></div>
         <div class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="rel-invest">R$ 0,00</div></div>
         <div class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="rel-lucro-bruto">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Lucro líquido</div><div class="kpi-value" id="rel-lucro-liquido">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Saldo do período</div><div class="kpi-value" id="rel-saldo">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Lucro liquido</div><div class="kpi-value" id="rel-lucro-liquido">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Saldo do periodo</div><div class="kpi-value" id="rel-saldo">R$ 0,00</div></div>
         <div class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value" id="rel-pendente">R$ 0,00</div></div>
       </div>
 
       <section class="report-charts">
         <div class="panel-box"><h3>Receitas x custos x despesas</h3><canvas id="chart-periodo" height="150"></canvas></div>
-        <div class="panel-box"><h3>Distribuição por classificação</h3><canvas id="chart-classificacao" height="150"></canvas></div>
-        <div class="panel-box"><h3>Resultado por veículo</h3><canvas id="chart-veiculo" height="150"></canvas></div>
+        <div class="panel-box"><h3>Distribuicao por classificacao</h3><canvas id="chart-classificacao" height="150"></canvas></div>
+        <div class="panel-box"><h3>Resultado por veiculo</h3><canvas id="chart-veiculo" height="150"></canvas></div>
         <div class="panel-box"><h3>Contas a receber</h3><canvas id="chart-contas" height="150"></canvas></div>
       </section>
 
       <section class="panel-box">
-        <h3>Por classificação</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Classificação</th><th>Grupo</th><th>Quantidade</th><th>Total</th></tr></thead><tbody id="rel-tabela-classificacao"></tbody></table></div>
+        <h3>Por classificacao</h3>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Classificacao</th><th>Grupo</th><th>Quantidade</th><th>Total</th></tr></thead><tbody id="rel-tabela-classificacao"></tbody></table></div>
       </section>
 
       <section class="panel-box">
-        <h3>Por veículo</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Veículo</th><th>Placa</th><th>Receitas</th><th>Custos</th><th>Despesas</th><th>Investimentos</th><th>Resultado</th><th>Custo/KM</th><th>Consumo médio</th></tr></thead><tbody id="rel-tabela-veiculo"></tbody></table></div>
+        <h3>Por veiculo</h3>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Veiculo</th><th>Placa</th><th>Receitas</th><th>Custos</th><th>Despesas</th><th>Investimentos</th><th>Resultado</th><th>Custo/KM</th><th>Consumo medio</th></tr></thead><tbody id="rel-tabela-veiculo"></tbody></table></div>
       </section>
 
       <section class="panel-box">
-        <h3>Por período</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Período</th><th>Receitas</th><th>Custos</th><th>Despesas</th><th>Investimentos</th><th>Resultado</th></tr></thead><tbody id="rel-tabela-periodo"></tbody></table></div>
+        <h3>Por periodo</h3>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Periodo</th><th>Receitas</th><th>Custos</th><th>Despesas</th><th>Investimentos</th><th>Resultado</th></tr></thead><tbody id="rel-tabela-periodo"></tbody></table></div>
       </section>
 
       <section class="panel-box">
@@ -803,25 +960,25 @@ const pages = {
 
       <section class="panel-box">
         <h3>Contas a pagar</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Descrição</th><th>Valor</th><th>Status</th></tr></thead><tbody id="rel-tabela-contas-pagar"></tbody></table></div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Descricao</th><th>Valor</th><th>Status</th></tr></thead><tbody id="rel-tabela-contas-pagar"></tbody></table></div>
       </section>
     `
   },
 
   mapa: {
     title: "Mapa",
-    subtitle: "Localização operacional em tempo real",
+    subtitle: "Localizacao operacional em tempo real",
     render: () => `
       <div class="panel-box">
         <h3>Mapa em tempo real</h3>
-        <p>Aqui ficará a visualização dos caminhões em tempo real.</p>
+        <p>Aqui ficara a visualizacao dos caminhoes em tempo real.</p>
       </div>
     `
   }
 };
 
 // =========================================================
-// FUNÇÕES AUXILIARES GERAIS
+// FUNCOES AUXILIARES GERAIS
 // =========================================================
 function normalizarNumero(valor) {
   if (valor === null || valor === undefined || valor === "") return 0;
@@ -880,7 +1037,7 @@ function nomeVeiculoPorId(veiculoId) {
 }
 
 // =========================================================
-// FUNÇÕES DE API
+// FUNCOES DE API
 // =========================================================
 async function apiGet(url) {
   const response = await fetch(`${API_URL}${url}`);
@@ -926,24 +1083,39 @@ async function apiSend(url, method, payload) {
 function mostrarErroAmigavel(containerId, erro) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  container.innerHTML = `<p class="empty-row">Não foi possível carregar os dados. ${erro.message || ""}</p>`;
+  container.innerHTML = `<p class="empty-row">Nao foi possivel carregar os dados. ${erro.message || ""}</p>`;
 }
 
 function abrirExportacao(url) {
   window.open(`${API_URL}${url}`, "_blank");
 }
 
+function mostrarToast(mensagem, tipo = "success") {
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+  const toast = document.createElement("div");
+  toast.className = `toast ${tipo}`;
+  toast.textContent = mensagem;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
 // =========================================================
-// MÓDULO DE VEÍCULOS
+// MODULO DE VEICULOS
 // =========================================================
 async function carregarVeiculos() {
   return apiGet("/veiculos");
 }
 
 function iconePorTipo(tipo) {
-  if (tipo === "Caminhão") return "🚚";
+  if (tipo === "Caminhao") return "🚚";
   if (tipo === "Carro") return "🚗";
-  if (tipo === "Máquina") return "🚜";
+  if (tipo === "Maquina") return "🚜";
   return "🚘";
 }
 
@@ -1008,7 +1180,7 @@ function atualizarTotalizadoresVeiculos(veiculos) {
 
   total.textContent = veiculos.length;
   ativos.textContent = veiculos.filter(v => v.status === "Ativo").length;
-  manutencao.textContent = veiculos.filter(v => v.status === "Manutenção").length;
+  manutencao.textContent = veiculos.filter(v => v.status === "Manutencao").length;
   inativos.textContent = veiculos.filter(v => v.status === "Inativo").length;
 }
 
@@ -1022,19 +1194,19 @@ async function renderizarVeiculos() {
   atualizarTotalizadoresVeiculos(veiculos);
 
   if (!veiculos.length) {
-    container.innerHTML = `<div class="panel-box"><p>Nenhum veículo encontrado.</p></div>`;
+    container.innerHTML = `<div class="panel-box"><p>Nenhum veiculo encontrado.</p></div>`;
     return;
   }
 
   container.innerHTML = veiculos.map(v => {
     const statusClass = (v.status || "").toLowerCase() === "ativo"
       ? "ativo"
-      : (v.status || "").toLowerCase() === "manutenção"
+      : (v.status || "").toLowerCase() === "manutencao"
       ? "manutencao"
       : "inativo";
 
     const topoCard = v.foto
-      ? `<img src="${v.foto}" alt="Foto do veículo" class="vehicle-photo">`
+      ? `<img src="${v.foto}" alt="Foto do veiculo" class="vehicle-photo">`
       : `<div class="vehicle-thumb-fallback">${iconePorTipo(v.tipo)}</div>`;
 
     return `
@@ -1065,7 +1237,7 @@ async function renderizarVeiculos() {
           <span class="status-badge ${statusClass}">${v.status || ""}</span>
 
           <div class="vehicle-observacao">
-            ${v.observacao ? v.observacao : "Sem observações."}
+            ${v.observacao ? v.observacao : "Sem observacoes."}
           </div>
 
           <div class="action-row">
@@ -1089,7 +1261,7 @@ function abrirFormVeiculo(
   modelo = "",
   ano = "",
   placa = "",
-  tipo = "Caminhão",
+  tipo = "Caminhao",
   status = "Ativo",
   observacao = "",
   foto = ""
@@ -1097,11 +1269,11 @@ function abrirFormVeiculo(
   const container = document.getElementById("form-veiculo-container");
   if (!container) return;
 
-  const titulo = editandoVeiculoId ? "Alterar veículo" : "Novo veículo";
-  const textoBotao = editandoVeiculoId ? "Salvar alteração" : "Salvar";
+  const titulo = editandoVeiculoId ? "Alterar veiculo" : "Novo veiculo";
+  const textoBotao = editandoVeiculoId ? "Salvar alteracao" : "Salvar";
 
   const previewInicial = foto
-    ? `<img src="${foto}" alt="Prévia da foto">`
+    ? `<img src="${foto}" alt="Previa da foto">`
     : `<span>Sem foto selecionada</span>`;
 
   container.innerHTML = `
@@ -1137,9 +1309,9 @@ function abrirFormVeiculo(
         <div class="field">
           <label>Tipo</label>
           <select id="v-tipo">
-            <option value="Caminhão" ${tipo === "Caminhão" ? "selected" : ""}>Caminhão</option>
+            <option value="Caminhao" ${tipo === "Caminhao" ? "selected" : ""}>Caminhao</option>
             <option value="Carro" ${tipo === "Carro" ? "selected" : ""}>Carro</option>
-            <option value="Máquina" ${tipo === "Máquina" ? "selected" : ""}>Máquina</option>
+            <option value="Maquina" ${tipo === "Maquina" ? "selected" : ""}>Maquina</option>
           </select>
         </div>
 
@@ -1147,24 +1319,24 @@ function abrirFormVeiculo(
           <label>Status</label>
           <select id="v-status">
             <option value="Ativo" ${status === "Ativo" ? "selected" : ""}>Ativo</option>
-            <option value="Manutenção" ${status === "Manutenção" ? "selected" : ""}>Manutenção</option>
+            <option value="Manutencao" ${status === "Manutencao" ? "selected" : ""}>Manutencao</option>
             <option value="Inativo" ${status === "Inativo" ? "selected" : ""}>Inativo</option>
           </select>
         </div>
 
         <div class="field full">
-          <label>Observação</label>
+          <label>Observacao</label>
           <input id="v-observacao" value="${observacao}" />
         </div>
 
         <div class="field full">
-          <label>Foto do veículo</label>
+          <label>Foto do veiculo</label>
           <input type="file" id="v-foto-arquivo" accept="image/*" />
           <input type="hidden" id="v-foto-base64" value="${foto}" />
         </div>
 
         <div class="field full">
-          <label>Prévia</label>
+          <label>Previa</label>
           <div class="photo-preview-box" id="v-foto-preview">
             ${previewInicial}
           </div>
@@ -1188,7 +1360,7 @@ function abrirFormVeiculo(
 
     const base64 = await arquivoParaBase64(arquivo);
     inputBase64.value = base64;
-    preview.innerHTML = `<img src="${base64}" alt="Prévia da foto">`;
+    preview.innerHTML = `<img src="${base64}" alt="Previa da foto">`;
   });
 
   document.getElementById("salvar-veiculo").onclick = async () => {
@@ -1237,7 +1409,7 @@ window.editarVeiculoPorId = async (id) => {
     veiculo.modelo || "",
     veiculo.ano || "",
     veiculo.placa || "",
-    veiculo.tipo || "Caminhão",
+    veiculo.tipo || "Caminhao",
     veiculo.status || "Ativo",
     veiculo.observacao || "",
     veiculo.foto || ""
@@ -1245,14 +1417,14 @@ window.editarVeiculoPorId = async (id) => {
 };
 
 window.excluirVeiculo = async (id) => {
-  if (!confirm("Deseja excluir este veículo?")) return;
+  if (!confirm("Deseja excluir este veiculo?")) return;
 
   await apiDelete(`/veiculos/${id}`);
   await renderizarVeiculos();
 };
 
 // =========================================================
-// MÓDULO DE MOTORISTAS
+// MODULO DE MOTORISTAS
 // =========================================================
 async function carregarMotoristas() {
   return apiGet("/motoristas");
@@ -1276,7 +1448,7 @@ async function renderizarMotoristas() {
           <th>Nome</th>
           <th>Telefone</th>
           <th>CNH</th>
-          <th>Ações</th>
+          <th>Acoes</th>
         </tr>
       </thead>
 
@@ -1304,7 +1476,7 @@ function abrirFormMotorista(nome = "", telefone = "", cnh = "") {
   if (!container) return;
 
   const titulo = editandoMotoristaId ? "Alterar motorista" : "Novo motorista";
-  const textoBotao = editandoMotoristaId ? "Salvar alteração" : "Salvar";
+  const textoBotao = editandoMotoristaId ? "Salvar alteracao" : "Salvar";
 
   container.innerHTML = `
     <div class="panel-box">
@@ -1519,7 +1691,7 @@ window.excluirPlanoConta = async (id) => {
 };
 
 // =========================================================
-// MÓDULO DE LANÇAMENTOS
+// MODULO DE LANCAMENTOS
 // =========================================================
 async function carregarClassificacoes() {
   const classificacaoSelect = document.getElementById("classificacao");
@@ -1598,16 +1770,16 @@ function preencherFormLancamento(item) {
   document.getElementById("data-nf").value = item.data_nf || "";
   alternarCamposCombustivel();
 
-  document.getElementById("titulo-form-lancamento").textContent = "Alterar lançamento";
-  document.getElementById("btn-salvar-lancamento").textContent = "Salvar alteração";
+  document.getElementById("titulo-form-lancamento").textContent = "Alterar lancamento";
+  document.getElementById("btn-salvar-lancamento").textContent = "Salvar alteracao";
   document.getElementById("btn-cancelar-edicao-lancamento").style.display = "inline-block";
 }
 
 function resetFormLancamento() {
   editandoLancamentoId = null;
   document.getElementById("form-lancamento").reset();
-  document.getElementById("titulo-form-lancamento").textContent = "Novo lançamento";
-  document.getElementById("btn-salvar-lancamento").textContent = "Salvar lançamento";
+  document.getElementById("titulo-form-lancamento").textContent = "Novo lancamento";
+  document.getElementById("btn-salvar-lancamento").textContent = "Salvar lancamento";
   document.getElementById("btn-cancelar-edicao-lancamento").style.display = "none";
   alternarCamposCombustivel();
 }
@@ -1705,7 +1877,7 @@ function renderizarTabela(lancamentos) {
   if (!lancamentos.length) {
     tabelaLancamentos.innerHTML = `
       <tr>
-        <td colspan="7" class="empty-row">Nenhum lançamento encontrado.</td>
+        <td colspan="7" class="empty-row">Nenhum lancamento encontrado.</td>
       </tr>
     `;
     totalRegistros.textContent = "0 registros";
@@ -1744,7 +1916,7 @@ window.editarLancamentoPorId = async (id) => {
 };
 
 window.excluirLancamento = async (id) => {
-  if (!confirm("Deseja excluir este lançamento?")) return;
+  if (!confirm("Deseja excluir este lancamento?")) return;
 
   await apiDelete(`/lancamentos/${id}`);
   await carregarLancamentos();
@@ -1831,13 +2003,13 @@ async function iniciarModuloLancamentos() {
     const resultado = await response.json();
 
     if (!response.ok) {
-      mensagem.textContent = resultado.detail || "Erro ao salvar lançamento.";
+      mensagem.textContent = resultado.detail || "Erro ao salvar lancamento.";
       return;
     }
 
     mensagem.textContent = editandoLancamentoId
-      ? "Lançamento alterado com sucesso."
-      : "Lançamento salvo com sucesso.";
+      ? "Lancamento alterado com sucesso."
+      : "Lancamento salvo com sucesso.";
 
     resetFormLancamento();
     await carregarLancamentos();
@@ -2127,6 +2299,309 @@ async function iniciarContasReceber() {
 }
 
 // =========================================================
+// MODULO DE ATIVOS, PASSIVOS, ESTOQUE E CONFIGURACOES
+// =========================================================
+async function carregarSelectVeiculosGenerico(selectId, vazio = "Sem vinculo") {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  if (select.options.length > 1) return;
+  const veiculos = await carregarVeiculos();
+  select.innerHTML = `<option value="">${vazio}</option>`;
+  veiculos.forEach((veiculo) => {
+    const option = document.createElement("option");
+    option.value = veiculo.id;
+    option.textContent = `${veiculo.nome || veiculo.modelo || "Veiculo"}${veiculo.placa ? ` - ${veiculo.placa}` : ""}`;
+    select.appendChild(option);
+  });
+}
+
+async function carregarAtivosPassivos() {
+  const [ativos, passivos, patrimonio] = await Promise.all([
+    apiGet("/ativos"),
+    apiGet("/passivos"),
+    apiGet("/relatorios/patrimonio-liquido")
+  ]);
+
+  document.getElementById("ap-total-ativos").textContent = formatarValor(patrimonio.total_ativos);
+  document.getElementById("ap-total-passivos").textContent = formatarValor(patrimonio.total_passivos);
+  document.getElementById("ap-patrimonio").textContent = formatarValor(patrimonio.patrimonio_liquido);
+
+  preencherTabela("tabela-ativos", ativos, [
+    i => i.nome,
+    i => i.tipo,
+    i => formatarValor(i.valor),
+    i => formatarDataCurta(i.data_aquisicao),
+    i => `<span class="status-pill neutral">${i.status}</span>`,
+    i => `<div class="action-row"><button class="small-btn edit-btn" onclick="editarAtivo(${i.id})">Editar</button><button class="small-btn delete-btn" onclick="excluirAtivo(${i.id})">Excluir</button></div>`
+  ]);
+
+  preencherTabela("tabela-passivos", passivos, [
+    i => i.nome,
+    i => i.tipo,
+    i => formatarValor(i.valor_total),
+    i => formatarValor(i.valor_pago),
+    i => formatarValor(i.saldo_devedor),
+    i => formatarDataCurta(i.data_vencimento),
+    i => `<div class="action-row"><button class="small-btn edit-btn" onclick="editarPassivo(${i.id})">Editar</button><button class="small-btn delete-btn" onclick="excluirPassivo(${i.id})">Excluir</button></div>`
+  ]);
+}
+
+function payloadAtivo() {
+  return {
+    nome: document.getElementById("ativo-nome").value.trim(),
+    tipo: document.getElementById("ativo-tipo").value,
+    valor: normalizarNumero(document.getElementById("ativo-valor").value),
+    data_aquisicao: document.getElementById("ativo-data").value || null,
+    veiculo_id: document.getElementById("ativo-veiculo-id").value ? Number(document.getElementById("ativo-veiculo-id").value) : null,
+    observacao: document.getElementById("ativo-observacao").value.trim(),
+    status: document.getElementById("ativo-status").value.trim() || "Ativo"
+  };
+}
+
+function payloadPassivo() {
+  return {
+    nome: document.getElementById("passivo-nome").value.trim(),
+    tipo: document.getElementById("passivo-tipo").value,
+    valor_total: normalizarNumero(document.getElementById("passivo-valor-total").value),
+    valor_pago: normalizarNumero(document.getElementById("passivo-valor-pago").value),
+    data_inicio: document.getElementById("passivo-data-inicio").value || null,
+    data_vencimento: document.getElementById("passivo-data-vencimento").value || null,
+    observacao: document.getElementById("passivo-observacao").value.trim(),
+    status: document.getElementById("passivo-status").value.trim() || "Pendente"
+  };
+}
+
+function resetAtivo() {
+  editandoAtivoId = null;
+  document.getElementById("form-ativo").reset();
+  document.getElementById("btn-cancelar-ativo").style.display = "none";
+  document.getElementById("titulo-form-ativo").textContent = "Novo ativo";
+}
+
+function resetPassivo() {
+  editandoPassivoId = null;
+  document.getElementById("form-passivo").reset();
+  document.getElementById("btn-cancelar-passivo").style.display = "none";
+  document.getElementById("titulo-form-passivo").textContent = "Novo passivo";
+}
+
+window.editarAtivo = async (id) => {
+  const item = (await apiGet("/ativos")).find(registro => registro.id === id);
+  if (!item) return;
+  editandoAtivoId = id;
+  document.getElementById("ativo-nome").value = item.nome || "";
+  document.getElementById("ativo-tipo").value = item.tipo || "Outro";
+  document.getElementById("ativo-valor").value = item.valor || "";
+  document.getElementById("ativo-data").value = item.data_aquisicao || "";
+  document.getElementById("ativo-veiculo-id").value = item.veiculo_id || "";
+  document.getElementById("ativo-observacao").value = item.observacao || "";
+  document.getElementById("ativo-status").value = item.status || "Ativo";
+  document.getElementById("btn-cancelar-ativo").style.display = "inline-block";
+  document.getElementById("titulo-form-ativo").textContent = "Alterar ativo";
+};
+
+window.editarPassivo = async (id) => {
+  const item = (await apiGet("/passivos")).find(registro => registro.id === id);
+  if (!item) return;
+  editandoPassivoId = id;
+  document.getElementById("passivo-nome").value = item.nome || "";
+  document.getElementById("passivo-tipo").value = item.tipo || "Outro";
+  document.getElementById("passivo-valor-total").value = item.valor_total || "";
+  document.getElementById("passivo-valor-pago").value = item.valor_pago || "";
+  document.getElementById("passivo-data-inicio").value = item.data_inicio || "";
+  document.getElementById("passivo-data-vencimento").value = item.data_vencimento || "";
+  document.getElementById("passivo-observacao").value = item.observacao || "";
+  document.getElementById("passivo-status").value = item.status || "Pendente";
+  document.getElementById("btn-cancelar-passivo").style.display = "inline-block";
+  document.getElementById("titulo-form-passivo").textContent = "Alterar passivo";
+};
+
+window.excluirAtivo = async (id) => {
+  if (!confirm("Deseja excluir este ativo?")) return;
+  await apiDelete(`/ativos/${id}`);
+  mostrarToast("Ativo excluido.", "success");
+  await carregarAtivosPassivos();
+};
+
+window.excluirPassivo = async (id) => {
+  if (!confirm("Deseja excluir este passivo?")) return;
+  await apiDelete(`/passivos/${id}`);
+  mostrarToast("Passivo excluido.", "success");
+  await carregarAtivosPassivos();
+};
+
+async function iniciarAtivosPassivos() {
+  await carregarSelectVeiculosGenerico("ativo-veiculo-id");
+  await carregarAtivosPassivos();
+  document.getElementById("form-ativo").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await apiSend(editandoAtivoId ? `/ativos/${editandoAtivoId}` : "/ativos", editandoAtivoId ? "PUT" : "POST", payloadAtivo());
+    resetAtivo();
+    mostrarToast("Ativo salvo.", "success");
+    await carregarAtivosPassivos();
+  });
+  document.getElementById("form-passivo").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await apiSend(editandoPassivoId ? `/passivos/${editandoPassivoId}` : "/passivos", editandoPassivoId ? "PUT" : "POST", payloadPassivo());
+    resetPassivo();
+    mostrarToast("Passivo salvo.", "success");
+    await carregarAtivosPassivos();
+  });
+  document.getElementById("btn-cancelar-ativo").addEventListener("click", resetAtivo);
+  document.getElementById("btn-cancelar-passivo").addEventListener("click", resetPassivo);
+}
+
+async function carregarEstoque() {
+  const params = new URLSearchParams();
+  const nome = document.getElementById("filtro-produto-nome")?.value.trim() || "";
+  const categoria = document.getElementById("filtro-produto-categoria")?.value.trim() || "";
+  const baixo = document.getElementById("filtro-produto-baixo")?.value || "";
+  if (nome) params.append("nome", nome);
+  if (categoria) params.append("categoria", categoria);
+  if (baixo) params.append("estoque_baixo", baixo);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const [produtos, movimentacoes, relatorio] = await Promise.all([
+    apiGet(`/estoque/produtos${query}`),
+    apiGet("/estoque/movimentacoes"),
+    apiGet("/relatorios/estoque")
+  ]);
+  document.getElementById("est-total-produtos").textContent = relatorio.total_produtos;
+  document.getElementById("est-valor-total").textContent = formatarValor(relatorio.valor_total_estoque);
+  document.getElementById("est-baixo").textContent = relatorio.produtos_estoque_baixo;
+  document.getElementById("est-ultimas").textContent = relatorio.ultimas_movimentacoes.length;
+  preencherTabela("tabela-produtos", produtos, [
+    i => `${i.nome}${i.estoque_baixo ? ' <span class="status-pill warning">baixo</span>' : ""}`,
+    i => i.categoria || "-",
+    i => `${i.quantidade_atual} ${i.unidade_medida}`,
+    i => formatarValor(i.valor_custo),
+    i => formatarValor(i.valor_total_estoque),
+    i => i.estoque_minimo,
+    i => `<div class="action-row"><button class="small-btn edit-btn" onclick="editarProduto(${i.id})">Editar</button><button class="small-btn delete-btn" onclick="excluirProduto(${i.id})">Excluir</button></div>`
+  ]);
+  const select = document.getElementById("mov-produto-id");
+  select.innerHTML = produtos.map(item => `<option value="${item.id}">${item.nome}</option>`).join("");
+  preencherTabela("tabela-movimentacoes", movimentacoes, [
+    i => formatarDataCurta(i.data),
+    i => (relatorio.produtos.find(p => p.id === i.produto_id)?.nome || i.produto_id),
+    i => i.tipo_movimentacao,
+    i => i.quantidade,
+    i => formatarValor(i.valor_unitario),
+    i => i.observacao || ""
+  ]);
+}
+
+function payloadProduto() {
+  return {
+    nome: document.getElementById("produto-nome").value.trim(),
+    categoria: document.getElementById("produto-categoria").value.trim(),
+    unidade_medida: document.getElementById("produto-unidade").value.trim() || "un",
+    quantidade_atual: normalizarNumero(document.getElementById("produto-quantidade").value),
+    valor_custo: normalizarNumero(document.getElementById("produto-valor").value),
+    estoque_minimo: normalizarNumero(document.getElementById("produto-minimo").value),
+    observacao: document.getElementById("produto-observacao").value.trim()
+  };
+}
+
+function resetProduto() {
+  editandoProdutoId = null;
+  document.getElementById("form-produto").reset();
+  document.getElementById("produto-unidade").value = "un";
+  document.getElementById("btn-cancelar-produto").style.display = "none";
+  document.getElementById("titulo-form-produto").textContent = "Novo produto";
+}
+
+window.editarProduto = async (id) => {
+  const item = (await apiGet("/estoque/produtos")).find(registro => registro.id === id);
+  if (!item) return;
+  editandoProdutoId = id;
+  document.getElementById("produto-nome").value = item.nome || "";
+  document.getElementById("produto-categoria").value = item.categoria || "";
+  document.getElementById("produto-unidade").value = item.unidade_medida || "un";
+  document.getElementById("produto-quantidade").value = item.quantidade_atual || "";
+  document.getElementById("produto-valor").value = item.valor_custo || "";
+  document.getElementById("produto-minimo").value = item.estoque_minimo || "";
+  document.getElementById("produto-observacao").value = item.observacao || "";
+  document.getElementById("btn-cancelar-produto").style.display = "inline-block";
+  document.getElementById("titulo-form-produto").textContent = "Alterar produto";
+};
+
+window.excluirProduto = async (id) => {
+  if (!confirm("Deseja excluir este produto?")) return;
+  await apiDelete(`/estoque/produtos/${id}`);
+  mostrarToast("Produto excluido.", "success");
+  await carregarEstoque();
+};
+
+async function iniciarEstoque() {
+  await carregarEstoque();
+  document.getElementById("form-produto").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await apiSend(editandoProdutoId ? `/estoque/produtos/${editandoProdutoId}` : "/estoque/produtos", editandoProdutoId ? "PUT" : "POST", payloadProduto());
+    resetProduto();
+    mostrarToast("Produto salvo.", "success");
+    await carregarEstoque();
+  });
+  document.getElementById("form-movimentacao").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await apiSend("/estoque/movimentacoes", "POST", {
+      produto_id: Number(document.getElementById("mov-produto-id").value),
+      tipo_movimentacao: document.getElementById("mov-tipo").value,
+      quantidade: normalizarNumero(document.getElementById("mov-quantidade").value),
+      valor_unitario: normalizarNumero(document.getElementById("mov-valor").value),
+      data: document.getElementById("mov-data").value,
+      observacao: document.getElementById("mov-observacao").value.trim()
+    });
+    document.getElementById("form-movimentacao").reset();
+    mostrarToast("Movimentacao registrada.", "success");
+    await carregarEstoque();
+  });
+  document.getElementById("btn-filtrar-estoque").addEventListener("click", carregarEstoque);
+  document.getElementById("btn-limpar-estoque").addEventListener("click", async () => {
+    document.getElementById("filtro-produto-nome").value = "";
+    document.getElementById("filtro-produto-categoria").value = "";
+    document.getElementById("filtro-produto-baixo").value = "";
+    await carregarEstoque();
+  });
+  document.getElementById("btn-cancelar-produto").addEventListener("click", resetProduto);
+}
+
+function carregarConfiguracoesLocais() {
+  return JSON.parse(localStorage.getItem("financeiro_configuracoes") || "{}");
+}
+
+function aplicarTema() {
+  const config = carregarConfiguracoesLocais();
+  const tema = config.tema || localStorage.getItem("financeiro_tema") || "dark";
+  document.body.dataset.theme = tema;
+  document.documentElement.style.setProperty("--blue", config.corPrincipal || "#4f8cff");
+}
+
+function iniciarConfiguracoes() {
+  const config = carregarConfiguracoesLocais();
+  document.getElementById("config-empresa").value = config.nomeEmpresa || "";
+  document.getElementById("config-logo").value = config.logoEmpresa || "";
+  document.getElementById("config-tema").value = config.tema || localStorage.getItem("financeiro_tema") || "dark";
+  document.getElementById("config-cor").value = config.corPrincipal || "#4f8cff";
+  document.getElementById("config-moeda").value = config.moeda || "BRL";
+  document.getElementById("config-relatorio").value = config.dadosRelatorio || "";
+  document.getElementById("form-configuracoes").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const novo = {
+      nomeEmpresa: document.getElementById("config-empresa").value.trim(),
+      logoEmpresa: document.getElementById("config-logo").value.trim(),
+      tema: document.getElementById("config-tema").value,
+      corPrincipal: document.getElementById("config-cor").value,
+      moeda: document.getElementById("config-moeda").value.trim() || "BRL",
+      dadosRelatorio: document.getElementById("config-relatorio").value.trim()
+    };
+    localStorage.setItem("financeiro_configuracoes", JSON.stringify(novo));
+    localStorage.setItem("financeiro_tema", novo.tema);
+    aplicarTema();
+    mostrarToast("Configuracoes salvas.", "success");
+  });
+}
+
+// =========================================================
 // MODULO DE RELATORIOS
 // =========================================================
 let relatorioCharts = [];
@@ -2341,7 +2816,7 @@ async function gerarRelatorio() {
     renderizarGraficosRelatorio(dados);
   } catch (erro) {
     if (feedback) {
-      feedback.innerHTML = `<div class="panel-box"><p class="empty-row">Não foi possível gerar o relatório. ${erro.message || ""}</p></div>`;
+      feedback.innerHTML = `<div class="panel-box"><p class="empty-row">Nao foi possivel gerar o relatorio. ${erro.message || ""}</p></div>`;
     }
   }
 }
@@ -2364,20 +2839,122 @@ async function iniciarRelatorios() {
 // =========================================================
 // MODULO DE DASHBOARD
 // =========================================================
+let dashboardCharts = [];
+
+function parametrosDashboard() {
+  const params = new URLSearchParams();
+  const dataInicial = document.getElementById("dash-data-inicial")?.value || "";
+  const dataFinal = document.getElementById("dash-data-final")?.value || "";
+  const veiculoId = document.getElementById("dash-veiculo-id")?.value || "";
+  const empresaId = document.getElementById("dash-empresa-id")?.value || "";
+  if (dataInicial) params.append("data_inicial", dataInicial);
+  if (dataFinal) params.append("data_final", dataFinal);
+  if (veiculoId) params.append("veiculo_id", veiculoId);
+  if (empresaId) params.append("empresa_id", empresaId);
+  return params;
+}
+
+async function carregarResumoDashboard() {
+  const params = parametrosDashboard();
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const [resumo, periodo, veiculos, classificacoes, contas, patrimonio] = await Promise.all([
+    apiGet(`/relatorios/resumo-financeiro${query}`),
+    apiGet(`/relatorios/por-periodo${query}`),
+    apiGet(`/relatorios/custo-por-veiculo${query}`),
+    apiGet(`/relatorios/por-classificacao${query}`),
+    apiGet(`/relatorios/contas-receber${query}`),
+    apiGet("/relatorios/patrimonio-liquido")
+  ]);
+  return { resumo, periodo, veiculos, classificacoes, contas, patrimonio };
+}
+
+function limparGraficosDashboard() {
+  dashboardCharts.forEach(chart => chart.destroy?.());
+  dashboardCharts = [];
+}
+
+function criarGraficoDashboard(canvasId, tipo, labels, datasets) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (!window.Chart) {
+    criarGrafico(canvasId, tipo, labels, datasets);
+    return;
+  }
+  const chart = new Chart(canvas, {
+    type: tipo,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: "#e8edf8" } } },
+      scales: tipo === "pie" || tipo === "doughnut" ? {} : {
+        x: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.06)" } },
+        y: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.06)" } }
+      }
+    }
+  });
+  dashboardCharts.push(chart);
+}
+
+function renderizarGraficoReceitasDespesas(dados) {
+  criarGraficoDashboard("dash-chart-receitas-despesas", "bar", ["Periodo"], [
+    { label: "Faturamento", data: [dados.resumo.faturamento], backgroundColor: "#22c55e" },
+    { label: "Custos", data: [dados.resumo.custos_operacionais], backgroundColor: "#ef4444" },
+    { label: "Despesas", data: [dados.resumo.despesas_administrativas], backgroundColor: "#f59e0b" }
+  ]);
+}
+
+function renderizarGraficoCustosPorVeiculo(dados) {
+  criarGraficoDashboard("dash-chart-custos-veiculo", "bar", dados.veiculos.slice(0, 8).map(i => i.nome_veiculo), [
+    { label: "Custo total", data: dados.veiculos.slice(0, 8).map(i => i.custo_total_veiculo), backgroundColor: "#4f8cff" }
+  ]);
+}
+
+function renderizarGraficoDespesasPorClassificacao(dados) {
+  const despesas = dados.classificacoes.filter(i => String(i.classificacao).startsWith("2.")).slice(0, 8);
+  criarGraficoDashboard("dash-chart-despesas-classificacao", "doughnut", despesas.map(i => i.classificacao), [
+    { label: "Despesas", data: despesas.map(i => Math.abs(i.total)), backgroundColor: ["#ef4444", "#f59e0b", "#4f8cff", "#22c55e", "#a78bfa", "#06b6d4", "#64748b", "#f97316"] }
+  ]);
+}
+
+function renderizarGraficoFaturamentoMensal(dados) {
+  criarGraficoDashboard("dash-chart-faturamento-mensal", "line", dados.periodo.map(i => i.periodo), [
+    { label: "Faturamento", data: dados.periodo.map(i => i.total_receitas), borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.18)" }
+  ]);
+}
+
+function renderizarGraficoSaldoAcumulado(dados) {
+  let acumulado = 0;
+  const valores = dados.periodo.map(i => {
+    acumulado += i.resultado;
+    return acumulado;
+  });
+  criarGraficoDashboard("dash-chart-saldo-acumulado", "line", dados.periodo.map(i => i.periodo), [
+    { label: "Saldo acumulado", data: valores, borderColor: "#4f8cff", backgroundColor: "rgba(79,140,255,0.18)" }
+  ]);
+}
+
+function renderizarGraficoContasReceber(dados) {
+  criarGraficoDashboard("dash-chart-contas-receber", "pie", ["Pendente", "Recebido"], [
+    { label: "Contas a receber", data: [dados.resumo.valores_pendentes_a_receber, dados.contas.resumo?.contas_a_receber_recebido || 0], backgroundColor: ["#f59e0b", "#22c55e"] }
+  ]);
+}
+
 async function iniciarDashboard() {
-  const [lancamentos, veiculos, motoristas, resumoRelatorio] = await Promise.all([
+  await carregarSelectVeiculosGenerico("dash-veiculo-id", "Todos");
+  const [lancamentos, veiculos, motoristas, dadosDashboard] = await Promise.all([
     apiGet("/lancamentos"),
     apiGet("/veiculos"),
     apiGet("/motoristas"),
-    apiGet("/relatorios/resumo")
+    carregarResumoDashboard()
   ]);
   cacheVeiculos = veiculos;
 
   const receitas = lancamentos.filter(lancamentoEhReceita);
   const despesas = lancamentos.filter(item => !lancamentoEhReceita(item));
-  const totalReceitas = resumoRelatorio.total_faturamento;
-  const totalDespesas = resumoRelatorio.total_custos + resumoRelatorio.total_despesas + resumoRelatorio.total_investimentos;
-  const saldo = resumoRelatorio.saldo_periodo;
+  const totalReceitas = dadosDashboard.resumo.faturamento;
+  const totalDespesas = dadosDashboard.resumo.despesas_administrativas;
+  const saldo = dadosDashboard.resumo.saldo_periodo;
 
   const ativos = veiculos.filter(v => v.status === "Ativo").length;
   const manutencao = veiculos.filter(v => normalizarTexto(v.status) === "manutencao").length;
@@ -2393,6 +2970,14 @@ async function iniciarDashboard() {
   document.getElementById("dashboard-receitas-qtd").textContent = `${receitas.length} lancamento(s)`;
   document.getElementById("dashboard-despesas").textContent = formatarValor(totalDespesas);
   document.getElementById("dashboard-despesas-qtd").textContent = `${despesas.length} lancamento(s)`;
+  document.getElementById("dashboard-custos").textContent = formatarValor(dadosDashboard.resumo.custos_operacionais);
+  document.getElementById("dashboard-investimentos").textContent = formatarValor(dadosDashboard.resumo.investimentos);
+  document.getElementById("dashboard-lucro-bruto").textContent = formatarValor(dadosDashboard.resumo.lucro_bruto);
+  document.getElementById("dashboard-lucro-liquido").textContent = formatarValor(dadosDashboard.resumo.lucro_liquido);
+  document.getElementById("dashboard-contas-pendentes").textContent = formatarValor(dadosDashboard.resumo.valores_pendentes_a_receber);
+  document.getElementById("dashboard-total-ativos").textContent = formatarValor(dadosDashboard.patrimonio.total_ativos);
+  document.getElementById("dashboard-total-passivos").textContent = formatarValor(dadosDashboard.patrimonio.total_passivos);
+  document.getElementById("dashboard-patrimonio").textContent = formatarValor(dadosDashboard.patrimonio.patrimonio_liquido);
   document.getElementById("dashboard-frota-ativa").textContent = ativos;
   document.getElementById("dashboard-frota-total").textContent = `${veiculos.length} veiculo(s) cadastrados`;
   document.getElementById("dashboard-veiculos-ativos").textContent = ativos;
@@ -2402,6 +2987,14 @@ async function iniciarDashboard() {
 
   renderizarRankingClassificacoes(lancamentos);
   renderizarUltimosLancamentosDashboard(lancamentos);
+  limparGraficosDashboard();
+  renderizarGraficoReceitasDespesas(dadosDashboard);
+  renderizarGraficoCustosPorVeiculo(dadosDashboard);
+  renderizarGraficoDespesasPorClassificacao(dadosDashboard);
+  renderizarGraficoFaturamentoMensal(dadosDashboard);
+  renderizarGraficoSaldoAcumulado(dadosDashboard);
+  renderizarGraficoContasReceber(dadosDashboard);
+  document.getElementById("btn-dashboard-filtrar")?.addEventListener("click", iniciarDashboard);
 }
 
 function renderizarRankingClassificacoes(lancamentos) {
@@ -2475,7 +3068,7 @@ function renderizarUltimosLancamentosDashboard(lancamentos) {
 }
 
 // =========================================================
-// NAVEGAÇÃO ENTRE ABAS
+// NAVEGACAO ENTRE ABAS
 // =========================================================
 async function loadPage(pageKey) {
   const page = pages[pageKey];
@@ -2506,6 +3099,18 @@ async function loadPage(pageKey) {
       await iniciarRelatorios();
     }
 
+    if (pageKey === "ativosPassivos") {
+      await iniciarAtivosPassivos();
+    }
+
+    if (pageKey === "estoque") {
+      await iniciarEstoque();
+    }
+
+    if (pageKey === "configuracoes") {
+      iniciarConfiguracoes();
+    }
+
     if (pageKey === "veiculos") {
       document.getElementById("btn-novo-veiculo").onclick = () => {
         editandoVeiculoId = null;
@@ -2527,7 +3132,7 @@ async function loadPage(pageKey) {
   } catch (erro) {
     pageContent.innerHTML = `
       <div class="panel-box">
-        <p class="empty-row">Não foi possível carregar esta tela. Verifique se o backend está rodando e tente novamente.</p>
+        <p class="empty-row">Nao foi possivel carregar esta tela. Verifique se o backend esta rodando e tente novamente.</p>
         <p class="empty-row">${erro.message || ""}</p>
       </div>
     `;
@@ -2549,7 +3154,20 @@ logoutBtn.addEventListener("click", () => {
   window.location.href = "login.html";
 });
 
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    const atual = document.body.dataset.theme || "dark";
+    const proximo = atual === "dark" ? "light" : "dark";
+    localStorage.setItem("financeiro_tema", proximo);
+    const config = carregarConfiguracoesLocais();
+    localStorage.setItem("financeiro_configuracoes", JSON.stringify({ ...config, tema: proximo }));
+    aplicarTema();
+    mostrarToast(`Tema ${proximo === "dark" ? "escuro" : "claro"} aplicado.`, "success");
+  });
+}
+
 // =========================================================
-// INICIALIZAÇÃO DO SISTEMA
+// INICIALIZACAO DO SISTEMA
 // =========================================================
+aplicarTema();
 loadPage("dashboard");

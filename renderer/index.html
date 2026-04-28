@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -16,18 +16,21 @@
         <div class="brand-icon">F</div>
         <div>
           <h1>Financeiro</h1>
-          <p>Gestão operacional</p>
+          <p>Gestao operacional</p>
         </div>
       </div>
 
       <nav class="nav">
         <button class="nav-btn active" data-page="dashboard">Dashboard</button>
-        <button class="nav-btn" data-page="veiculos">Veículos</button>
+        <button class="nav-btn" data-page="veiculos">Veiculos</button>
         <button class="nav-btn" data-page="motoristas">Motoristas</button>
         <button class="nav-btn" data-page="planoContas">Plano de contas</button>
-        <button class="nav-btn" data-page="lancamentos">Lançamentos</button>
+        <button class="nav-btn" data-page="lancamentos">Lancamentos</button>
         <button class="nav-btn" data-page="contasReceber">Contas a receber</button>
-        <button class="nav-btn" data-page="relatorios">Relatórios</button>
+        <button class="nav-btn" data-page="relatorios">Relatorios</button>
+        <button class="nav-btn" data-page="ativosPassivos">Ativos/Passivos</button>
+        <button class="nav-btn" data-page="estoque">Estoque</button>
+        <button class="nav-btn" data-page="configuracoes">Configuracoes</button>
         <button class="nav-btn" data-page="mapa">Mapa</button>
       </nav>
     </aside>
@@ -36,10 +39,11 @@
       <header class="topbar">
         <div>
           <h2 id="page-title">Dashboard</h2>
-          <p id="page-subtitle">Visão geral da operação e do financeiro</p>
+          <p id="page-subtitle">Visao geral da operacao e do financeiro</p>
         </div>
 
         <div class="topbar-actions">
+          <button class="ghost-btn" id="theme-toggle-btn" type="button">Tema</button>
           <button class="ghost-btn" id="logout-btn">Sair</button>
         </div>
       </header>
@@ -49,7 +53,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="app.js?v=5"></script>
-  <script src="pwa.js?v=5"></script>
+  <script src="app.js?v=6"></script>
+  <script src="pwa.js?v=6"></script>
 </body>
 </html>
+

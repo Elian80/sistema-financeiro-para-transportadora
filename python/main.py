@@ -12,16 +12,16 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 
 # =========================================================
-# CRIAÇÃO DA API
+# CRIACAO DA API
 # =========================================================
-# Aqui iniciamos o FastAPI, que será o backend do sistema.
+# Aqui iniciamos o FastAPI, que sera o backend do sistema.
 app = FastAPI()
 
 # =========================================================
 # CORS
 # =========================================================
 # Permite que o frontend Electron converse com a API.
-# Como não estamos usando login por token/cookie no backend ainda,
+# Como nao estamos usando login por token/cookie no backend ainda,
 # deixamos allow_credentials=False para evitar conflito com "*".
 app.add_middleware(
     CORSMiddleware,
@@ -46,28 +46,32 @@ ARQUIVO_MOTORISTAS = DATA_DIR / "motoristas.json"
 ARQUIVO_PLANO_CONTAS = DATA_DIR / "plano_contas.json"
 ARQUIVO_CONTAS_RECEBER = DATA_DIR / "contas_receber.json"
 ARQUIVO_CONTAS_PAGAR = DATA_DIR / "contas_pagar.json"
+ARQUIVO_ATIVOS = DATA_DIR / "ativos.json"
+ARQUIVO_PASSIVOS = DATA_DIR / "passivos.json"
+ARQUIVO_ESTOQUE_PRODUTOS = DATA_DIR / "estoque_produtos.json"
+ARQUIVO_ESTOQUE_MOVIMENTACOES = DATA_DIR / "estoque_movimentacoes.json"
 
 # =========================================================
-# CLASSIFICAÇÕES
+# CLASSIFICACOES
 # =========================================================
-# Lista base vinda da planilha para usar nos lançamentos.
+# Lista base vinda da planilha para usar nos lancamentos.
 CLASSIFICACOES = [
-    "1.1 COMBUSTÍVEL",
+    "1.1 COMBUSTIVEL",
     "1.2 IMPOSTO S/ NF",
-    "1.3 MANUTENÇÃO MECANICA",
-    "1.4 MANUTENÇÃO PNEUS",
+    "1.3 MANUTENCAO MECANICA",
+    "1.4 MANUTENCAO PNEUS",
     "1.5 SALARIO + ENCAGOS FOLHA PGTO",
 
     "2.1 DESPESA COM DOC - CRLV",
-    "2.2 DESPESA SEGURANÇA DO TRABALHO",
-    "2.3 DESPESAS BANCÁRIAS",
+    "2.2 DESPESA SEGURANCA DO TRABALHO",
+    "2.3 DESPESAS BANCARIAS",
     "2.4 DESPESAS TAXA / ANUIDADE",
-    "2.5 EMPRÉTIMOS",
+    "2.5 EMPRETIMOS",
     "2.6 MULTAS / JUROS - ATRASO",
     "2.7 MULTAS DE TRANSITO",
     "2.8 OUTRAS DESPESAS",
 
-    "3.1 RECEBIMENTO SERVIÇOS PRESTADOS",
+    "3.1 RECEBIMENTO SERVICOS PRESTADOS",
     "3.2 OUTRAS RECEITAS",
 
     "4.1 COMPRA DE BEM",
@@ -130,7 +134,7 @@ CLASSIFICACOES = [
     for item in grupo["itens"]
 ]
 
-STATUS_VEICULO_VALIDOS = {"Ativo", "Manutenção", "Inativo"}
+STATUS_VEICULO_VALIDOS = {"Ativo", "Manutencao", "Inativo"}
 
 
 # =========================================================
@@ -159,9 +163,9 @@ class LancamentoIn(BaseModel):
     @field_validator("valor")
     @classmethod
     def validar_valor(cls, value: float) -> float:
-        # Impede valor inválido.
+        # Impede valor invalido.
         if value is None:
-            raise ValueError("Valor obrigatório.")
+            raise ValueError("Valor obrigatorio.")
         return float(value)
 
 
@@ -237,16 +241,16 @@ class VeiculoIn(BaseModel):
     @field_validator("tipo")
     @classmethod
     def validar_tipo(cls, value: str) -> str:
-        tipos_validos = {"Caminhão", "Carro", "Máquina"}
+        tipos_validos = {"Caminhao", "Carro", "Maquina"}
         if value not in tipos_validos:
-            raise ValueError("Tipo de veículo inválido.")
+            raise ValueError("Tipo de veiculo invalido.")
         return value
 
     @field_validator("status")
     @classmethod
     def validar_status(cls, value: str) -> str:
         if value not in STATUS_VEICULO_VALIDOS:
-            raise ValueError("Status de veículo inválido.")
+            raise ValueError("Status de veiculo invalido.")
         return value
 
 
@@ -261,14 +265,97 @@ class MotoristaIn(BaseModel):
         return value.strip()
 
 
+class AtivoIn(BaseModel):
+    nome: str = Field(..., min_length=1)
+    tipo: str = Field(..., min_length=1)
+    valor: float = 0
+    data_aquisicao: Optional[date] = None
+    veiculo_id: Optional[int] = None
+    observacao: str = ""
+    status: str = "Ativo"
+
+    @field_validator("nome", "tipo", "observacao", "status")
+    @classmethod
+    def limpar_campos_ativo(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("tipo")
+    @classmethod
+    def validar_tipo_ativo(cls, value: str) -> str:
+        tipos = {"Veiculo", "Veiculo", "Maquina", "Maquina", "Equipamento", "Imovel", "Imovel", "Outro"}
+        if value not in tipos:
+            raise ValueError("Tipo de ativo invalido.")
+        return value
+
+
+class PassivoIn(BaseModel):
+    nome: str = Field(..., min_length=1)
+    tipo: str = Field(..., min_length=1)
+    valor_total: float = 0
+    valor_pago: float = 0
+    data_inicio: Optional[date] = None
+    data_vencimento: Optional[date] = None
+    observacao: str = ""
+    status: str = "Pendente"
+
+    @field_validator("nome", "tipo", "observacao", "status")
+    @classmethod
+    def limpar_campos_passivo(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("tipo")
+    @classmethod
+    def validar_tipo_passivo(cls, value: str) -> str:
+        tipos = {"Financiamento", "Emprestimo", "Emprestimo", "Divida", "Divida", "Imposto a pagar", "Outro"}
+        if value not in tipos:
+            raise ValueError("Tipo de passivo invalido.")
+        return value
+
+
+class ProdutoEstoqueIn(BaseModel):
+    nome: str = Field(..., min_length=1)
+    categoria: str = ""
+    unidade_medida: str = "un"
+    quantidade_atual: float = 0
+    valor_custo: float = 0
+    estoque_minimo: float = 0
+    observacao: str = ""
+
+    @field_validator("nome", "categoria", "unidade_medida", "observacao")
+    @classmethod
+    def limpar_campos_produto(cls, value: str) -> str:
+        return value.strip()
+
+
+class MovimentacaoEstoqueIn(BaseModel):
+    produto_id: int
+    tipo_movimentacao: str = Field(..., min_length=1)
+    quantidade: float
+    valor_unitario: float = 0
+    data: date
+    observacao: str = ""
+
+    @field_validator("tipo_movimentacao", "observacao")
+    @classmethod
+    def limpar_campos_movimentacao(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("tipo_movimentacao")
+    @classmethod
+    def validar_tipo_movimentacao(cls, value: str) -> str:
+        if value not in {"Entrada", "Saida", "Saida", "Ajuste"}:
+            raise ValueError("Tipo de movimentacao invalido.")
+        return "Saida" if value == "Saida" else value
+
+
 # =========================================================
-# FUNÇÕES AUXILIARES DE ARQUIVO
+# FUNCOES AUXILIARES DE ARQUIVO
 # =========================================================
 
 def garantir_arquivo_json(caminho: Path) -> None:
     """
     Garante que o arquivo exista.
-    Se não existir, cria com lista vazia.
+    Se nao existir, cria com lista vazia.
     """
     if not caminho.exists():
         with open(caminho, "w", encoding="utf-8") as arquivo:
@@ -277,8 +364,8 @@ def garantir_arquivo_json(caminho: Path) -> None:
 
 def ler_json(caminho: Path):
     """
-    Lê um JSON com segurança.
-    Se o arquivo estiver vazio, corrompido ou inválido, retorna lista vazia.
+    Le um JSON com seguranca.
+    Se o arquivo estiver vazio, corrompido ou invalido, retorna lista vazia.
     """
     garantir_arquivo_json(caminho)
 
@@ -306,7 +393,7 @@ def salvar_json(caminho: Path, dados) -> None:
 
 def proximo_id(lista) -> int:
     """
-    Gera o próximo ID baseado no maior ID atual.
+    Gera o proximo ID baseado no maior ID atual.
     """
     if not lista:
         return 1
@@ -344,12 +431,24 @@ def eh_receita(classificacao: str) -> bool:
     return obter_grupo_financeiro(classificacao) == "FATURAMENTO"
 
 
+def eh_faturamento(classificacao: str) -> bool:
+    return eh_receita(classificacao)
+
+
 def eh_custo(classificacao: str) -> bool:
     return obter_grupo_financeiro(classificacao) == "CUSTOS OPERACIONAIS"
 
 
+def eh_custo_operacional(classificacao: str) -> bool:
+    return eh_custo(classificacao)
+
+
 def eh_despesa(classificacao: str) -> bool:
     return obter_grupo_financeiro(classificacao) == "DESPESAS ADMINISTRATIVAS"
+
+
+def eh_despesa_administrativa(classificacao: str) -> bool:
+    return eh_despesa(classificacao)
 
 
 def eh_investimento(classificacao: str) -> bool:
@@ -428,9 +527,66 @@ def normalizar_conta_receber_antiga(item: dict) -> dict:
     return conta
 
 
+def normalizar_ativo_antigo(item: dict) -> dict:
+    criado = item.get("created_at") or agora_iso()
+    return {
+        "id": item.get("id"),
+        "nome": item.get("nome", ""),
+        "tipo": item.get("tipo", "Outro"),
+        "valor": float(item.get("valor") or 0),
+        "data_aquisicao": str(item.get("data_aquisicao", "")) if item.get("data_aquisicao") else "",
+        "veiculo_id": item.get("veiculo_id"),
+        "observacao": item.get("observacao", ""),
+        "status": item.get("status", "Ativo"),
+        "created_at": criado,
+        "updated_at": item.get("updated_at") or criado,
+    }
+
+
+def normalizar_passivo_antigo(item: dict) -> dict:
+    criado = item.get("created_at") or agora_iso()
+    valor_total = float(item.get("valor_total") or 0)
+    valor_pago = float(item.get("valor_pago") or 0)
+    return {
+        "id": item.get("id"),
+        "nome": item.get("nome", ""),
+        "tipo": item.get("tipo", "Outro"),
+        "valor_total": valor_total,
+        "valor_pago": valor_pago,
+        "saldo_devedor": max(valor_total - valor_pago, 0),
+        "data_inicio": str(item.get("data_inicio", "")) if item.get("data_inicio") else "",
+        "data_vencimento": str(item.get("data_vencimento", "")) if item.get("data_vencimento") else "",
+        "observacao": item.get("observacao", ""),
+        "status": item.get("status", "Pendente"),
+        "created_at": criado,
+        "updated_at": item.get("updated_at") or criado,
+    }
+
+
+def normalizar_produto_estoque_antigo(item: dict) -> dict:
+    criado = item.get("created_at") or agora_iso()
+    quantidade = float(item.get("quantidade_atual") or 0)
+    valor_custo = float(item.get("valor_custo") or 0)
+    estoque_minimo = float(item.get("estoque_minimo") or 0)
+    return {
+        "id": item.get("id"),
+        "nome": item.get("nome", ""),
+        "categoria": item.get("categoria", ""),
+        "unidade_medida": item.get("unidade_medida", "un"),
+        "quantidade_atual": quantidade,
+        "valor_custo": valor_custo,
+        "estoque_minimo": estoque_minimo,
+        "observacao": item.get("observacao", ""),
+        "valor_total_estoque": quantidade * valor_custo,
+        "estoque_baixo": quantidade <= estoque_minimo,
+        "created_at": criado,
+        "updated_at": item.get("updated_at") or criado,
+    }
+
+
 def normalizar_veiculo_antigo(item: dict) -> dict:
     """
-    Garante compatibilidade com veículos antigos salvos antes da nova estrutura.
+    Garante compatibilidade com veiculos antigos salvos antes da nova estrutura.
     """
     return {
         "id": item.get("id"),
@@ -439,7 +595,7 @@ def normalizar_veiculo_antigo(item: dict) -> dict:
         "modelo": item.get("modelo", ""),
         "ano": item.get("ano", ""),
         "placa": item.get("placa", ""),
-        "tipo": item.get("tipo", "Caminhão"),
+        "tipo": item.get("tipo", "Caminhao"),
         "status": item.get("status", "Ativo"),
         "observacao": item.get("observacao", ""),
         "foto": item.get("foto", ""),
@@ -453,7 +609,7 @@ def normalizar_veiculo_antigo(item: dict) -> dict:
 @app.get("/classificacoes")
 def listar_classificacoes():
     """
-    Retorna a lista de classificações usadas nos lançamentos.
+    Retorna a lista de classificacoes usadas nos lancamentos.
     """
     return listar_classificacoes_ativas()
 
@@ -539,7 +695,7 @@ def excluir_plano_conta(plano_conta_id: int):
 
 
 # =========================================================
-# LANÇAMENTOS
+# LANCAMENTOS
 # =========================================================
 
 @app.get("/lancamentos")
@@ -553,7 +709,7 @@ def listar_lancamentos(
     obra_servico: Optional[str] = None,
 ):
     """
-    Lista lançamentos com filtros opcionais.
+    Lista lancamentos com filtros opcionais.
     """
     lancamentos = [normalizar_lancamento_antigo(item) for item in ler_json(ARQUIVO_LANCAMENTOS)]
 
@@ -612,10 +768,10 @@ def listar_lancamentos(
 @app.post("/lancamentos")
 def criar_lancamento(dados: LancamentoIn):
     """
-    Cria um novo lançamento.
+    Cria um novo lancamento.
     """
     if dados.classificacao not in listar_classificacoes_ativas():
-        raise HTTPException(status_code=400, detail="Classificação inválida.")
+        raise HTTPException(status_code=400, detail="Classificacao invalida.")
 
     lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
     timestamp = agora_iso()
@@ -647,16 +803,16 @@ def criar_lancamento(dados: LancamentoIn):
 @app.put("/lancamentos/{lancamento_id}")
 def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
     """
-    Atualiza um lançamento existente.
+    Atualiza um lancamento existente.
     """
     if dados.classificacao not in listar_classificacoes_ativas():
-        raise HTTPException(status_code=400, detail="Classificação inválida.")
+        raise HTTPException(status_code=400, detail="Classificacao invalida.")
 
     lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
     lancamento = buscar_por_id(lancamentos, lancamento_id)
 
     if not lancamento:
-        raise HTTPException(status_code=404, detail="Lançamento não encontrado.")
+        raise HTTPException(status_code=404, detail="Lancamento nao encontrado.")
 
     lancamento["data"] = str(dados.data)
     lancamento["classificacao"] = dados.classificacao
@@ -680,22 +836,22 @@ def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
 @app.delete("/lancamentos/{lancamento_id}")
 def excluir_lancamento(lancamento_id: int):
     """
-    Exclui um lançamento.
+    Exclui um lancamento.
     """
     lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
     lancamento = buscar_por_id(lancamentos, lancamento_id)
 
     if not lancamento:
-        raise HTTPException(status_code=404, detail="Lançamento não encontrado.")
+        raise HTTPException(status_code=404, detail="Lancamento nao encontrado.")
 
     lancamentos = [item for item in lancamentos if item.get("id") != lancamento_id]
     salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
 
-    return {"mensagem": "Lançamento excluído com sucesso."}
+    return {"mensagem": "Lancamento excluido com sucesso."}
 
 
 # =========================================================
-# VEÍCULOS
+# VEICULOS
 # =========================================================
 
 # =========================================================
@@ -833,6 +989,234 @@ def excluir_conta_receber(conta_id: int):
     contas = [item for item in contas if item.get("id") != conta_id]
     salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
     return {"mensagem": "Conta a receber excluida com sucesso."}
+
+
+# =========================================================
+# ATIVOS, PASSIVOS E ESTOQUE
+# =========================================================
+
+@app.get("/ativos")
+def listar_ativos():
+    ativos = [normalizar_ativo_antigo(item) for item in ler_json(ARQUIVO_ATIVOS)]
+    ativos.sort(key=lambda x: x.get("nome", "").lower())
+    return ativos
+
+
+@app.post("/ativos")
+def criar_ativo(dados: AtivoIn):
+    ativos = ler_json(ARQUIVO_ATIVOS)
+    timestamp = agora_iso()
+    ativo = {
+        "id": proximo_id(ativos),
+        "nome": dados.nome,
+        "tipo": dados.tipo,
+        "valor": float(dados.valor or 0),
+        "data_aquisicao": str(dados.data_aquisicao) if dados.data_aquisicao else "",
+        "veiculo_id": dados.veiculo_id,
+        "observacao": dados.observacao,
+        "status": dados.status,
+        "created_at": timestamp,
+        "updated_at": timestamp,
+    }
+    ativos.append(ativo)
+    salvar_json(ARQUIVO_ATIVOS, ativos)
+    return normalizar_ativo_antigo(ativo)
+
+
+@app.put("/ativos/{ativo_id}")
+def atualizar_ativo(ativo_id: int, dados: AtivoIn):
+    ativos = ler_json(ARQUIVO_ATIVOS)
+    ativo = buscar_por_id(ativos, ativo_id)
+    if not ativo:
+        raise HTTPException(status_code=404, detail="Ativo nao encontrado.")
+    ativo["nome"] = dados.nome
+    ativo["tipo"] = dados.tipo
+    ativo["valor"] = float(dados.valor or 0)
+    ativo["data_aquisicao"] = str(dados.data_aquisicao) if dados.data_aquisicao else ""
+    ativo["veiculo_id"] = dados.veiculo_id
+    ativo["observacao"] = dados.observacao
+    ativo["status"] = dados.status
+    ativo["created_at"] = ativo.get("created_at") or agora_iso()
+    ativo["updated_at"] = agora_iso()
+    salvar_json(ARQUIVO_ATIVOS, ativos)
+    return normalizar_ativo_antigo(ativo)
+
+
+@app.delete("/ativos/{ativo_id}")
+def excluir_ativo(ativo_id: int):
+    ativos = ler_json(ARQUIVO_ATIVOS)
+    if not buscar_por_id(ativos, ativo_id):
+        raise HTTPException(status_code=404, detail="Ativo nao encontrado.")
+    salvar_json(ARQUIVO_ATIVOS, [item for item in ativos if item.get("id") != ativo_id])
+    return {"mensagem": "Ativo excluido com sucesso."}
+
+
+@app.get("/passivos")
+def listar_passivos():
+    passivos = [normalizar_passivo_antigo(item) for item in ler_json(ARQUIVO_PASSIVOS)]
+    passivos.sort(key=lambda x: x.get("data_vencimento", ""))
+    return passivos
+
+
+@app.post("/passivos")
+def criar_passivo(dados: PassivoIn):
+    passivos = ler_json(ARQUIVO_PASSIVOS)
+    timestamp = agora_iso()
+    passivo = {
+        "id": proximo_id(passivos),
+        "nome": dados.nome,
+        "tipo": dados.tipo,
+        "valor_total": float(dados.valor_total or 0),
+        "valor_pago": float(dados.valor_pago or 0),
+        "data_inicio": str(dados.data_inicio) if dados.data_inicio else "",
+        "data_vencimento": str(dados.data_vencimento) if dados.data_vencimento else "",
+        "observacao": dados.observacao,
+        "status": dados.status,
+        "created_at": timestamp,
+        "updated_at": timestamp,
+    }
+    passivo["saldo_devedor"] = max(passivo["valor_total"] - passivo["valor_pago"], 0)
+    passivos.append(passivo)
+    salvar_json(ARQUIVO_PASSIVOS, passivos)
+    return normalizar_passivo_antigo(passivo)
+
+
+@app.put("/passivos/{passivo_id}")
+def atualizar_passivo(passivo_id: int, dados: PassivoIn):
+    passivos = ler_json(ARQUIVO_PASSIVOS)
+    passivo = buscar_por_id(passivos, passivo_id)
+    if not passivo:
+        raise HTTPException(status_code=404, detail="Passivo nao encontrado.")
+    passivo["nome"] = dados.nome
+    passivo["tipo"] = dados.tipo
+    passivo["valor_total"] = float(dados.valor_total or 0)
+    passivo["valor_pago"] = float(dados.valor_pago or 0)
+    passivo["saldo_devedor"] = max(passivo["valor_total"] - passivo["valor_pago"], 0)
+    passivo["data_inicio"] = str(dados.data_inicio) if dados.data_inicio else ""
+    passivo["data_vencimento"] = str(dados.data_vencimento) if dados.data_vencimento else ""
+    passivo["observacao"] = dados.observacao
+    passivo["status"] = dados.status
+    passivo["created_at"] = passivo.get("created_at") or agora_iso()
+    passivo["updated_at"] = agora_iso()
+    salvar_json(ARQUIVO_PASSIVOS, passivos)
+    return normalizar_passivo_antigo(passivo)
+
+
+@app.delete("/passivos/{passivo_id}")
+def excluir_passivo(passivo_id: int):
+    passivos = ler_json(ARQUIVO_PASSIVOS)
+    if not buscar_por_id(passivos, passivo_id):
+        raise HTTPException(status_code=404, detail="Passivo nao encontrado.")
+    salvar_json(ARQUIVO_PASSIVOS, [item for item in passivos if item.get("id") != passivo_id])
+    return {"mensagem": "Passivo excluido com sucesso."}
+
+
+@app.get("/estoque/produtos")
+def listar_produtos_estoque(nome: Optional[str] = None, categoria: Optional[str] = None, estoque_baixo: Optional[bool] = None):
+    produtos = [normalizar_produto_estoque_antigo(item) for item in ler_json(ARQUIVO_ESTOQUE_PRODUTOS)]
+    if nome:
+        produtos = [item for item in produtos if nome.lower() in item.get("nome", "").lower()]
+    if categoria:
+        produtos = [item for item in produtos if categoria.lower() in item.get("categoria", "").lower()]
+    if estoque_baixo is not None:
+        produtos = [item for item in produtos if item.get("estoque_baixo") is estoque_baixo]
+    produtos.sort(key=lambda x: x.get("nome", "").lower())
+    return produtos
+
+
+@app.post("/estoque/produtos")
+def criar_produto_estoque(dados: ProdutoEstoqueIn):
+    produtos = ler_json(ARQUIVO_ESTOQUE_PRODUTOS)
+    timestamp = agora_iso()
+    produto = {
+        "id": proximo_id(produtos),
+        "nome": dados.nome,
+        "categoria": dados.categoria,
+        "unidade_medida": dados.unidade_medida,
+        "quantidade_atual": float(dados.quantidade_atual or 0),
+        "valor_custo": float(dados.valor_custo or 0),
+        "estoque_minimo": float(dados.estoque_minimo or 0),
+        "observacao": dados.observacao,
+        "created_at": timestamp,
+        "updated_at": timestamp,
+    }
+    produtos.append(produto)
+    salvar_json(ARQUIVO_ESTOQUE_PRODUTOS, produtos)
+    return normalizar_produto_estoque_antigo(produto)
+
+
+@app.put("/estoque/produtos/{produto_id}")
+def atualizar_produto_estoque(produto_id: int, dados: ProdutoEstoqueIn):
+    produtos = ler_json(ARQUIVO_ESTOQUE_PRODUTOS)
+    produto = buscar_por_id(produtos, produto_id)
+    if not produto:
+        raise HTTPException(status_code=404, detail="Produto nao encontrado.")
+    produto["nome"] = dados.nome
+    produto["categoria"] = dados.categoria
+    produto["unidade_medida"] = dados.unidade_medida
+    produto["quantidade_atual"] = float(dados.quantidade_atual or 0)
+    produto["valor_custo"] = float(dados.valor_custo or 0)
+    produto["estoque_minimo"] = float(dados.estoque_minimo or 0)
+    produto["observacao"] = dados.observacao
+    produto["created_at"] = produto.get("created_at") or agora_iso()
+    produto["updated_at"] = agora_iso()
+    salvar_json(ARQUIVO_ESTOQUE_PRODUTOS, produtos)
+    return normalizar_produto_estoque_antigo(produto)
+
+
+@app.delete("/estoque/produtos/{produto_id}")
+def excluir_produto_estoque(produto_id: int):
+    produtos = ler_json(ARQUIVO_ESTOQUE_PRODUTOS)
+    if not buscar_por_id(produtos, produto_id):
+        raise HTTPException(status_code=404, detail="Produto nao encontrado.")
+    salvar_json(ARQUIVO_ESTOQUE_PRODUTOS, [item for item in produtos if item.get("id") != produto_id])
+    return {"mensagem": "Produto excluido com sucesso."}
+
+
+@app.get("/estoque/movimentacoes")
+def listar_movimentacoes_estoque(produto_id: Optional[int] = None):
+    movimentacoes = ler_json(ARQUIVO_ESTOQUE_MOVIMENTACOES)
+    if produto_id:
+        movimentacoes = [item for item in movimentacoes if item.get("produto_id") == produto_id]
+    movimentacoes.sort(key=lambda x: x.get("data", ""), reverse=True)
+    return movimentacoes
+
+
+@app.post("/estoque/movimentacoes")
+def criar_movimentacao_estoque(dados: MovimentacaoEstoqueIn):
+    produtos = ler_json(ARQUIVO_ESTOQUE_PRODUTOS)
+    produto = buscar_por_id(produtos, dados.produto_id)
+    if not produto:
+        raise HTTPException(status_code=404, detail="Produto nao encontrado.")
+    quantidade = float(dados.quantidade or 0)
+    atual = float(produto.get("quantidade_atual") or 0)
+    if dados.tipo_movimentacao == "Entrada":
+        produto["quantidade_atual"] = atual + quantidade
+    elif dados.tipo_movimentacao == "Saida":
+        if quantidade > atual:
+            raise HTTPException(status_code=400, detail="Saida maior que o estoque disponivel.")
+        produto["quantidade_atual"] = atual - quantidade
+    else:
+        produto["quantidade_atual"] = quantidade
+    if dados.valor_unitario:
+        produto["valor_custo"] = float(dados.valor_unitario)
+    produto["updated_at"] = agora_iso()
+    salvar_json(ARQUIVO_ESTOQUE_PRODUTOS, produtos)
+
+    movimentacoes = ler_json(ARQUIVO_ESTOQUE_MOVIMENTACOES)
+    movimentacao = {
+        "id": proximo_id(movimentacoes),
+        "produto_id": dados.produto_id,
+        "tipo_movimentacao": dados.tipo_movimentacao,
+        "quantidade": quantidade,
+        "valor_unitario": float(dados.valor_unitario or 0),
+        "data": str(dados.data),
+        "observacao": dados.observacao,
+        "created_at": agora_iso(),
+    }
+    movimentacoes.append(movimentacao)
+    salvar_json(ARQUIVO_ESTOQUE_MOVIMENTACOES, movimentacoes)
+    return movimentacao
 
 
 # =========================================================
@@ -1004,6 +1388,68 @@ def relatorio_resumo(data_inicial: Optional[date] = None, data_final: Optional[d
     return montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)["resumo"]
 
 
+@app.get("/relatorios/resumo-financeiro")
+def relatorio_resumo_financeiro(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, obra_servico: Optional[str] = None):
+    resumo = montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, None, obra_servico)["resumo"]
+    return {
+        "faturamento": resumo["total_faturamento"],
+        "custos_operacionais": resumo["total_custos"],
+        "despesas_administrativas": resumo["total_despesas"],
+        "investimentos": resumo["total_investimentos"],
+        "lucro_bruto": resumo["lucro_bruto"],
+        "lucro_liquido": resumo["lucro_liquido"],
+        "saldo_periodo": resumo["saldo_periodo"],
+        "valores_pendentes_a_receber": resumo["contas_a_receber_pendente"],
+    }
+
+
+@app.get("/relatorios/custo-por-veiculo")
+def relatorio_custo_por_veiculo(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, obra_servico: Optional[str] = None):
+    dados = agrupar_por_veiculo(filtrar_lancamentos_relatorio(data_inicial, data_final, veiculo_id, empresa_id, None, obra_servico))
+    return [
+        {
+            **item,
+            "custo_total_veiculo": item["total_custos"] + item["total_despesas"],
+        }
+        for item in dados
+    ]
+
+
+@app.get("/relatorios/resultado-por-obra-servico")
+def relatorio_resultado_por_obra_servico(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, obra_servico: Optional[str] = None):
+    lancamentos = filtrar_lancamentos_relatorio(data_inicial, data_final, veiculo_id, empresa_id, None, obra_servico)
+    grupos = {}
+    for item in lancamentos:
+        nome = item.get("obra_servico") or "Sem obra/servico"
+        grupo = grupos.setdefault(nome, {"obra_servico": nome, "receitas": 0, "custos": 0, "despesas": 0, "resultado": 0})
+        valor = float(item.get("valor") or 0)
+        if eh_receita(item.get("classificacao", "")):
+            grupo["receitas"] += valor
+        elif eh_custo(item.get("classificacao", "")):
+            grupo["custos"] += valor
+        elif eh_despesa(item.get("classificacao", "")):
+            grupo["despesas"] += valor
+    for grupo in grupos.values():
+        grupo["resultado"] = grupo["receitas"] - grupo["custos"] - grupo["despesas"]
+    return sorted(grupos.values(), key=lambda x: abs(x["resultado"]), reverse=True)
+
+
+@app.get("/relatorios/consumo-combustivel")
+def relatorio_consumo_combustivel(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, obra_servico: Optional[str] = None):
+    return [
+        {
+            "veiculo_id": item["veiculo_id"],
+            "nome_veiculo": item["nome_veiculo"],
+            "placa": item["placa"],
+            "km_rodado": item["km_rodado"],
+            "litros": item["litros"],
+            "consumo_medio_combustivel": item["consumo_medio_combustivel"],
+            "custo_por_km": item["custo_por_km"],
+        }
+        for item in agrupar_por_veiculo(filtrar_lancamentos_relatorio(data_inicial, data_final, veiculo_id, empresa_id, None, obra_servico))
+    ]
+
+
 @app.get("/relatorios/por-periodo")
 def relatorio_por_periodo(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
     return montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)["por_periodo"]
@@ -1053,6 +1499,50 @@ def relatorio_contas_receber(data_inicial: Optional[date] = None, data_final: Op
 @app.get("/relatorios/contas-pagar")
 def relatorio_contas_pagar():
     return listar_contas_pagar_resumo()
+
+
+@app.get("/relatorios/ativos")
+def relatorio_ativos():
+    ativos = listar_ativos()
+    return {
+        "total": sum(float(item.get("valor") or 0) for item in ativos),
+        "quantidade": len(ativos),
+        "itens": ativos,
+    }
+
+
+@app.get("/relatorios/passivos")
+def relatorio_passivos():
+    passivos = listar_passivos()
+    return {
+        "total": sum(float(item.get("saldo_devedor") or 0) for item in passivos),
+        "quantidade": len(passivos),
+        "itens": passivos,
+    }
+
+
+@app.get("/relatorios/patrimonio-liquido")
+def relatorio_patrimonio_liquido():
+    ativos = relatorio_ativos()
+    passivos = relatorio_passivos()
+    return {
+        "total_ativos": ativos["total"],
+        "total_passivos": passivos["total"],
+        "patrimonio_liquido": ativos["total"] - passivos["total"],
+    }
+
+
+@app.get("/relatorios/estoque")
+def relatorio_estoque():
+    produtos = listar_produtos_estoque()
+    movimentacoes = listar_movimentacoes_estoque()
+    return {
+        "total_produtos": len(produtos),
+        "valor_total_estoque": sum(float(item.get("valor_total_estoque") or 0) for item in produtos),
+        "produtos_estoque_baixo": sum(1 for item in produtos if item.get("estoque_baixo")),
+        "ultimas_movimentacoes": movimentacoes[:10],
+        "produtos": produtos,
+    }
 
 
 def linhas_tabela_relatorio(dados: dict) -> list[str]:
@@ -1155,8 +1645,8 @@ def exportar_relatorio_excel(data_inicial: Optional[date] = None, data_final: Op
 @app.get("/veiculos")
 def listar_veiculos():
     """
-    Lista veículos.
-    Também normaliza registros antigos para não quebrar o frontend.
+    Lista veiculos.
+    Tambem normaliza registros antigos para nao quebrar o frontend.
     """
     veiculos = ler_json(ARQUIVO_VEICULOS)
     veiculos_normalizados = [normalizar_veiculo_antigo(item) for item in veiculos]
@@ -1170,15 +1660,15 @@ def listar_veiculos():
 @app.post("/veiculos")
 def criar_veiculo(dados: VeiculoIn):
     """
-    Cria um novo veículo.
-    Valida se a placa já existe.
+    Cria um novo veiculo.
+    Valida se a placa ja existe.
     """
     veiculos = ler_json(ARQUIVO_VEICULOS)
 
     placa_normalizada = dados.placa.strip().upper()
 
     if any(item.get("placa", "").upper() == placa_normalizada for item in veiculos):
-        raise HTTPException(status_code=400, detail="Já existe um veículo com esta placa.")
+        raise HTTPException(status_code=400, detail="Ja existe um veiculo com esta placa.")
 
     novo_veiculo = {
     "id": proximo_id(veiculos),
@@ -1202,20 +1692,20 @@ def criar_veiculo(dados: VeiculoIn):
 @app.put("/veiculos/{veiculo_id}")
 def atualizar_veiculo(veiculo_id: int, dados: VeiculoIn):
     """
-    Atualiza veículo.
-    Também valida duplicidade de placa.
+    Atualiza veiculo.
+    Tambem valida duplicidade de placa.
     """
     veiculos = ler_json(ARQUIVO_VEICULOS)
     veiculo = buscar_por_id(veiculos, veiculo_id)
 
     if not veiculo:
-        raise HTTPException(status_code=404, detail="Veículo não encontrado.")
+        raise HTTPException(status_code=404, detail="Veiculo nao encontrado.")
 
     placa_normalizada = dados.placa.strip().upper()
 
     for item in veiculos:
         if item.get("id") != veiculo_id and item.get("placa", "").upper() == placa_normalizada:
-            raise HTTPException(status_code=400, detail="Já existe outro veículo com esta placa.")
+            raise HTTPException(status_code=400, detail="Ja existe outro veiculo com esta placa.")
 
     veiculo["nome"] = dados.nome
     veiculo["marca"] = dados.marca
@@ -1234,18 +1724,18 @@ def atualizar_veiculo(veiculo_id: int, dados: VeiculoIn):
 @app.delete("/veiculos/{veiculo_id}")
 def excluir_veiculo(veiculo_id: int):
     """
-    Exclui um veículo.
+    Exclui um veiculo.
     """
     veiculos = ler_json(ARQUIVO_VEICULOS)
     veiculo = buscar_por_id(veiculos, veiculo_id)
 
     if not veiculo:
-        raise HTTPException(status_code=404, detail="Veículo não encontrado.")
+        raise HTTPException(status_code=404, detail="Veiculo nao encontrado.")
 
     veiculos = [item for item in veiculos if item.get("id") != veiculo_id]
     salvar_json(ARQUIVO_VEICULOS, veiculos)
 
-    return {"mensagem": "Veículo excluído com sucesso."}
+    return {"mensagem": "Veiculo excluido com sucesso."}
 
 
 # =========================================================
@@ -1291,7 +1781,7 @@ def atualizar_motorista(motorista_id: int, dados: MotoristaIn):
     motorista = buscar_por_id(motoristas, motorista_id)
 
     if not motorista:
-        raise HTTPException(status_code=404, detail="Motorista não encontrado.")
+        raise HTTPException(status_code=404, detail="Motorista nao encontrado.")
 
     motorista["nome"] = dados.nome
     motorista["telefone"] = dados.telefone
@@ -1310,9 +1800,9 @@ def excluir_motorista(motorista_id: int):
     motorista = buscar_por_id(motoristas, motorista_id)
 
     if not motorista:
-        raise HTTPException(status_code=404, detail="Motorista não encontrado.")
+        raise HTTPException(status_code=404, detail="Motorista nao encontrado.")
 
     motoristas = [item for item in motoristas if item.get("id") != motorista_id]
     salvar_json(ARQUIVO_MOTORISTAS, motoristas)
 
-    return {"mensagem": "Motorista excluído com sucesso."}
+    return {"mensagem": "Motorista excluido com sucesso."}
