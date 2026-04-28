@@ -437,6 +437,99 @@ option {
   margin-top: 4px;
 }
 
+.filter-launcher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.filter-launcher.vertical {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.filter-launcher h3 {
+  margin: 0;
+}
+
+.filter-launcher p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.filter-open-btn {
+  min-width: 112px;
+}
+
+.filter-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.66);
+  backdrop-filter: blur(7px);
+}
+
+.filter-popup.is-open {
+  display: flex;
+}
+
+.filter-popup-card {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel-strong);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  padding: 22px;
+}
+
+body[data-theme="light"] .filter-popup-card {
+  background: #ffffff;
+}
+
+.filter-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.filter-popup-header h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.filter-popup-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.filter-close-btn {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+body.filter-popup-open {
+  overflow: hidden;
+}
+
 .fuel-fields {
   padding: 16px;
   border: 1px solid rgba(79, 140, 255, 0.22);
@@ -576,6 +669,17 @@ body.sidebar-collapsed .nav-btn.active {
   .form-grid {
     grid-template-columns: 1fr;
   }
+
+  .filter-popup {
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .filter-popup-card {
+    max-height: calc(100vh - 24px);
+    border-radius: 20px;
+    padding: 18px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -604,6 +708,23 @@ body.sidebar-collapsed .nav-btn.active {
 
   .kpi-value {
     font-size: 26px;
+  }
+
+  .filter-launcher {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-open-btn {
+    width: 100%;
+  }
+
+  .filter-popup-header {
+    flex-direction: column;
+  }
+
+  .filter-close-btn {
+    width: 100%;
   }
 }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lançamentos</title>
+  <title>Lancamentos</title>
   <link rel="stylesheet" href="lancamentos.css" />
 </head>
 <body>
@@ -13,39 +13,39 @@
         <div class="brand-icon">F</div>
         <div>
           <h1>Financeiro</h1>
-          <p>Módulo de lançamentos</p>
+          <p>Modulo de lancamentos</p>
         </div>
       </div>
 
       <div class="menu-box">
-        <button class="menu-btn active">Lançamentos</button>
-        <button class="menu-btn">Conferência</button>
+        <button class="menu-btn active">Lancamentos</button>
+        <button class="menu-btn">Conferencia</button>
       </div>
     </aside>
 
     <main class="main-area">
       <header class="topbar">
         <div>
-          <h2>Lançamentos</h2>
-          <p>Cadastro, conferência e filtros</p>
+          <h2>Lancamentos</h2>
+          <p>Cadastro, conferencia e filtros em popup</p>
         </div>
       </header>
 
       <section class="content-grid">
         <div class="panel">
-          <h3>Novo lançamento</h3>
+          <h3>Novo lancamento</h3>
 
           <form id="form-lancamento" class="form-grid">
             <div class="field full">
-              <label for="classificacao">Classificação</label>
+              <label for="classificacao">Classificacao</label>
               <select id="classificacao" required>
                 <option value="">Selecione...</option>
               </select>
             </div>
 
             <div class="field full">
-              <label for="descricao">Descrição</label>
-              <input type="text" id="descricao" placeholder="Digite a descrição" required />
+              <label for="descricao">Descricao</label>
+              <input type="text" id="descricao" placeholder="Digite a descricao" required />
             </div>
 
             <div class="field">
@@ -59,19 +59,35 @@
             </div>
 
             <div class="field full">
-              <button type="submit" class="primary-btn">Salvar lançamento</button>
+              <button type="submit" class="primary-btn">Salvar lancamento</button>
             </div>
           </form>
 
           <p id="mensagem" class="mensagem"></p>
         </div>
 
-        <div class="panel">
-          <h3>Filtros</h3>
+        <div class="panel filter-launcher">
+          <div>
+            <h3>Filtros</h3>
+            <p>Abra os filtros quando precisar refinar a conferencia.</p>
+          </div>
+          <button id="btn-abrir-filtros" class="ghost-btn" type="button">Filtros</button>
+        </div>
+      </section>
+
+      <div id="popup-filtros" class="filter-popup" aria-hidden="true">
+        <div class="filter-popup-card" role="dialog" aria-modal="true" aria-label="Filtros de lancamentos">
+          <div class="filter-popup-header">
+            <div>
+              <h3>Filtros de lancamentos</h3>
+              <p>Filtre por classificacao, periodo ou descricao.</p>
+            </div>
+            <button id="btn-fechar-filtros" class="ghost-btn" type="button">Fechar</button>
+          </div>
 
           <div class="form-grid">
             <div class="field full">
-              <label for="filtro-classificacao">Classificação</label>
+              <label for="filtro-classificacao">Classificacao</label>
               <select id="filtro-classificacao">
                 <option value="">Todas</option>
               </select>
@@ -88,8 +104,8 @@
             </div>
 
             <div class="field full">
-              <label for="filtro-descricao">Descrição</label>
-              <input type="text" id="filtro-descricao" placeholder="Buscar descrição" />
+              <label for="filtro-descricao">Descricao</label>
+              <input type="text" id="filtro-descricao" placeholder="Buscar descricao" />
             </div>
 
             <div class="field full btn-row">
@@ -98,11 +114,11 @@
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
       <section class="panel table-panel">
         <div class="table-header">
-          <h3>Conferência de lançamentos</h3>
+          <h3>Conferencia de lancamentos</h3>
           <span id="total-registros">0 registros</span>
         </div>
 
@@ -112,14 +128,14 @@
               <tr>
                 <th>ID</th>
                 <th>Data</th>
-                <th>Classificação</th>
-                <th>Descrição</th>
+                <th>Classificacao</th>
+                <th>Descricao</th>
                 <th>Valor</th>
               </tr>
             </thead>
             <tbody id="tabela-lancamentos">
               <tr>
-                <td colspan="5" class="empty-row">Nenhum lançamento encontrado.</td>
+                <td colspan="5" class="empty-row">Nenhum lancamento encontrado.</td>
               </tr>
             </tbody>
           </table>

@@ -13,9 +13,22 @@ const filtroDataFinal = document.getElementById("filtro-data-final");
 const filtroDescricao = document.getElementById("filtro-descricao");
 const btnFiltrar = document.getElementById("btn-filtrar");
 const btnLimpar = document.getElementById("btn-limpar");
+const btnAbrirFiltros = document.getElementById("btn-abrir-filtros");
+const btnFecharFiltros = document.getElementById("btn-fechar-filtros");
+const popupFiltros = document.getElementById("popup-filtros");
 
 const tabelaLancamentos = document.getElementById("tabela-lancamentos");
 const totalRegistros = document.getElementById("total-registros");
+
+function abrirFiltros() {
+  popupFiltros.classList.add("is-open");
+  popupFiltros.setAttribute("aria-hidden", "false");
+}
+
+function fecharFiltros() {
+  popupFiltros.classList.remove("is-open");
+  popupFiltros.setAttribute("aria-hidden", "true");
+}
 
 async function carregarClassificacoes() {
   const response = await fetch(`${API_URL}/classificacoes`);
@@ -45,7 +58,7 @@ function renderizarTabela(lancamentos) {
   if (!lancamentos.length) {
     tabelaLancamentos.innerHTML = `
       <tr>
-        <td colspan="5" class="empty-row">Nenhum lançamento encontrado.</td>
+        <td colspan="5" class="empty-row">Nenhum lancamento encontrado.</td>
       </tr>
     `;
     totalRegistros.textContent = "0 registros";
@@ -119,17 +132,30 @@ form.addEventListener("submit", async (event) => {
   const resultado = await response.json();
 
   if (!response.ok) {
-    mensagem.textContent = resultado.detail || "Erro ao salvar lançamento.";
+    mensagem.textContent = resultado.detail || "Erro ao salvar lancamento.";
     return;
   }
 
-  mensagem.textContent = "Lançamento salvo com sucesso.";
+  mensagem.textContent = "Lancamento salvo com sucesso.";
 
   form.reset();
   await carregarLancamentos();
 });
 
-btnFiltrar.addEventListener("click", carregarLancamentos);
+btnAbrirFiltros.addEventListener("click", abrirFiltros);
+btnFecharFiltros.addEventListener("click", fecharFiltros);
+popupFiltros.addEventListener("click", (event) => {
+  if (event.target === popupFiltros) fecharFiltros();
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") fecharFiltros();
+});
+
+btnFiltrar.addEventListener("click", async () => {
+  await carregarLancamentos();
+  fecharFiltros();
+});
 
 btnLimpar.addEventListener("click", async () => {
   filtroClassificacao.value = "";
@@ -137,6 +163,7 @@ btnLimpar.addEventListener("click", async () => {
   filtroDataFinal.value = "";
   filtroDescricao.value = "";
   await carregarLancamentos();
+  fecharFiltros();
 });
 
 (async function iniciar() {

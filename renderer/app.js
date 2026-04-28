@@ -33,12 +33,41 @@ let cacheVeiculos = [];
 // =========================================================
 // DEFINICAO DAS PAGINAS DO SISTEMA
 // =========================================================
+function botaoFiltros(painelId, texto = "Filtros") {
+  return `<button type="button" class="ghost-btn filter-open-btn" data-filter-target="${painelId}">${texto}</button>`;
+}
+
+function popupFiltros(painelId, titulo, subtitulo, conteudo) {
+  return `
+    <div id="${painelId}" class="filters-panel filter-popup" aria-hidden="true">
+      <div class="filter-popup-card" role="dialog" aria-modal="true" aria-label="${titulo}">
+        <div class="filter-popup-header">
+          <div>
+            <h3>${titulo}</h3>
+            <p>${subtitulo}</p>
+          </div>
+          <button type="button" class="filter-close-btn" data-filter-close="${painelId}" aria-label="Fechar filtros">Fechar</button>
+        </div>
+        ${conteudo}
+      </div>
+    </div>
+  `;
+}
+
 const pages = {
   dashboard: {
     title: "Dashboard",
     subtitle: "Visao geral da operacao e do financeiro",
     render: () => `
-      <section class="panel-box">
+      <section class="panel-box filter-launcher">
+        <div>
+          <h3>Dashboard financeiro</h3>
+          <p>Use filtros para recalcular os indicadores por periodo, veiculo ou empresa.</p>
+        </div>
+        ${botaoFiltros("painel-filtros-dashboard")}
+      </section>
+
+      ${popupFiltros("painel-filtros-dashboard", "Filtros do dashboard", "Refine os indicadores principais desta tela.", `
         <div class="form-grid">
           <div class="field"><label>Data inicial</label><input type="date" id="dash-data-inicial" /></div>
           <div class="field"><label>Data final</label><input type="date" id="dash-data-final" /></div>
@@ -46,7 +75,7 @@ const pages = {
           <div class="field"><label>Empresa ID</label><input type="number" id="dash-empresa-id" placeholder="Opcional" /></div>
           <div class="field full btn-row"><button type="button" class="primary-btn" id="btn-dashboard-filtrar">Atualizar dashboard</button></div>
         </div>
-      </section>
+      `)}
 
       <div class="dashboard-grid">
         <section class="kpi-card dashboard-hero">
@@ -171,12 +200,12 @@ const pages = {
     title: "Veiculos",
     subtitle: "Gestao visual da frota",
     render: () => `
-      <div class="panel-box">
+      <div class="panel-box filter-launcher">
         <button class="primary-btn" id="btn-novo-veiculo">+ Cadastrar veiculos</button>
+        ${botaoFiltros("painel-filtros-veiculos")}
       </div>
 
-      <div class="panel-box">
-        <h3>Filtros</h3>
+      ${popupFiltros("painel-filtros-veiculos", "Filtros de veiculos", "Localize rapidamente veiculos por nome, placa, tipo ou status.", `
         <div class="form-grid">
           <div class="field">
             <label>Nome</label>
@@ -213,7 +242,7 @@ const pages = {
             <button class="ghost-btn" id="btn-limpar-filtro-veiculos" type="button">Limpar filtros</button>
           </div>
         </div>
-      </div>
+      `)}
 
       <div class="kpi-grid" style="margin-bottom:18px;">
         <div class="kpi-card">
@@ -386,49 +415,51 @@ const pages = {
           <p id="mensagem" class="mensagem"></p>
         </div>
 
-        <div class="panel-box">
-          <h3>Filtros</h3>
-          <button type="button" class="ghost-btn filter-toggle" id="btn-toggle-filtros">Mostrar filtros</button>
-
-          <div id="painel-filtros-lancamentos" class="filters-panel" style="display:none;">
-          <div class="form-grid">
-            <div class="field full">
-              <label for="filtro-classificacao">Classificacao</label>
-              <select id="filtro-classificacao">
-                <option value="">Todas</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="filtro-data-inicial">Data inicial</label>
-              <input type="date" id="filtro-data-inicial" />
-            </div>
-
-            <div class="field">
-              <label for="filtro-data-final">Data final</label>
-              <input type="date" id="filtro-data-final" />
-            </div>
-
-            <div class="field full">
-              <label for="filtro-descricao">Descricao</label>
-              <input type="text" id="filtro-descricao" placeholder="Buscar descricao" />
-            </div>
-
-
-            <div class="field full">
-              <label for="filtro-veiculo-id">Veiculo</label>
-              <select id="filtro-veiculo-id">
-                <option value="">Todos</option>
-              </select>
-            </div>
-            <div class="field full btn-row">
-              <button id="btn-filtrar" class="ghost-btn" type="button">Filtrar</button>
-              <button id="btn-limpar" class="ghost-btn" type="button">Limpar filtros</button>
-            </div>
+        <div class="panel-box filter-launcher vertical">
+          <div>
+            <h3>Filtros</h3>
+            <p>Abra os filtros quando precisar conferir lancamentos especificos.</p>
           </div>
-          </div>
+          ${botaoFiltros("painel-filtros-lancamentos")}
         </div>
       </div>
+
+      ${popupFiltros("painel-filtros-lancamentos", "Filtros de lancamentos", "Filtre por classificacao, periodo, descricao ou veiculo.", `
+        <div class="form-grid">
+          <div class="field full">
+            <label for="filtro-classificacao">Classificacao</label>
+            <select id="filtro-classificacao">
+              <option value="">Todas</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="filtro-data-inicial">Data inicial</label>
+            <input type="date" id="filtro-data-inicial" />
+          </div>
+
+          <div class="field">
+            <label for="filtro-data-final">Data final</label>
+            <input type="date" id="filtro-data-final" />
+          </div>
+
+          <div class="field full">
+            <label for="filtro-descricao">Descricao</label>
+            <input type="text" id="filtro-descricao" placeholder="Buscar descricao" />
+          </div>
+
+          <div class="field full">
+            <label for="filtro-veiculo-id">Veiculo</label>
+            <select id="filtro-veiculo-id">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="field full btn-row">
+            <button id="btn-filtrar" class="ghost-btn" type="button">Filtrar</button>
+            <button id="btn-limpar" class="ghost-btn" type="button">Limpar filtros</button>
+          </div>
+        </div>
+      `)}
 
       <div class="kpi-grid" style="margin-bottom:18px;">
         <div class="kpi-card">
@@ -634,53 +665,50 @@ const pages = {
           <p id="mensagem-conta-receber" class="mensagem"></p>
         </div>
 
-        <div class="panel-box">
-          <div class="table-toolbar">
-            <div>
-              <h3 style="margin:0;">Filtros</h3>
-              <span>Localize contas por periodo, contrato, tomador ou veiculo</span>
-            </div>
+        <div class="panel-box filter-launcher vertical">
+          <div>
+            <h3>Filtros</h3>
+            <p>Localize contas por periodo, contrato, tomador ou veiculo.</p>
           </div>
-
-          <button type="button" class="ghost-btn filter-toggle" id="btn-toggle-filtros-contas-receber">Mostrar filtros</button>
-
-          <div id="painel-filtros-contas-receber" class="filters-panel" style="display:none;">
-            <div class="form-grid">
-              <div class="field">
-                <label for="cr-filtro-data-inicial">Data inicial</label>
-                <input type="date" id="cr-filtro-data-inicial" />
-              </div>
-
-              <div class="field">
-                <label for="cr-filtro-data-final">Data final</label>
-                <input type="date" id="cr-filtro-data-final" />
-              </div>
-
-              <div class="field">
-                <label for="cr-filtro-contrato">Contrato</label>
-                <input id="cr-filtro-contrato" placeholder="Buscar contrato" />
-              </div>
-
-              <div class="field">
-                <label for="cr-filtro-tomador">Tomador</label>
-                <input id="cr-filtro-tomador" placeholder="Buscar tomador" />
-              </div>
-
-              <div class="field full">
-                <label for="cr-filtro-veiculo-id">Veiculo</label>
-                <select id="cr-filtro-veiculo-id">
-                  <option value="">Todos</option>
-                </select>
-              </div>
-
-              <div class="field full btn-row">
-                <button type="button" class="ghost-btn" id="btn-filtrar-contas-receber">Filtrar</button>
-                <button type="button" class="ghost-btn" id="btn-limpar-contas-receber">Limpar filtros</button>
-              </div>
-            </div>
-          </div>
+          ${botaoFiltros("painel-filtros-contas-receber")}
         </div>
       </section>
+
+      ${popupFiltros("painel-filtros-contas-receber", "Filtros de contas a receber", "Localize contas por periodo, contrato, tomador ou veiculo.", `
+        <div class="form-grid">
+          <div class="field">
+            <label for="cr-filtro-data-inicial">Data inicial</label>
+            <input type="date" id="cr-filtro-data-inicial" />
+          </div>
+
+          <div class="field">
+            <label for="cr-filtro-data-final">Data final</label>
+            <input type="date" id="cr-filtro-data-final" />
+          </div>
+
+          <div class="field">
+            <label for="cr-filtro-contrato">Contrato</label>
+            <input id="cr-filtro-contrato" placeholder="Buscar contrato" />
+          </div>
+
+          <div class="field">
+            <label for="cr-filtro-tomador">Tomador</label>
+            <input id="cr-filtro-tomador" placeholder="Buscar tomador" />
+          </div>
+
+          <div class="field full">
+            <label for="cr-filtro-veiculo-id">Veiculo</label>
+            <select id="cr-filtro-veiculo-id">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="field full btn-row">
+            <button type="button" class="ghost-btn" id="btn-filtrar-contas-receber">Filtrar</button>
+            <button type="button" class="ghost-btn" id="btn-limpar-contas-receber">Limpar filtros</button>
+          </div>
+        </div>
+      `)}
 
       <div class="kpi-grid" style="margin-bottom:18px;">
         <div class="kpi-card">
@@ -818,15 +846,22 @@ const pages = {
         <p id="mensagem-produto" class="mensagem"></p>
       </section>
 
-      <section class="panel-box">
-        <h3>Filtros</h3>
+      <section class="panel-box filter-launcher">
+        <div>
+          <h3>Produtos</h3>
+          <p>Filtre os produtos sem ocupar a area de trabalho.</p>
+        </div>
+        ${botaoFiltros("painel-filtros-estoque")}
+      </section>
+
+      ${popupFiltros("painel-filtros-estoque", "Filtros de estoque", "Busque produtos por nome, categoria ou alerta de estoque baixo.", `
         <div class="form-grid">
           <div class="field"><label>Nome</label><input id="filtro-produto-nome" /></div>
           <div class="field"><label>Categoria</label><input id="filtro-produto-categoria" /></div>
           <div class="field"><label>Somente baixo</label><select id="filtro-produto-baixo"><option value="">Todos</option><option value="true">Sim</option></select></div>
           <div class="field btn-row"><button class="ghost-btn" id="btn-filtrar-estoque" type="button">Filtrar</button><button class="ghost-btn" id="btn-limpar-estoque" type="button">Limpar</button></div>
         </div>
-      </section>
+      `)}
 
       <section class="panel-box"><h3>Produtos</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>Categoria</th><th>Qtd.</th><th>Custo</th><th>Total</th><th>Minimo</th><th>Acoes</th></tr></thead><tbody id="tabela-produtos"></tbody></table></div></section>
 
@@ -871,14 +906,17 @@ const pages = {
     title: "Relatorios",
     subtitle: "Indicadores financeiros, graficos e exportacoes",
     render: () => `
-      <section class="panel-box">
+      <section class="panel-box filter-launcher">
         <div class="table-toolbar">
           <div>
-            <h3 style="margin:0;">Filtros do relatorio</h3>
-            <span>Use os mesmos filtros para tela, PDF e Excel</span>
+            <h3 style="margin:0;">Relatorios financeiros</h3>
+            <span>Use os filtros para tela, PDF e Excel.</span>
           </div>
         </div>
+        ${botaoFiltros("painel-filtros-relatorios")}
+      </section>
 
+      ${popupFiltros("painel-filtros-relatorios", "Filtros do relatorio", "Use os mesmos filtros para tela, PDF e Excel.", `
         <div class="form-grid">
           <div class="field">
             <label for="rel-data-inicial">Data inicial</label>
@@ -920,7 +958,7 @@ const pages = {
             <button type="button" class="ghost-btn" id="btn-exportar-excel">Exportar Excel</button>
           </div>
         </div>
-      </section>
+      `)}
 
       <section id="relatorio-feedback"></section>
 
@@ -1160,6 +1198,7 @@ function iniciarFiltrosVeiculos() {
   if (btnFiltrar) {
     btnFiltrar.onclick = async () => {
       await renderizarVeiculos();
+      fecharPopupFiltros("painel-filtros-veiculos");
     };
   }
 
@@ -1170,6 +1209,7 @@ function iniciarFiltrosVeiculos() {
       document.getElementById("filtro-veiculo-tipo").value = "";
       document.getElementById("filtro-veiculo-status").value = "";
       await renderizarVeiculos();
+      fecharPopupFiltros("painel-filtros-veiculos");
     };
   }
 }
@@ -1957,18 +1997,10 @@ async function iniciarModuloLancamentos() {
   const btnFiltrar = document.getElementById("btn-filtrar");
   const btnLimpar = document.getElementById("btn-limpar");
   const btnCancelarEdicao = document.getElementById("btn-cancelar-edicao-lancamento");
-  const btnToggleFiltros = document.getElementById("btn-toggle-filtros");
-  const painelFiltros = document.getElementById("painel-filtros-lancamentos");
   const classificacaoSelect = document.getElementById("classificacao");
 
   classificacaoSelect.addEventListener("change", alternarCamposCombustivel);
   alternarCamposCombustivel();
-
-  btnToggleFiltros.addEventListener("click", () => {
-    const mostrar = painelFiltros.style.display === "none";
-    painelFiltros.style.display = mostrar ? "block" : "none";
-    btnToggleFiltros.textContent = mostrar ? "Ocultar filtros" : "Mostrar filtros";
-  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2019,7 +2051,10 @@ async function iniciarModuloLancamentos() {
     await carregarLancamentos();
   });
 
-  btnFiltrar.addEventListener("click", carregarLancamentos);
+  btnFiltrar.addEventListener("click", async () => {
+    await carregarLancamentos();
+    fecharPopupFiltros("painel-filtros-lancamentos");
+  });
 
   btnLimpar.addEventListener("click", async () => {
     document.getElementById("filtro-classificacao").value = "";
@@ -2028,6 +2063,7 @@ async function iniciarModuloLancamentos() {
     document.getElementById("filtro-descricao").value = "";
     document.getElementById("filtro-veiculo-id").value = "";
     await carregarLancamentos();
+    fecharPopupFiltros("painel-filtros-lancamentos");
   });
 
   btnCancelarEdicao.addEventListener("click", resetFormLancamento);
@@ -2256,19 +2292,11 @@ async function iniciarContasReceber() {
   const btnFiltrar = document.getElementById("btn-filtrar-contas-receber");
   const btnLimpar = document.getElementById("btn-limpar-contas-receber");
   const btnImprimir = document.getElementById("btn-imprimir-contas-receber");
-  const btnToggleFiltros = document.getElementById("btn-toggle-filtros-contas-receber");
-  const painelFiltros = document.getElementById("painel-filtros-contas-receber");
 
   ["cr-valor", "cr-bonificacao", "cr-descontos"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", atualizarTotalReceberPreview);
   });
   atualizarTotalReceberPreview();
-
-  btnToggleFiltros.addEventListener("click", () => {
-    const mostrar = painelFiltros.style.display === "none";
-    painelFiltros.style.display = mostrar ? "block" : "none";
-    btnToggleFiltros.textContent = mostrar ? "Ocultar filtros" : "Mostrar filtros";
-  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2289,7 +2317,10 @@ async function iniciarContasReceber() {
   });
 
   btnCancelar.addEventListener("click", resetFormContaReceber);
-  btnFiltrar.addEventListener("click", carregarContasReceber);
+  btnFiltrar.addEventListener("click", async () => {
+    await carregarContasReceber();
+    fecharPopupFiltros("painel-filtros-contas-receber");
+  });
   btnImprimir.addEventListener("click", () => imprimirElementoPorId("tabela-impressao-contas-receber"));
 
   btnLimpar.addEventListener("click", async () => {
@@ -2299,6 +2330,7 @@ async function iniciarContasReceber() {
     document.getElementById("cr-filtro-tomador").value = "";
     document.getElementById("cr-filtro-veiculo-id").value = "";
     await carregarContasReceber();
+    fecharPopupFiltros("painel-filtros-contas-receber");
   });
 }
 
@@ -2559,12 +2591,16 @@ async function iniciarEstoque() {
     mostrarToast("Movimentacao registrada.", "success");
     await carregarEstoque();
   });
-  document.getElementById("btn-filtrar-estoque").addEventListener("click", carregarEstoque);
+  document.getElementById("btn-filtrar-estoque").addEventListener("click", async () => {
+    await carregarEstoque();
+    fecharPopupFiltros("painel-filtros-estoque");
+  });
   document.getElementById("btn-limpar-estoque").addEventListener("click", async () => {
     document.getElementById("filtro-produto-nome").value = "";
     document.getElementById("filtro-produto-categoria").value = "";
     document.getElementById("filtro-produto-baixo").value = "";
     await carregarEstoque();
+    fecharPopupFiltros("painel-filtros-estoque");
   });
   document.getElementById("btn-cancelar-produto").addEventListener("click", resetProduto);
 }
@@ -2829,14 +2865,19 @@ async function iniciarRelatorios() {
   await carregarOpcoesRelatorios();
   await gerarRelatorio();
 
-  document.getElementById("btn-gerar-relatorio").addEventListener("click", gerarRelatorio);
+  document.getElementById("btn-gerar-relatorio").addEventListener("click", async () => {
+    await gerarRelatorio();
+    fecharPopupFiltros("painel-filtros-relatorios");
+  });
   document.getElementById("btn-exportar-pdf").addEventListener("click", () => {
     const params = parametrosRelatorio();
     abrirExportacao(`/relatorios/exportar/pdf${params.toString() ? `?${params.toString()}` : ""}`);
+    fecharPopupFiltros("painel-filtros-relatorios");
   });
   document.getElementById("btn-exportar-excel").addEventListener("click", () => {
     const params = parametrosRelatorio();
     abrirExportacao(`/relatorios/exportar/excel${params.toString() ? `?${params.toString()}` : ""}`);
+    fecharPopupFiltros("painel-filtros-relatorios");
   });
 }
 
@@ -2998,7 +3039,10 @@ async function iniciarDashboard() {
   renderizarGraficoFaturamentoMensal(dadosDashboard);
   renderizarGraficoSaldoAcumulado(dadosDashboard);
   renderizarGraficoContasReceber(dadosDashboard);
-  document.getElementById("btn-dashboard-filtrar")?.addEventListener("click", iniciarDashboard);
+  document.getElementById("btn-dashboard-filtrar")?.addEventListener("click", async () => {
+    await iniciarDashboard();
+    fecharPopupFiltros("painel-filtros-dashboard");
+  });
 }
 
 function renderizarRankingClassificacoes(lancamentos) {
@@ -3102,6 +3146,52 @@ function fecharSidebarMobile() {
 }
 
 // =========================================================
+// POPUPS DE FILTROS
+// =========================================================
+function abrirPopupFiltros(painelId) {
+  const painel = document.getElementById(painelId);
+  if (!painel) return;
+  painel.classList.add("is-open");
+  painel.setAttribute("aria-hidden", "false");
+  document.body.classList.add("filter-popup-open");
+  painel.querySelector("input, select, button")?.focus();
+}
+
+function fecharPopupFiltros(painelId) {
+  const painel = document.getElementById(painelId);
+  if (!painel) return;
+  painel.classList.remove("is-open");
+  painel.setAttribute("aria-hidden", "true");
+  document.body.classList.toggle("filter-popup-open", Boolean(document.querySelector(".filter-popup.is-open")));
+}
+
+function fecharTodosPopupsFiltros() {
+  document.querySelectorAll(".filter-popup.is-open").forEach((painel) => {
+    painel.classList.remove("is-open");
+    painel.setAttribute("aria-hidden", "true");
+  });
+  document.body.classList.remove("filter-popup-open");
+}
+
+function iniciarBotoesPopupFiltros() {
+  document.querySelectorAll("[data-filter-target]").forEach((botao) => {
+    botao.addEventListener("click", () => abrirPopupFiltros(botao.dataset.filterTarget));
+  });
+
+  document.querySelectorAll("[data-filter-close]").forEach((botao) => {
+    botao.addEventListener("click", () => fecharPopupFiltros(botao.dataset.filterClose));
+  });
+
+  document.querySelectorAll(".filter-popup").forEach((painel) => {
+    painel.addEventListener("click", (event) => {
+      if (event.target === painel) {
+        fecharPopupFiltros(painel.id);
+      }
+    });
+  });
+}
+
+// =========================================================
 // NAVEGACAO ENTRE ABAS
 // =========================================================
 async function loadPage(pageKey) {
@@ -3111,6 +3201,7 @@ async function loadPage(pageKey) {
   pageTitle.textContent = page.title;
   pageSubtitle.textContent = page.subtitle;
   pageContent.innerHTML = page.render();
+  iniciarBotoesPopupFiltros();
 
   try {
     if (pageKey === "dashboard") {
@@ -3192,6 +3283,12 @@ navButtons.forEach((button) => {
 sidebarBackdrop?.addEventListener("click", fecharSidebarMobile);
 
 window.addEventListener("resize", aplicarEstadoSidebar);
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    fecharTodosPopupsFiltros();
+  }
+});
 
 logoutBtn.addEventListener("click", () => {
   window.location.href = "login.html";
