@@ -12,6 +12,10 @@ const pageSubtitle = document.getElementById("page-subtitle");
 const navButtons = document.querySelectorAll(".nav-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const themeToggleBtn = document.getElementById("theme-toggle-btn");
+const sidebar = document.getElementById("sidebar");
+const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
+const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 
 // =========================================================
 // CONTROLES DE EDICAO
@@ -3068,6 +3072,36 @@ function renderizarUltimosLancamentosDashboard(lancamentos) {
 }
 
 // =========================================================
+// MENU LATERAL
+// =========================================================
+function telaMobile() {
+  return window.matchMedia("(max-width: 900px)").matches;
+}
+
+function aplicarEstadoSidebar() {
+  const recolhido = localStorage.getItem("financeiro_sidebar_recolhida") === "true";
+  document.body.classList.toggle("sidebar-collapsed", recolhido && !telaMobile());
+  document.body.classList.remove("sidebar-open");
+}
+
+function alternarSidebar() {
+  if (telaMobile()) {
+    document.body.classList.toggle("sidebar-open");
+    return;
+  }
+
+  const proximoEstado = !document.body.classList.contains("sidebar-collapsed");
+  document.body.classList.toggle("sidebar-collapsed", proximoEstado);
+  localStorage.setItem("financeiro_sidebar_recolhida", String(proximoEstado));
+}
+
+function fecharSidebarMobile() {
+  if (telaMobile()) {
+    document.body.classList.remove("sidebar-open");
+  }
+}
+
+// =========================================================
 // NAVEGACAO ENTRE ABAS
 // =========================================================
 async function loadPage(pageKey) {
@@ -3146,9 +3180,18 @@ navButtons.forEach((button) => {
   button.addEventListener("click", async () => {
     navButtons.forEach((btn) => btn.classList.remove("active"));
     button.classList.add("active");
+    fecharSidebarMobile();
     await loadPage(button.dataset.page);
   });
 });
+
+[sidebarToggleBtn, mobileMenuBtn].forEach((botao) => {
+  botao?.addEventListener("click", alternarSidebar);
+});
+
+sidebarBackdrop?.addEventListener("click", fecharSidebarMobile);
+
+window.addEventListener("resize", aplicarEstadoSidebar);
 
 logoutBtn.addEventListener("click", () => {
   window.location.href = "login.html";
@@ -3170,4 +3213,5 @@ if (themeToggleBtn) {
 // INICIALIZACAO DO SISTEMA
 // =========================================================
 aplicarTema();
+aplicarEstadoSidebar();
 loadPage("dashboard");

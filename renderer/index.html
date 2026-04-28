@@ -10,34 +10,48 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
   <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-icon">F</div>
-        <div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <div class="brand">
+          <div class="brand-icon">F</div>
+          <div class="brand-copy">
           <h1>Financeiro</h1>
           <p>Gestao operacional</p>
+          </div>
         </div>
+        <button class="sidebar-toggle" id="sidebar-toggle-btn" type="button" aria-label="Alternar menu lateral" title="Alternar menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
 
       <nav class="nav">
-        <button class="nav-btn active" data-page="dashboard">Dashboard</button>
-        <button class="nav-btn" data-page="veiculos">Veiculos</button>
-        <button class="nav-btn" data-page="motoristas">Motoristas</button>
-        <button class="nav-btn" data-page="planoContas">Plano de contas</button>
-        <button class="nav-btn" data-page="lancamentos">Lancamentos</button>
-        <button class="nav-btn" data-page="contasReceber">Contas a receber</button>
-        <button class="nav-btn" data-page="relatorios">Relatorios</button>
-        <button class="nav-btn" data-page="ativosPassivos">Ativos/Passivos</button>
-        <button class="nav-btn" data-page="estoque">Estoque</button>
-        <button class="nav-btn" data-page="configuracoes">Configuracoes</button>
-        <button class="nav-btn" data-page="mapa">Mapa</button>
+        <button class="nav-btn active" data-page="dashboard" data-short="DB">Dashboard</button>
+        <button class="nav-btn" data-page="veiculos" data-short="VE">Veiculos</button>
+        <button class="nav-btn" data-page="motoristas" data-short="MO">Motoristas</button>
+        <button class="nav-btn" data-page="planoContas" data-short="PC">Plano de contas</button>
+        <button class="nav-btn" data-page="lancamentos" data-short="LA">Lancamentos</button>
+        <button class="nav-btn" data-page="contasReceber" data-short="CR">Contas a receber</button>
+        <button class="nav-btn" data-page="relatorios" data-short="RE">Relatorios</button>
+        <button class="nav-btn" data-page="ativosPassivos" data-short="AP">Ativos/Passivos</button>
+        <button class="nav-btn" data-page="estoque" data-short="ES">Estoque</button>
+        <button class="nav-btn" data-page="configuracoes" data-short="CO">Configuracoes</button>
+        <button class="nav-btn" data-page="mapa" data-short="MA">Mapa</button>
       </nav>
     </aside>
 
     <main class="main-area">
       <header class="topbar">
-        <div>
+        <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Abrir menu lateral">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="page-heading">
           <h2 id="page-title">Dashboard</h2>
           <p id="page-subtitle">Visao geral da operacao e do financeiro</p>
         </div>
@@ -53,8 +67,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="app.js?v=6"></script>
-  <script src="pwa.js?v=6"></script>
+  <script src="app.js?v=7"></script>
+  <script src="pwa.js?v=7"></script>
 </body>
 </html>
 
