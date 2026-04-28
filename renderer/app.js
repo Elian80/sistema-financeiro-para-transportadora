@@ -17,6 +17,18 @@ const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
 const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 
+function extrairMensagemErroApi(resultado, padrao = "Erro na operacao.") {
+  const detalhe = resultado?.detail;
+  if (Array.isArray(detalhe)) {
+    return detalhe
+      .map((item) => item?.msg || item?.message || JSON.stringify(item))
+      .join(" ");
+  }
+  if (typeof detalhe === "string") return detalhe;
+  if (resultado?.message) return resultado.message;
+  return padrao;
+}
+
 // =========================================================
 // CONTROLES DE EDICAO
 // =========================================================
@@ -1086,7 +1098,7 @@ async function apiGet(url) {
   const resultado = await response.json();
 
   if (!response.ok) {
-    throw new Error(resultado.detail || "Falha ao carregar dados.");
+    throw new Error(extrairMensagemErroApi(resultado, "Falha ao carregar dados."));
   }
 
   return resultado;
@@ -1100,7 +1112,7 @@ async function apiDelete(url) {
   const resultado = await response.json();
 
   if (!response.ok) {
-    throw new Error(resultado.detail || "Falha ao excluir registro.");
+    throw new Error(extrairMensagemErroApi(resultado, "Falha ao excluir registro."));
   }
 
   return resultado;
@@ -1116,7 +1128,7 @@ async function apiSend(url, method, payload) {
   const resultado = await response.json();
 
   if (!response.ok) {
-    throw new Error(resultado.detail || "Erro ao salvar dados.");
+    throw new Error(extrairMensagemErroApi(resultado, "Erro ao salvar dados."));
   }
 
   return resultado;
@@ -1391,6 +1403,8 @@ function abrirFormVeiculo(
           <button class="ghost-btn" id="cancelar-veiculo">Cancelar</button>
         </div>
       </div>
+
+      <p id="mensagem-veiculo" class="mensagem"></p>
     </div>
   `;
 
@@ -1408,6 +1422,7 @@ function abrirFormVeiculo(
   });
 
   document.getElementById("salvar-veiculo").onclick = async () => {
+    const mensagem = document.getElementById("mensagem-veiculo");
     const payload = {
       nome: document.getElementById("v-nome").value,
       marca: document.getElementById("v-marca").value,
@@ -1423,15 +1438,16 @@ function abrirFormVeiculo(
     const url = editandoVeiculoId ? `/veiculos/${editandoVeiculoId}` : "/veiculos";
     const method = editandoVeiculoId ? "PUT" : "POST";
 
-    await fetch(`${API_URL}${url}`, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    editandoVeiculoId = null;
-    container.innerHTML = "";
-    await renderizarVeiculos();
+    try {
+      await apiSend(url, method, payload);
+      editandoVeiculoId = null;
+      container.innerHTML = "";
+      mostrarToast("Veiculo salvo com sucesso.", "success");
+      await renderizarVeiculos();
+    } catch (erro) {
+      mensagem.textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
   };
 
   document.getElementById("cancelar-veiculo").onclick = () => {
@@ -1547,10 +1563,13 @@ function abrirFormMotorista(nome = "", telefone = "", cnh = "") {
           <button class="ghost-btn" id="cancelar-motorista">Cancelar</button>
         </div>
       </div>
+
+      <p id="mensagem-motorista" class="mensagem"></p>
     </div>
   `;
 
   document.getElementById("salvar-motorista").onclick = async () => {
+    const mensagem = document.getElementById("mensagem-motorista");
     const payload = {
       nome: document.getElementById("m-nome").value,
       telefone: document.getElementById("m-telefone").value,
@@ -1560,15 +1579,16 @@ function abrirFormMotorista(nome = "", telefone = "", cnh = "") {
     const url = editandoMotoristaId ? `/motoristas/${editandoMotoristaId}` : "/motoristas";
     const method = editandoMotoristaId ? "PUT" : "POST";
 
-    await fetch(`${API_URL}${url}`, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    editandoMotoristaId = null;
-    container.innerHTML = "";
-    await renderizarMotoristas();
+    try {
+      await apiSend(url, method, payload);
+      editandoMotoristaId = null;
+      container.innerHTML = "";
+      mostrarToast("Motorista salvo com sucesso.", "success");
+      await renderizarMotoristas();
+    } catch (erro) {
+      mensagem.textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
   };
 
   document.getElementById("cancelar-motorista").onclick = () => {
@@ -2030,25 +2050,18 @@ async function iniciarModuloLancamentos() {
     const url = editandoLancamentoId ? `/lancamentos/${editandoLancamentoId}` : "/lancamentos";
     const method = editandoLancamentoId ? "PUT" : "POST";
 
-    const response = await fetch(`${API_URL}${url}`, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const resultado = await response.json();
-
-    if (!response.ok) {
-      mensagem.textContent = resultado.detail || "Erro ao salvar lancamento.";
-      return;
+    try {
+      await apiSend(url, method, payload);
+      mensagem.textContent = editandoLancamentoId
+        ? "Lancamento alterado com sucesso."
+        : "Lancamento salvo com sucesso.";
+      mostrarToast(mensagem.textContent, "success");
+      resetFormLancamento();
+      await carregarLancamentos();
+    } catch (erro) {
+      mensagem.textContent = erro.message;
+      mostrarToast(erro.message, "error");
     }
-
-    mensagem.textContent = editandoLancamentoId
-      ? "Lancamento alterado com sucesso."
-      : "Lancamento salvo com sucesso.";
-
-    resetFormLancamento();
-    await carregarLancamentos();
   });
 
   btnFiltrar.addEventListener("click", async () => {
@@ -2471,17 +2484,27 @@ async function iniciarAtivosPassivos() {
   await carregarAtivosPassivos();
   document.getElementById("form-ativo").addEventListener("submit", async (event) => {
     event.preventDefault();
-    await apiSend(editandoAtivoId ? `/ativos/${editandoAtivoId}` : "/ativos", editandoAtivoId ? "PUT" : "POST", payloadAtivo());
-    resetAtivo();
-    mostrarToast("Ativo salvo.", "success");
-    await carregarAtivosPassivos();
+    try {
+      await apiSend(editandoAtivoId ? `/ativos/${editandoAtivoId}` : "/ativos", editandoAtivoId ? "PUT" : "POST", payloadAtivo());
+      resetAtivo();
+      mostrarToast("Ativo salvo.", "success");
+      await carregarAtivosPassivos();
+    } catch (erro) {
+      document.getElementById("mensagem-ativo").textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
   });
   document.getElementById("form-passivo").addEventListener("submit", async (event) => {
     event.preventDefault();
-    await apiSend(editandoPassivoId ? `/passivos/${editandoPassivoId}` : "/passivos", editandoPassivoId ? "PUT" : "POST", payloadPassivo());
-    resetPassivo();
-    mostrarToast("Passivo salvo.", "success");
-    await carregarAtivosPassivos();
+    try {
+      await apiSend(editandoPassivoId ? `/passivos/${editandoPassivoId}` : "/passivos", editandoPassivoId ? "PUT" : "POST", payloadPassivo());
+      resetPassivo();
+      mostrarToast("Passivo salvo.", "success");
+      await carregarAtivosPassivos();
+    } catch (erro) {
+      document.getElementById("mensagem-passivo").textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
   });
   document.getElementById("btn-cancelar-ativo").addEventListener("click", resetAtivo);
   document.getElementById("btn-cancelar-passivo").addEventListener("click", resetPassivo);
@@ -2572,24 +2595,34 @@ async function iniciarEstoque() {
   await carregarEstoque();
   document.getElementById("form-produto").addEventListener("submit", async (event) => {
     event.preventDefault();
-    await apiSend(editandoProdutoId ? `/estoque/produtos/${editandoProdutoId}` : "/estoque/produtos", editandoProdutoId ? "PUT" : "POST", payloadProduto());
-    resetProduto();
-    mostrarToast("Produto salvo.", "success");
-    await carregarEstoque();
+    try {
+      await apiSend(editandoProdutoId ? `/estoque/produtos/${editandoProdutoId}` : "/estoque/produtos", editandoProdutoId ? "PUT" : "POST", payloadProduto());
+      resetProduto();
+      mostrarToast("Produto salvo.", "success");
+      await carregarEstoque();
+    } catch (erro) {
+      document.getElementById("mensagem-produto").textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
   });
   document.getElementById("form-movimentacao").addEventListener("submit", async (event) => {
     event.preventDefault();
-    await apiSend("/estoque/movimentacoes", "POST", {
-      produto_id: Number(document.getElementById("mov-produto-id").value),
-      tipo_movimentacao: document.getElementById("mov-tipo").value,
-      quantidade: normalizarNumero(document.getElementById("mov-quantidade").value),
-      valor_unitario: normalizarNumero(document.getElementById("mov-valor").value),
-      data: document.getElementById("mov-data").value,
-      observacao: document.getElementById("mov-observacao").value.trim()
-    });
-    document.getElementById("form-movimentacao").reset();
-    mostrarToast("Movimentacao registrada.", "success");
-    await carregarEstoque();
+    try {
+      await apiSend("/estoque/movimentacoes", "POST", {
+        produto_id: Number(document.getElementById("mov-produto-id").value),
+        tipo_movimentacao: document.getElementById("mov-tipo").value,
+        quantidade: normalizarNumero(document.getElementById("mov-quantidade").value),
+        valor_unitario: normalizarNumero(document.getElementById("mov-valor").value),
+        data: document.getElementById("mov-data").value,
+        observacao: document.getElementById("mov-observacao").value.trim()
+      });
+      document.getElementById("form-movimentacao").reset();
+      mostrarToast("Movimentacao registrada.", "success");
+      await carregarEstoque();
+    } catch (erro) {
+      document.getElementById("mensagem-movimentacao").textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
   });
   document.getElementById("btn-filtrar-estoque").addEventListener("click", async () => {
     await carregarEstoque();

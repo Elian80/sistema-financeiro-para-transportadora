@@ -219,12 +219,12 @@ class ContaReceberIn(BaseModel):
 
 class VeiculoIn(BaseModel):
     nome: str = Field(..., min_length=1)
-    marca: str = Field(..., min_length=1)
-    modelo: str = Field(..., min_length=1)
-    ano: str = Field(..., min_length=1)
-    placa: str = Field(..., min_length=1)
-    tipo: str = Field(..., min_length=1)
-    status: str = Field(..., min_length=1)
+    marca: str = ""
+    modelo: str = ""
+    ano: str = ""
+    placa: str = ""
+    tipo: str = "Caminhao"
+    status: str = "Ativo"
     observacao: str = ""
     foto: str = ""
 
@@ -256,8 +256,8 @@ class VeiculoIn(BaseModel):
 
 class MotoristaIn(BaseModel):
     nome: str = Field(..., min_length=1)
-    telefone: str = Field(..., min_length=1)
-    cnh: str = Field(..., min_length=1)
+    telefone: str = ""
+    cnh: str = ""
 
     @field_validator("nome", "telefone", "cnh")
     @classmethod
@@ -1667,7 +1667,7 @@ def criar_veiculo(dados: VeiculoIn):
 
     placa_normalizada = dados.placa.strip().upper()
 
-    if any(item.get("placa", "").upper() == placa_normalizada for item in veiculos):
+    if placa_normalizada and any(item.get("placa", "").upper() == placa_normalizada for item in veiculos):
         raise HTTPException(status_code=400, detail="Ja existe um veiculo com esta placa.")
 
     novo_veiculo = {
@@ -1704,7 +1704,7 @@ def atualizar_veiculo(veiculo_id: int, dados: VeiculoIn):
     placa_normalizada = dados.placa.strip().upper()
 
     for item in veiculos:
-        if item.get("id") != veiculo_id and item.get("placa", "").upper() == placa_normalizada:
+        if placa_normalizada and item.get("id") != veiculo_id and item.get("placa", "").upper() == placa_normalizada:
             raise HTTPException(status_code=400, detail="Ja existe outro veiculo com esta placa.")
 
     veiculo["nome"] = dados.nome
