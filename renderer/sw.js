@@ -1,4 +1,4 @@
-const CACHE_NAME = "financeiro-pwa-v4";
+const CACHE_NAME = "financeiro-pwa-v5";
 
 const APP_SHELL = [
   "/",
@@ -7,9 +7,9 @@ const APP_SHELL = [
   "/index.html",
   "/login.css",
   "/style.css",
-  "/login.js?v=4",
-  "/app.js?v=4",
-  "/pwa.js?v=4",
+  "/login.js?v=5",
+  "/app.js?v=5",
+  "/pwa.js?v=5",
   "/manifest.webmanifest",
   "/icons/icon.svg"
 ];
@@ -38,7 +38,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (["/lancamentos", "/veiculos", "/motoristas", "/classificacoes", "/plano-contas", "/contas-receber"].some((path) => url.pathname.startsWith(path))) {
+  if (["/lancamentos", "/veiculos", "/motoristas", "/classificacoes", "/plano-contas", "/contas-receber", "/relatorios"].some((path) => url.pathname.startsWith(path))) {
     event.respondWith(fetch(request));
     return;
   }

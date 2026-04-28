@@ -1,10 +1,14 @@
 from pathlib import Path
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
+import io
 import json
+import zipfile
+from xml.sax.saxutils import escape
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 
 # =========================================================
@@ -41,6 +45,7 @@ ARQUIVO_VEICULOS = DATA_DIR / "veiculos.json"
 ARQUIVO_MOTORISTAS = DATA_DIR / "motoristas.json"
 ARQUIVO_PLANO_CONTAS = DATA_DIR / "plano_contas.json"
 ARQUIVO_CONTAS_RECEBER = DATA_DIR / "contas_receber.json"
+ARQUIVO_CONTAS_PAGAR = DATA_DIR / "contas_pagar.json"
 
 # =========================================================
 # CLASSIFICAÇÕES
@@ -139,12 +144,14 @@ class LancamentoIn(BaseModel):
     valor: float
     data: date
     veiculo_id: Optional[int] = None
+    empresa_id: Optional[int] = None
+    obra_servico: str = ""
     kilometragem: Optional[float] = None
     litros: Optional[float] = None
     numero_nf: str = ""
     data_nf: Optional[date] = None
 
-    @field_validator("classificacao", "descricao", "numero_nf")
+    @field_validator("classificacao", "descricao", "obra_servico", "numero_nf")
     @classmethod
     def limpar_texto(cls, value: str) -> str:
         return value.strip()
@@ -180,6 +187,8 @@ class ContaReceberIn(BaseModel):
     veiculo_id: Optional[int] = None
     descontos: float = 0
     desconto_classificacao: str = ""
+    status_pagamento: str = "pendente"
+    data_recebimento: Optional[date] = None
 
     @field_validator(
         "contrato",
@@ -189,10 +198,19 @@ class ContaReceberIn(BaseModel):
         "tomador",
         "origem_destino",
         "desconto_classificacao",
+        "status_pagamento",
     )
     @classmethod
     def limpar_textos_conta_receber(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("status_pagamento")
+    @classmethod
+    def validar_status_pagamento(cls, value: str) -> str:
+        status = value.strip().lower() or "pendente"
+        if status not in {"pendente", "recebido", "cancelado"}:
+            raise ValueError("Status de pagamento invalido.")
+        return status
 
 
 class VeiculoIn(BaseModel):
@@ -305,6 +323,51 @@ def buscar_por_id(lista, item_id: int):
     return None
 
 
+def agora_iso() -> str:
+    return datetime.now().replace(microsecond=0).isoformat()
+
+
+def obter_grupo_financeiro(classificacao: str) -> str:
+    codigo = str(classificacao or "").strip()
+    if codigo.startswith("1."):
+        return "CUSTOS OPERACIONAIS"
+    if codigo.startswith("2."):
+        return "DESPESAS ADMINISTRATIVAS"
+    if codigo.startswith("3."):
+        return "FATURAMENTO"
+    if codigo.startswith("4."):
+        return "INVESTIMENTOS"
+    return "OUTROS"
+
+
+def eh_receita(classificacao: str) -> bool:
+    return obter_grupo_financeiro(classificacao) == "FATURAMENTO"
+
+
+def eh_custo(classificacao: str) -> bool:
+    return obter_grupo_financeiro(classificacao) == "CUSTOS OPERACIONAIS"
+
+
+def eh_despesa(classificacao: str) -> bool:
+    return obter_grupo_financeiro(classificacao) == "DESPESAS ADMINISTRATIVAS"
+
+
+def eh_investimento(classificacao: str) -> bool:
+    return obter_grupo_financeiro(classificacao) == "INVESTIMENTOS"
+
+
+def inferir_tipo_financeiro(classificacao: str) -> str:
+    if eh_receita(classificacao):
+        return "receita"
+    if eh_custo(classificacao):
+        return "custo"
+    if eh_despesa(classificacao):
+        return "despesa"
+    if eh_investimento(classificacao):
+        return "investimento"
+    return "outro"
+
+
 def listar_classificacoes_ativas():
     plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
     nomes = list(CLASSIFICACOES)
@@ -318,7 +381,51 @@ def listar_classificacoes_ativas():
 
 
 def classificacao_eh_despesa(nome: str) -> bool:
-    return nome.strip().startswith("2.")
+    return eh_despesa(nome)
+
+
+def normalizar_lancamento_antigo(item: dict) -> dict:
+    criado = item.get("created_at") or agora_iso()
+    classificacao = item.get("classificacao", "")
+    return {
+        "id": item.get("id"),
+        "data": str(item.get("data", "")),
+        "classificacao": classificacao,
+        "descricao": item.get("descricao", ""),
+        "valor": float(item.get("valor") or 0),
+        "veiculo_id": item.get("veiculo_id"),
+        "empresa_id": item.get("empresa_id"),
+        "obra_servico": item.get("obra_servico", ""),
+        "tipo_financeiro": item.get("tipo_financeiro") or inferir_tipo_financeiro(classificacao),
+        "created_at": criado,
+        "updated_at": item.get("updated_at") or criado,
+        "kilometragem": item.get("kilometragem"),
+        "litros": item.get("litros"),
+        "numero_nf": item.get("numero_nf", ""),
+        "data_nf": str(item.get("data_nf", "")) if item.get("data_nf") else "",
+    }
+
+
+def normalizar_conta_receber_antiga(item: dict) -> dict:
+    conta = {
+        "id": item.get("id"),
+        "data_inicio": str(item.get("data_inicio", "")),
+        "contrato": item.get("contrato", ""),
+        "cte_ticket": item.get("cte_ticket", ""),
+        "valor": float(item.get("valor") or 0),
+        "carga": item.get("carga", ""),
+        "ton_qnt": item.get("ton_qnt", ""),
+        "tomador": item.get("tomador", ""),
+        "origem_destino": item.get("origem_destino", ""),
+        "bonificacao": float(item.get("bonificacao") or 0),
+        "veiculo_id": item.get("veiculo_id"),
+        "descontos": float(item.get("descontos") or 0),
+        "desconto_classificacao": item.get("desconto_classificacao", ""),
+        "status_pagamento": (item.get("status_pagamento") or "pendente").lower(),
+        "data_recebimento": str(item.get("data_recebimento", "")) if item.get("data_recebimento") else "",
+    }
+    conta["valor_total_receber"] = calcular_total_conta_receber(conta)
+    return conta
 
 
 def normalizar_veiculo_antigo(item: dict) -> dict:
@@ -441,16 +548,14 @@ def listar_lancamentos(
     data_inicial: Optional[date] = None,
     data_final: Optional[date] = None,
     descricao: Optional[str] = None,
-    veiculo_id: Optional[int] = None
+    veiculo_id: Optional[int] = None,
+    empresa_id: Optional[int] = None,
+    obra_servico: Optional[str] = None,
 ):
     """
     Lista lançamentos com filtros opcionais.
     """
-    lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
-
-    # Padroniza datas para string ISO, para compatibilidade com registros antigos.
-    for item in lancamentos:
-        item["data"] = str(item.get("data", ""))
+    lancamentos = [normalizar_lancamento_antigo(item) for item in ler_json(ARQUIVO_LANCAMENTOS)]
 
     if classificacao:
         lancamentos = [
@@ -485,6 +590,19 @@ def listar_lancamentos(
             if item.get("veiculo_id") == veiculo_id
         ]
 
+    if empresa_id:
+        lancamentos = [
+            item for item in lancamentos
+            if item.get("empresa_id") == empresa_id
+        ]
+
+    if obra_servico:
+        obra_lower = obra_servico.strip().lower()
+        lancamentos = [
+            item for item in lancamentos
+            if obra_lower in item.get("obra_servico", "").lower()
+        ]
+
     # Ordena do mais novo para o mais antigo.
     lancamentos.sort(key=lambda x: x.get("data", ""), reverse=True)
 
@@ -500,14 +618,20 @@ def criar_lancamento(dados: LancamentoIn):
         raise HTTPException(status_code=400, detail="Classificação inválida.")
 
     lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
+    timestamp = agora_iso()
 
     novo_lancamento = {
         "id": proximo_id(lancamentos),
+        "data": str(dados.data),
         "classificacao": dados.classificacao,
         "descricao": dados.descricao,
         "valor": float(dados.valor),
-        "data": str(dados.data),
         "veiculo_id": dados.veiculo_id,
+        "empresa_id": dados.empresa_id,
+        "obra_servico": dados.obra_servico,
+        "tipo_financeiro": inferir_tipo_financeiro(dados.classificacao),
+        "created_at": timestamp,
+        "updated_at": timestamp,
         "kilometragem": dados.kilometragem,
         "litros": dados.litros,
         "numero_nf": dados.numero_nf,
@@ -534,11 +658,16 @@ def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
     if not lancamento:
         raise HTTPException(status_code=404, detail="Lançamento não encontrado.")
 
+    lancamento["data"] = str(dados.data)
     lancamento["classificacao"] = dados.classificacao
     lancamento["descricao"] = dados.descricao
     lancamento["valor"] = float(dados.valor)
-    lancamento["data"] = str(dados.data)
     lancamento["veiculo_id"] = dados.veiculo_id
+    lancamento["empresa_id"] = dados.empresa_id
+    lancamento["obra_servico"] = dados.obra_servico
+    lancamento["tipo_financeiro"] = inferir_tipo_financeiro(dados.classificacao)
+    lancamento["created_at"] = lancamento.get("created_at") or agora_iso()
+    lancamento["updated_at"] = agora_iso()
     lancamento["kilometragem"] = dados.kilometragem
     lancamento["litros"] = dados.litros
     lancamento["numero_nf"] = dados.numero_nf
@@ -591,11 +720,7 @@ def listar_contas_receber(
     """
     Lista contas a receber com filtros opcionais.
     """
-    contas = ler_json(ARQUIVO_CONTAS_RECEBER)
-
-    for item in contas:
-        item["data_inicio"] = str(item.get("data_inicio", ""))
-        item["valor_total_receber"] = calcular_total_conta_receber(item)
+    contas = [normalizar_conta_receber_antiga(item) for item in ler_json(ARQUIVO_CONTAS_RECEBER)]
 
     if data_inicial:
         data_inicial_str = str(data_inicial)
@@ -647,6 +772,8 @@ def criar_conta_receber(dados: ContaReceberIn):
         "veiculo_id": dados.veiculo_id,
         "descontos": float(dados.descontos or 0),
         "desconto_classificacao": dados.desconto_classificacao,
+        "status_pagamento": dados.status_pagamento,
+        "data_recebimento": str(dados.data_recebimento) if dados.data_recebimento else "",
     }
     nova_conta["valor_total_receber"] = calcular_total_conta_receber(nova_conta)
 
@@ -684,6 +811,8 @@ def atualizar_conta_receber(conta_id: int, dados: ContaReceberIn):
     conta["veiculo_id"] = dados.veiculo_id
     conta["descontos"] = float(dados.descontos or 0)
     conta["desconto_classificacao"] = dados.desconto_classificacao
+    conta["status_pagamento"] = dados.status_pagamento
+    conta["data_recebimento"] = str(dados.data_recebimento) if dados.data_recebimento else ""
     conta["valor_total_receber"] = calcular_total_conta_receber(conta)
 
     salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
@@ -704,6 +833,323 @@ def excluir_conta_receber(conta_id: int):
     contas = [item for item in contas if item.get("id") != conta_id]
     salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
     return {"mensagem": "Conta a receber excluida com sucesso."}
+
+
+# =========================================================
+# RELATORIOS FINANCEIROS
+# =========================================================
+
+def filtrar_lancamentos_relatorio(
+    data_inicial: Optional[date] = None,
+    data_final: Optional[date] = None,
+    veiculo_id: Optional[int] = None,
+    empresa_id: Optional[int] = None,
+    classificacao: Optional[str] = None,
+    obra_servico: Optional[str] = None,
+):
+    return listar_lancamentos(
+        classificacao=classificacao,
+        data_inicial=data_inicial,
+        data_final=data_final,
+        veiculo_id=veiculo_id,
+        empresa_id=empresa_id,
+        obra_servico=obra_servico,
+    )
+
+
+def filtrar_contas_receber_relatorio(
+    data_inicial: Optional[date] = None,
+    data_final: Optional[date] = None,
+    veiculo_id: Optional[int] = None,
+):
+    return listar_contas_receber(
+        data_inicial=data_inicial,
+        data_final=data_final,
+        veiculo_id=veiculo_id,
+    )
+
+
+def somar_lancamentos(lancamentos, predicado) -> float:
+    return sum(float(item.get("valor") or 0) for item in lancamentos if predicado(item.get("classificacao", "")))
+
+
+def montar_resumo_financeiro(lancamentos, contas_receber) -> dict:
+    total_faturamento = somar_lancamentos(lancamentos, eh_receita)
+    total_custos = somar_lancamentos(lancamentos, eh_custo)
+    total_despesas = somar_lancamentos(lancamentos, eh_despesa)
+    total_investimentos = somar_lancamentos(lancamentos, eh_investimento)
+    contas_total = sum(float(item.get("valor_total_receber") or 0) for item in contas_receber)
+    contas_recebido = sum(float(item.get("valor_total_receber") or 0) for item in contas_receber if item.get("status_pagamento") == "recebido")
+    contas_pendente = sum(float(item.get("valor_total_receber") or 0) for item in contas_receber if item.get("status_pagamento") == "pendente")
+
+    return {
+        "total_faturamento": total_faturamento,
+        "total_custos": total_custos,
+        "total_despesas": total_despesas,
+        "total_investimentos": total_investimentos,
+        "lucro_bruto": total_faturamento - total_custos,
+        "lucro_liquido": total_faturamento - total_custos - total_despesas,
+        "saldo_periodo": total_faturamento - total_custos - total_despesas - total_investimentos,
+        "quantidade_lancamentos": len(lancamentos),
+        "contas_a_receber_total": contas_total,
+        "contas_a_receber_pendente": contas_pendente,
+        "contas_a_receber_recebido": contas_recebido,
+    }
+
+
+def adicionar_totais_grupo(registro: dict, classificacao: str, valor: float) -> None:
+    if eh_receita(classificacao):
+        registro["total_receitas"] += valor
+    elif eh_custo(classificacao):
+        registro["total_custos"] += valor
+    elif eh_despesa(classificacao):
+        registro["total_despesas"] += valor
+    elif eh_investimento(classificacao):
+        registro["total_investimentos"] += valor
+
+
+def finalizar_resultado_grupo(registro: dict) -> dict:
+    registro["resultado"] = registro["total_receitas"] - registro["total_custos"] - registro["total_despesas"] - registro["total_investimentos"]
+    return registro
+
+
+def agrupar_por_periodo(lancamentos) -> list:
+    grupos = {}
+    for item in lancamentos:
+        periodo = str(item.get("data", ""))[:7] or "sem_periodo"
+        grupo = grupos.setdefault(periodo, {"periodo": periodo, "total_receitas": 0, "total_custos": 0, "total_despesas": 0, "total_investimentos": 0, "resultado": 0})
+        adicionar_totais_grupo(grupo, item.get("classificacao", ""), float(item.get("valor") or 0))
+    return [finalizar_resultado_grupo(item) for item in sorted(grupos.values(), key=lambda x: x["periodo"])]
+
+
+def agrupar_por_classificacao(lancamentos) -> list:
+    grupos = {}
+    for item in lancamentos:
+        classificacao = item.get("classificacao", "Sem classificacao")
+        grupo = grupos.setdefault(classificacao, {"classificacao": classificacao, "grupo_financeiro": obter_grupo_financeiro(classificacao), "quantidade": 0, "total": 0})
+        grupo["quantidade"] += 1
+        grupo["total"] += float(item.get("valor") or 0)
+    return sorted(grupos.values(), key=lambda x: abs(x["total"]), reverse=True)
+
+
+def agrupar_por_veiculo(lancamentos) -> list:
+    veiculos = {item.get("id"): item for item in listar_veiculos()}
+    grupos = {}
+    for item in lancamentos:
+        veiculo_id = item.get("veiculo_id")
+        veiculo = veiculos.get(veiculo_id, {})
+        grupo = grupos.setdefault(veiculo_id or 0, {
+            "veiculo_id": veiculo_id,
+            "nome_veiculo": veiculo.get("nome", "Sem veiculo"),
+            "placa": veiculo.get("placa", ""),
+            "total_receitas": 0,
+            "total_custos": 0,
+            "total_despesas": 0,
+            "total_investimentos": 0,
+            "resultado": 0,
+            "custo_por_km": 0,
+            "consumo_medio_combustivel": 0,
+            "km_rodado": 0,
+            "litros": 0,
+        })
+        adicionar_totais_grupo(grupo, item.get("classificacao", ""), float(item.get("valor") or 0))
+        if item.get("kilometragem"):
+            grupo["km_rodado"] += float(item.get("kilometragem") or 0)
+        if item.get("litros"):
+            grupo["litros"] += float(item.get("litros") or 0)
+
+    resultado = []
+    for grupo in grupos.values():
+        finalizar_resultado_grupo(grupo)
+        custo_total = grupo["total_custos"] + grupo["total_despesas"]
+        grupo["custo_por_km"] = custo_total / grupo["km_rodado"] if grupo["km_rodado"] else 0
+        grupo["consumo_medio_combustivel"] = grupo["km_rodado"] / grupo["litros"] if grupo["litros"] else 0
+        resultado.append(grupo)
+    return sorted(resultado, key=lambda x: abs(x["resultado"]), reverse=True)
+
+
+def agrupar_por_empresa(lancamentos) -> list:
+    grupos = {}
+    for item in lancamentos:
+        empresa_id = item.get("empresa_id") or 0
+        grupo = grupos.setdefault(empresa_id, {"empresa_id": item.get("empresa_id"), "nome_empresa": f"Empresa {empresa_id}" if empresa_id else "Sem empresa", "total_receitas": 0, "total_custos": 0, "total_despesas": 0, "total_investimentos": 0, "resultado": 0})
+        adicionar_totais_grupo(grupo, item.get("classificacao", ""), float(item.get("valor") or 0))
+    return [finalizar_resultado_grupo(item) for item in grupos.values()]
+
+
+def listar_contas_pagar_resumo() -> dict:
+    contas = ler_json(ARQUIVO_CONTAS_PAGAR)
+    total = sum(float(item.get("valor") or 0) for item in contas)
+    pendente = sum(float(item.get("valor") or 0) for item in contas if item.get("status_pagamento", "pendente") == "pendente")
+    pago = sum(float(item.get("valor") or 0) for item in contas if item.get("status_pagamento") == "pago")
+    return {"total": total, "pendente": pendente, "pago": pago, "itens": contas}
+
+
+def montar_relatorio_completo(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    lancamentos = filtrar_lancamentos_relatorio(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)
+    contas_receber = filtrar_contas_receber_relatorio(data_inicial, data_final, veiculo_id)
+    return {
+        "resumo": montar_resumo_financeiro(lancamentos, contas_receber),
+        "por_periodo": agrupar_por_periodo(lancamentos),
+        "por_veiculo": agrupar_por_veiculo(lancamentos),
+        "por_classificacao": agrupar_por_classificacao(lancamentos),
+        "por_empresa": agrupar_por_empresa(lancamentos),
+        "contas_receber": contas_receber,
+        "contas_pagar": listar_contas_pagar_resumo(),
+    }
+
+
+@app.get("/relatorios/resumo")
+def relatorio_resumo(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)["resumo"]
+
+
+@app.get("/relatorios/por-periodo")
+def relatorio_por_periodo(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)["por_periodo"]
+
+
+@app.get("/relatorios/por-veiculo")
+def relatorio_por_veiculo(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)["por_veiculo"]
+
+
+@app.get("/relatorios/por-classificacao")
+def relatorio_por_classificacao(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)["por_classificacao"]
+
+
+@app.get("/relatorios/por-empresa")
+def relatorio_por_empresa(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)["por_empresa"]
+
+
+@app.get("/relatorios/receitas")
+def relatorio_receitas(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return [item for item in filtrar_lancamentos_relatorio(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico) if eh_receita(item.get("classificacao", ""))]
+
+
+@app.get("/relatorios/custos")
+def relatorio_custos(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return [item for item in filtrar_lancamentos_relatorio(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico) if eh_custo(item.get("classificacao", ""))]
+
+
+@app.get("/relatorios/despesas")
+def relatorio_despesas(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return [item for item in filtrar_lancamentos_relatorio(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico) if eh_despesa(item.get("classificacao", ""))]
+
+
+@app.get("/relatorios/investimentos")
+def relatorio_investimentos(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    return [item for item in filtrar_lancamentos_relatorio(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico) if eh_investimento(item.get("classificacao", ""))]
+
+
+@app.get("/relatorios/contas-receber")
+def relatorio_contas_receber(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None):
+    contas = filtrar_contas_receber_relatorio(data_inicial, data_final, veiculo_id)
+    return {"resumo": montar_resumo_financeiro([], contas), "itens": contas}
+
+
+@app.get("/relatorios/contas-pagar")
+def relatorio_contas_pagar():
+    return listar_contas_pagar_resumo()
+
+
+def linhas_tabela_relatorio(dados: dict) -> list[str]:
+    resumo = dados["resumo"]
+    return [
+        "Resumo financeiro",
+        f"Emitido em: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+        f"Faturamento: {resumo['total_faturamento']:.2f}",
+        f"Custos: {resumo['total_custos']:.2f}",
+        f"Despesas: {resumo['total_despesas']:.2f}",
+        f"Investimentos: {resumo['total_investimentos']:.2f}",
+        f"Lucro bruto: {resumo['lucro_bruto']:.2f}",
+        f"Lucro liquido: {resumo['lucro_liquido']:.2f}",
+        f"Saldo do periodo: {resumo['saldo_periodo']:.2f}",
+        f"Contas a receber pendente: {resumo['contas_a_receber_pendente']:.2f}",
+    ]
+
+
+def gerar_pdf_simples(linhas: list[str]) -> bytes:
+    conteudo_linhas = ["BT", "/F1 12 Tf", "50 790 Td"]
+    for linha in linhas[:45]:
+        texto = linha.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+        conteudo_linhas.append(f"({texto}) Tj")
+        conteudo_linhas.append("0 -18 Td")
+    conteudo_linhas.append("ET")
+    stream = "\n".join(conteudo_linhas).encode("utf-8")
+    objetos = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream",
+    ]
+    pdf = io.BytesIO()
+    pdf.write(b"%PDF-1.4\n")
+    offsets = []
+    for indice, objeto in enumerate(objetos, start=1):
+        offsets.append(pdf.tell())
+        pdf.write(f"{indice} 0 obj\n".encode("ascii"))
+        pdf.write(objeto)
+        pdf.write(b"\nendobj\n")
+    xref = pdf.tell()
+    pdf.write(f"xref\n0 {len(objetos) + 1}\n".encode("ascii"))
+    pdf.write(b"0000000000 65535 f \n")
+    for offset in offsets:
+        pdf.write(f"{offset:010d} 00000 n \n".encode("ascii"))
+    pdf.write(f"trailer << /Size {len(objetos) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF".encode("ascii"))
+    return pdf.getvalue()
+
+
+def planilha_xml(linhas: list[list]) -> str:
+    rows = []
+    for row_idx, linha in enumerate(linhas, start=1):
+        cells = []
+        for col_idx, valor in enumerate(linha, start=1):
+            col = chr(64 + col_idx)
+            cells.append(f'<c r="{col}{row_idx}" t="inlineStr"><is><t>{escape(str(valor))}</t></is></c>')
+        rows.append(f'<row r="{row_idx}">{"".join(cells)}</row>')
+    return f'<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>{"".join(rows)}</sheetData></worksheet>'
+
+
+def gerar_excel_simples(dados: dict) -> bytes:
+    abas = {
+        "Resumo": [["Indicador", "Valor"]] + [[k, v] for k, v in dados["resumo"].items()],
+        "Por Classificacao": [["Classificacao", "Grupo", "Quantidade", "Total"]] + [[i["classificacao"], i["grupo_financeiro"], i["quantidade"], i["total"]] for i in dados["por_classificacao"]],
+        "Por Veiculo": [["Veiculo", "Placa", "Receitas", "Custos", "Despesas", "Investimentos", "Resultado", "Custo/KM", "Consumo Medio"]] + [[i["nome_veiculo"], i["placa"], i["total_receitas"], i["total_custos"], i["total_despesas"], i["total_investimentos"], i["resultado"], i["custo_por_km"], i["consumo_medio_combustivel"]] for i in dados["por_veiculo"]],
+        "Por Periodo": [["Periodo", "Receitas", "Custos", "Despesas", "Investimentos", "Resultado"]] + [[i["periodo"], i["total_receitas"], i["total_custos"], i["total_despesas"], i["total_investimentos"], i["resultado"]] for i in dados["por_periodo"]],
+        "Contas a Receber": [["Data", "Contrato", "Tomador", "Total", "Status"]] + [[i["data_inicio"], i["contrato"], i["tomador"], i["valor_total_receber"], i["status_pagamento"]] for i in dados["contas_receber"]],
+        "Contas a Pagar": [["Descricao", "Valor", "Status"]] + [[i.get("descricao", ""), i.get("valor", 0), i.get("status_pagamento", "pendente")] for i in dados["contas_pagar"]["itens"]],
+    }
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as arquivo:
+        arquivo.writestr("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>')
+        arquivo.writestr("_rels/.rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>')
+        sheets = []
+        rels = []
+        for idx, (nome, linhas) in enumerate(abas.items(), start=1):
+            sheets.append(f'<sheet name="{escape(nome)}" sheetId="{idx}" r:id="rId{idx}"/>')
+            rels.append(f'<Relationship Id="rId{idx}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet{idx}.xml"/>')
+            arquivo.writestr(f"xl/worksheets/sheet{idx}.xml", planilha_xml(linhas))
+        arquivo.writestr("xl/workbook.xml", f'<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>{"".join(sheets)}</sheets></workbook>')
+        arquivo.writestr("xl/_rels/workbook.xml.rels", f'<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{"".join(rels)}</Relationships>')
+    return buffer.getvalue()
+
+
+@app.get("/relatorios/exportar/pdf")
+def exportar_relatorio_pdf(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    dados = montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)
+    conteudo = gerar_pdf_simples(linhas_tabela_relatorio(dados))
+    return Response(content=conteudo, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=relatorio_financeiro.pdf"})
+
+
+@app.get("/relatorios/exportar/excel")
+def exportar_relatorio_excel(data_inicial: Optional[date] = None, data_final: Optional[date] = None, veiculo_id: Optional[int] = None, empresa_id: Optional[int] = None, classificacao: Optional[str] = None, obra_servico: Optional[str] = None):
+    dados = montar_relatorio_completo(data_inicial, data_final, veiculo_id, empresa_id, classificacao, obra_servico)
+    conteudo = gerar_excel_simples(dados)
+    return Response(content=conteudo, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": "attachment; filename=relatorio_financeiro.xlsx"})
 
 
 @app.get("/veiculos")
