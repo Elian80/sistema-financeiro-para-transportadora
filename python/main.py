@@ -2115,3 +2115,26 @@ def criar_folha_pagamento(dados: FolhaPagamentoIn):
     folhas.append(nova_folha)
     salvar_json(ARQUIVO_FOLHA_PAGAMENTO, folhas)
     return nova_folha
+
+
+@app.delete("/folha-pagamento/{folha_id}")
+def excluir_folha_pagamento(folha_id: int):
+    folhas = ler_json(ARQUIVO_FOLHA_PAGAMENTO)
+    folha = buscar_por_id(folhas, folha_id)
+
+    if not folha:
+        raise HTTPException(status_code=404, detail="Folha de pagamento nao encontrada.")
+
+    folhas = [item for item in folhas if item.get("id") != folha_id]
+    salvar_json(ARQUIVO_FOLHA_PAGAMENTO, folhas)
+
+    lancamento_id = folha.get("lancamento_id")
+    if lancamento_id:
+        lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
+        lancamentos = [
+            item for item in lancamentos
+            if item.get("id") != lancamento_id and item.get("folha_pagamento_id") != folha_id
+        ]
+        salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
+
+    return {"mensagem": "Folha de pagamento excluida com sucesso."}

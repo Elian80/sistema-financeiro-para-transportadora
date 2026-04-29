@@ -51,6 +51,7 @@ let editandoAtivoId = null;
 let editandoPassivoId = null;
 let editandoProdutoId = null;
 let cacheVeiculos = [];
+let filtroPeriodoFolha = "";
 
 function aplicarIconesNavegacao() {
   navButtons.forEach((button) => {
@@ -347,7 +348,6 @@ const pages = {
     render: () => `
       <div class="panel-box filter-launcher">
         <button class="primary-btn" id="btn-novo-motorista">+ Cadastrar motorista</button>
-        <button class="ghost-btn" id="btn-folha-pagamento" type="button">Folha de pagamento</button>
       </div>
 
       <div id="form-motorista-container"></div>
@@ -1842,9 +1842,21 @@ async function renderizarHistoricoFolha() {
   if (!container) return;
 
   const folhas = await carregarFolhasPagamento();
+  const folhasFiltradas = filtroPeriodoFolha
+    ? folhas.filter((folha) => folha.periodo === filtroPeriodoFolha)
+    : folhas;
 
   if (!folhas.length) {
-    container.innerHTML = "";
+    container.innerHTML = `
+      <section class="panel-box">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Historico de folhas</h3>
+            <span>Nenhuma folha gerada.</span>
+          </div>
+        </div>
+      </section>
+    `;
     return;
   }
 
@@ -1853,41 +1865,62 @@ async function renderizarHistoricoFolha() {
       <div class="table-toolbar">
         <div>
           <h3 style="margin:0;">Historico de folhas</h3>
-          <span>${folhas.length} folha(s) gerada(s)</span>
+          <span>${folhasFiltradas.length} de ${folhas.length} folha(s)</span>
+        </div>
+        <div class="action-row">
+          <input id="filtro-periodo-folha" type="month" value="${filtroPeriodoFolha}" />
+          <button class="ghost-btn" id="btn-limpar-filtro-folha" type="button">Limpar</button>
         </div>
       </div>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Periodo</th>
-              <th>Pagamento</th>
-              <th>Motoristas</th>
-              <th>Bruto</th>
-              <th>Descontos</th>
-              <th>Liquido</th>
-              <th>Lancamento</th>
-              <th>Acoes</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${folhas.slice(0, 8).map((folha) => `
+      ${folhasFiltradas.length ? `
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
               <tr>
-                <td>${folha.periodo}</td>
-                <td>${formatarDataCurta(folha.data_pagamento)}</td>
-                <td>${(folha.itens || []).length}</td>
-                <td>${formatarValor(folha.totais?.salario_bruto || 0)}</td>
-                <td>${formatarValor(folha.totais?.total_descontos || 0)}</td>
-                <td class="positive">${formatarValor(folha.totais?.salario_liquido || 0)}</td>
-                <td>${folha.lancamento_id ? `#${folha.lancamento_id}` : "-"}</td>
-                <td><button class="small-btn" onclick="imprimirFolhaSalva(${folha.id})">Imprimir</button></td>
+                <th>Periodo</th>
+                <th>Pagamento</th>
+                <th>Motoristas</th>
+                <th>Bruto</th>
+                <th>Descontos</th>
+                <th>Liquido</th>
+                <th>Lancamento</th>
+                <th>Acoes</th>
               </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              ${folhasFiltradas.map((folha) => `
+                <tr>
+                  <td>${folha.periodo}</td>
+                  <td>${formatarDataCurta(folha.data_pagamento)}</td>
+                  <td>${(folha.itens || []).length}</td>
+                  <td>${formatarValor(folha.totais?.salario_bruto || 0)}</td>
+                  <td>${formatarValor(folha.totais?.total_descontos || 0)}</td>
+                  <td class="positive">${formatarValor(folha.totais?.salario_liquido || 0)}</td>
+                  <td>${folha.lancamento_id ? `#${folha.lancamento_id}` : "-"}</td>
+                  <td>
+                    <div class="action-row">
+                      <button class="small-btn" onclick="imprimirFolhaSalva(${folha.id})">Imprimir</button>
+                      <button class="small-btn delete-btn" onclick="excluirFolhaPagamento(${folha.id})">Excluir</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : `<p class="empty-row">Nenhuma folha encontrada para este periodo.</p>`}
     </section>
   `;
+
+  document.getElementById("filtro-periodo-folha").onchange = async (event) => {
+    filtroPeriodoFolha = event.target.value;
+    await renderizarHistoricoFolha();
+  };
+
+  document.getElementById("btn-limpar-filtro-folha").onclick = async () => {
+    filtroPeriodoFolha = "";
+    await renderizarHistoricoFolha();
+  };
 }
 
 function gerarDadosItemFolha(row) {
@@ -2024,6 +2057,18 @@ window.imprimirFolhaSalva = async (folhaId) => {
   const folha = folhas.find((item) => item.id === folhaId);
   if (!folha || !(folha.itens || []).length) return;
   await imprimirReciboFolha(folha, folha.itens[0]);
+};
+
+window.excluirFolhaPagamento = async (folhaId) => {
+  if (!confirm("Deseja excluir esta folha de pagamento? O lancamento financeiro vinculado tambem sera removido.")) return;
+
+  try {
+    await apiDelete(`/folha-pagamento/${folhaId}`);
+    mostrarToast("Folha excluida com sucesso.", "success");
+    await renderizarHistoricoFolha();
+  } catch (erro) {
+    mostrarToast(erro.message, "error");
+  }
 };
 
 window.abrirFolhaMotorista = async (motoristaId) => {
@@ -3863,8 +3908,6 @@ async function loadPage(pageKey) {
         editandoMotoristaId = null;
         abrirFormMotorista();
       };
-
-      document.getElementById("btn-folha-pagamento").onclick = abrirTelaFolhaPagamento;
 
       await renderizarMotoristas();
       await renderizarHistoricoFolha();
