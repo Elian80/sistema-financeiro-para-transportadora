@@ -1182,7 +1182,7 @@ body.sidebar-collapsed .nav-btn.active {
   width: 100%;
   color: #111;
   background: #fff;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   page-break-inside: avoid;
 }
 
@@ -1191,7 +1191,7 @@ body.sidebar-collapsed .nav-btn.active {
   border-collapse: collapse;
   table-layout: fixed;
   font-family: Arial, sans-serif;
-  font-size: 10px;
+  font-size: 9px;
   color: #111;
 }
 
@@ -1212,20 +1212,25 @@ body.sidebar-collapsed .nav-btn.active {
 
 .salary-slip-table td {
   border: 1px solid #111;
-  height: 18px;
-  padding: 2px 4px;
+  height: 15px;
+  padding: 1px 3px;
   vertical-align: middle;
   background: #fff;
   overflow: hidden;
 }
 
+.salary-slip-table .slip-gap {
+  border: none !important;
+  background: #fff !important;
+}
+
 .salary-slip-table tr.slip-spacer td {
-  height: 8px;
+  height: 7px;
 }
 
 .salary-slip-table .slip-declaration td {
-  height: 8px;
-  font-size: 8px;
+  height: 6px;
+  font-size: 7px;
   border-top: none;
   text-align: center;
 }
@@ -1241,13 +1246,13 @@ body.sidebar-collapsed .nav-btn.active {
 
 .slip-title {
   text-align: center;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .slip-signature {
   text-align: center;
-  font-size: 9px;
+  font-size: 8px;
   vertical-align: top !important;
 }
 
@@ -1260,11 +1265,11 @@ body.sidebar-collapsed .nav-btn.active {
 }
 
 .slip-item-row td {
-  height: 18px;
+  height: 15px;
 }
 
 .slip-date-row td {
-  height: 18px;
+  height: 15px;
   text-align: center;
   font-weight: 700;
 }
@@ -1285,8 +1290,8 @@ body.sidebar-collapsed .nav-btn.active {
   border-left: none;
   border-right: none;
   border-bottom: none;
-  height: 16px;
-  font-size: 9px;
+  height: 14px;
+  font-size: 8px;
 }
 
 .receipt-grid {
@@ -1399,6 +1404,11 @@ body.sidebar-collapsed .nav-btn.active {
 }
 
 @media print {
+  @page {
+    size: A4 landscape;
+    margin: 6mm;
+  }
+
   body * {
     visibility: hidden !important;
   }
@@ -1415,13 +1425,13 @@ body.sidebar-collapsed .nav-btn.active {
     width: 100%;
     background: white !important;
     color: black !important;
-    padding: 20px;
+    padding: 0;
   }
 
   .payroll-receipt {
     display: block !important;
     font-family: Arial, sans-serif;
-    font-size: 10px;
+    font-size: 9px;
     padding: 0 !important;
   }
 
