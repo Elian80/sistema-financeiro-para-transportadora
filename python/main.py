@@ -51,6 +51,7 @@ ARQUIVO_ATIVOS = DATA_DIR / "ativos.json"
 ARQUIVO_PASSIVOS = DATA_DIR / "passivos.json"
 ARQUIVO_ESTOQUE_PRODUTOS = DATA_DIR / "estoque_produtos.json"
 ARQUIVO_ESTOQUE_MOVIMENTACOES = DATA_DIR / "estoque_movimentacoes.json"
+ARQUIVO_FOLHA_PAGAMENTO = DATA_DIR / "folha_pagamento.json"
 
 # =========================================================
 # CLASSIFICACOES
@@ -280,6 +281,58 @@ class MotoristaIn(BaseModel):
         return value.strip()
 
 
+class FolhaPagamentoItemIn(BaseModel):
+    motorista_id: int
+    horas_normais: float = 0
+    valor_hora: float = 0
+    horas_extras: float = 0
+    valor_hora_extra: float = 0
+    adicional_noturno: float = 0
+    bonus: float = 0
+    desconto_inss: float = 0
+    desconto_vale: float = 0
+    desconto_adiantamento: float = 0
+    outros_descontos: float = 0
+    observacao: str = ""
+
+    @field_validator(
+        "horas_normais",
+        "valor_hora",
+        "horas_extras",
+        "valor_hora_extra",
+        "adicional_noturno",
+        "bonus",
+        "desconto_inss",
+        "desconto_vale",
+        "desconto_adiantamento",
+        "outros_descontos",
+    )
+    @classmethod
+    def validar_numero_nao_negativo(cls, value: float) -> float:
+        valor = float(value or 0)
+        if valor < 0:
+            raise ValueError("Valores da folha nao podem ser negativos.")
+        return valor
+
+    @field_validator("observacao")
+    @classmethod
+    def limpar_observacao(cls, value: str) -> str:
+        return value.strip()
+
+
+class FolhaPagamentoIn(BaseModel):
+    periodo: str = Field(..., min_length=1)
+    data_pagamento: date
+    descricao: str = "Folha de pagamento"
+    gerar_lancamento: bool = True
+    itens: list[FolhaPagamentoItemIn]
+
+    @field_validator("periodo", "descricao")
+    @classmethod
+    def limpar_textos_folha(cls, value: str) -> str:
+        return value.strip()
+
+
 class AtivoIn(BaseModel):
     nome: str = Field(..., min_length=1)
     tipo: str = Field(..., min_length=1)
@@ -485,6 +538,46 @@ def inferir_tipo_financeiro(classificacao: str) -> str:
     if eh_investimento(classificacao):
         return "investimento"
     return "outro"
+
+
+def arredondar_moeda(valor: float) -> float:
+    return round(float(valor or 0), 2)
+
+
+def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
+    salario_base = item.horas_normais * item.valor_hora
+    valor_extras = item.horas_extras * item.valor_hora_extra
+    total_adicionais = item.adicional_noturno + item.bonus
+    salario_bruto = salario_base + valor_extras + total_adicionais
+    total_descontos = (
+        item.desconto_inss
+        + item.desconto_vale
+        + item.desconto_adiantamento
+        + item.outros_descontos
+    )
+    salario_liquido = max(salario_bruto - total_descontos, 0)
+
+    return {
+        "motorista_id": item.motorista_id,
+        "motorista_nome": motorista.get("nome", ""),
+        "horas_normais": item.horas_normais,
+        "valor_hora": item.valor_hora,
+        "horas_extras": item.horas_extras,
+        "valor_hora_extra": item.valor_hora_extra,
+        "adicional_noturno": item.adicional_noturno,
+        "bonus": item.bonus,
+        "desconto_inss": item.desconto_inss,
+        "desconto_vale": item.desconto_vale,
+        "desconto_adiantamento": item.desconto_adiantamento,
+        "outros_descontos": item.outros_descontos,
+        "observacao": item.observacao,
+        "salario_base": arredondar_moeda(salario_base),
+        "valor_extras": arredondar_moeda(valor_extras),
+        "total_adicionais": arredondar_moeda(total_adicionais),
+        "salario_bruto": arredondar_moeda(salario_bruto),
+        "total_descontos": arredondar_moeda(total_descontos),
+        "salario_liquido": arredondar_moeda(salario_liquido),
+    }
 
 
 def listar_classificacoes_ativas():
@@ -1826,3 +1919,80 @@ def excluir_motorista(motorista_id: int):
     salvar_json(ARQUIVO_MOTORISTAS, motoristas)
 
     return {"mensagem": "Motorista excluido com sucesso."}
+
+
+# =========================================================
+# FOLHA DE PAGAMENTO
+# =========================================================
+
+@app.get("/folha-pagamento")
+def listar_folhas_pagamento():
+    folhas = ler_json(ARQUIVO_FOLHA_PAGAMENTO)
+    folhas.sort(key=lambda x: x.get("data_pagamento", ""), reverse=True)
+    return folhas
+
+
+@app.post("/folha-pagamento")
+def criar_folha_pagamento(dados: FolhaPagamentoIn):
+    if not dados.itens:
+        raise HTTPException(status_code=400, detail="Inclua ao menos um motorista na folha.")
+
+    motoristas = ler_json(ARQUIVO_MOTORISTAS)
+    folhas = ler_json(ARQUIVO_FOLHA_PAGAMENTO)
+    timestamp = agora_iso()
+    itens_calculados = []
+
+    for item in dados.itens:
+        motorista = buscar_por_id(motoristas, item.motorista_id)
+        if not motorista:
+            raise HTTPException(status_code=404, detail=f"Motorista {item.motorista_id} nao encontrado.")
+        itens_calculados.append(calcular_item_folha(item, motorista))
+
+    totais = {
+        "salario_base": arredondar_moeda(sum(item["salario_base"] for item in itens_calculados)),
+        "valor_extras": arredondar_moeda(sum(item["valor_extras"] for item in itens_calculados)),
+        "total_adicionais": arredondar_moeda(sum(item["total_adicionais"] for item in itens_calculados)),
+        "salario_bruto": arredondar_moeda(sum(item["salario_bruto"] for item in itens_calculados)),
+        "total_descontos": arredondar_moeda(sum(item["total_descontos"] for item in itens_calculados)),
+        "salario_liquido": arredondar_moeda(sum(item["salario_liquido"] for item in itens_calculados)),
+    }
+
+    nova_folha = {
+        "id": proximo_id(folhas),
+        "periodo": dados.periodo,
+        "data_pagamento": str(dados.data_pagamento),
+        "descricao": dados.descricao or "Folha de pagamento",
+        "itens": itens_calculados,
+        "totais": totais,
+        "lancamento_id": None,
+        "created_at": timestamp,
+    }
+
+    if dados.gerar_lancamento and totais["salario_liquido"] > 0:
+        lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
+        lancamento = {
+            "id": proximo_id(lancamentos),
+            "data": str(dados.data_pagamento),
+            "classificacao": "1.5 SALARIO + ENCAGOS FOLHA PGTO",
+            "descricao": f"{nova_folha['descricao']} - {dados.periodo}",
+            "valor": totais["salario_liquido"],
+            "veiculo_id": None,
+            "empresa_id": None,
+            "obra_servico": "",
+            "tipo_financeiro": "custo",
+            "created_at": timestamp,
+            "updated_at": timestamp,
+            "kilometragem": None,
+            "litros": None,
+            "numero_nf": "",
+            "data_nf": "",
+            "origem": "folha_pagamento",
+            "folha_pagamento_id": nova_folha["id"],
+        }
+        lancamentos.append(lancamento)
+        salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
+        nova_folha["lancamento_id"] = lancamento["id"]
+
+    folhas.append(nova_folha)
+    salvar_json(ARQUIVO_FOLHA_PAGAMENTO, folhas)
+    return nova_folha

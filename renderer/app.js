@@ -1,4 +1,4 @@
-// =========================================================
+﻿// =========================================================
 // CONFIGURACAO BASE DA API
 // =========================================================
 const API_URL = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
@@ -322,12 +322,15 @@ const pages = {
     title: "Motoristas",
     subtitle: "Controle da equipe operacional",
     render: () => `
-      <div class="panel-box">
+      <div class="panel-box filter-launcher">
         <button class="primary-btn" id="btn-novo-motorista">+ Cadastrar motorista</button>
+        <button class="ghost-btn" id="btn-folha-pagamento" type="button">Folha de pagamento</button>
       </div>
 
       <div id="form-motorista-container"></div>
+      <div id="folha-pagamento-container"></div>
       <div id="lista-motoristas" class="table-wrap"></div>
+      <div id="historico-folha-container"></div>
     `
   },
 
@@ -1642,6 +1645,275 @@ window.excluirMotorista = async (id) => {
   await apiDelete(`/motoristas/${id}`);
   await renderizarMotoristas();
 };
+
+async function carregarFolhasPagamento() {
+  return apiGet("/folha-pagamento");
+}
+
+function calcularLinhaFolha(row) {
+  const horasNormais = normalizarNumero(row.querySelector(".folha-horas-normais")?.value);
+  const valorHora = normalizarNumero(row.querySelector(".folha-valor-hora")?.value);
+  const horasExtras = normalizarNumero(row.querySelector(".folha-horas-extras")?.value);
+  const valorHoraExtra = normalizarNumero(row.querySelector(".folha-valor-hora-extra")?.value);
+  const adicionalNoturno = normalizarNumero(row.querySelector(".folha-adicional-noturno")?.value);
+  const bonus = normalizarNumero(row.querySelector(".folha-bonus")?.value);
+  const descontoInss = normalizarNumero(row.querySelector(".folha-desconto-inss")?.value);
+  const descontoVale = normalizarNumero(row.querySelector(".folha-desconto-vale")?.value);
+  const descontoAdiantamento = normalizarNumero(row.querySelector(".folha-desconto-adiantamento")?.value);
+  const outrosDescontos = normalizarNumero(row.querySelector(".folha-outros-descontos")?.value);
+  const salarioBase = horasNormais * valorHora;
+  const valorExtras = horasExtras * valorHoraExtra;
+  const totalAdicionais = adicionalNoturno + bonus;
+  const salarioBruto = salarioBase + valorExtras + totalAdicionais;
+  const totalDescontos = descontoInss + descontoVale + descontoAdiantamento + outrosDescontos;
+  const salarioLiquido = Math.max(salarioBruto - totalDescontos, 0);
+
+  row.querySelector(".folha-salario-base").textContent = formatarValor(salarioBase);
+  row.querySelector(".folha-salario-bruto").textContent = formatarValor(salarioBruto);
+  row.querySelector(".folha-total-descontos").textContent = formatarValor(totalDescontos);
+  row.querySelector(".folha-salario-liquido").textContent = formatarValor(salarioLiquido);
+
+  return { salarioBase, valorExtras, totalAdicionais, salarioBruto, totalDescontos, salarioLiquido };
+}
+
+function atualizarTotaisFolha() {
+  const totais = Array.from(document.querySelectorAll("[data-folha-motorista-id]"))
+    .map(calcularLinhaFolha)
+    .reduce((acc, item) => ({
+      salarioBase: acc.salarioBase + item.salarioBase,
+      valorExtras: acc.valorExtras + item.valorExtras,
+      totalAdicionais: acc.totalAdicionais + item.totalAdicionais,
+      salarioBruto: acc.salarioBruto + item.salarioBruto,
+      totalDescontos: acc.totalDescontos + item.totalDescontos,
+      salarioLiquido: acc.salarioLiquido + item.salarioLiquido
+    }), {
+      salarioBase: 0,
+      valorExtras: 0,
+      totalAdicionais: 0,
+      salarioBruto: 0,
+      totalDescontos: 0,
+      salarioLiquido: 0
+    });
+
+  document.getElementById("folha-total-base").textContent = formatarValor(totais.salarioBase);
+  document.getElementById("folha-total-extras").textContent = formatarValor(totais.valorExtras);
+  document.getElementById("folha-total-bruto").textContent = formatarValor(totais.salarioBruto);
+  document.getElementById("folha-total-descontos-geral").textContent = formatarValor(totais.totalDescontos);
+  document.getElementById("folha-total-liquido").textContent = formatarValor(totais.salarioLiquido);
+}
+
+async function renderizarHistoricoFolha() {
+  const container = document.getElementById("historico-folha-container");
+  if (!container) return;
+
+  const folhas = await carregarFolhasPagamento();
+
+  if (!folhas.length) {
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = `
+    <section class="panel-box">
+      <div class="table-toolbar">
+        <div>
+          <h3 style="margin:0;">Historico de folhas</h3>
+          <span>${folhas.length} folha(s) gerada(s)</span>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Periodo</th>
+              <th>Pagamento</th>
+              <th>Motoristas</th>
+              <th>Bruto</th>
+              <th>Descontos</th>
+              <th>Liquido</th>
+              <th>Lancamento</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${folhas.slice(0, 8).map((folha) => `
+              <tr>
+                <td>${folha.periodo}</td>
+                <td>${formatarDataCurta(folha.data_pagamento)}</td>
+                <td>${(folha.itens || []).length}</td>
+                <td>${formatarValor(folha.totais?.salario_bruto || 0)}</td>
+                <td>${formatarValor(folha.totais?.total_descontos || 0)}</td>
+                <td class="positive">${formatarValor(folha.totais?.salario_liquido || 0)}</td>
+                <td>${folha.lancamento_id ? `#${folha.lancamento_id}` : "-"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+async function abrirTelaFolhaPagamento() {
+  const container = document.getElementById("folha-pagamento-container");
+  if (!container) return;
+
+  const motoristas = await carregarMotoristas();
+
+  if (!motoristas.length) {
+    container.innerHTML = `<div class="panel-box"><p>Nenhum motorista cadastrado para gerar folha.</p></div>`;
+    return;
+  }
+
+  const hoje = new Date();
+  const periodo = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+  const dataPagamento = hoje.toISOString().slice(0, 10);
+
+  container.innerHTML = `
+    <section class="panel-box">
+      <div class="table-toolbar">
+        <div>
+          <h3 style="margin:0;">Lancamento de folha de pagamento</h3>
+          <span>Informe horas, adicionais e descontos para calcular o salario de cada motorista.</span>
+        </div>
+        <button class="ghost-btn" id="btn-fechar-folha" type="button">Fechar</button>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:18px;">
+        <div class="field">
+          <label>Periodo</label>
+          <input id="folha-periodo" type="month" value="${periodo}" />
+        </div>
+        <div class="field">
+          <label>Data de pagamento</label>
+          <input id="folha-data-pagamento" type="date" value="${dataPagamento}" />
+        </div>
+        <div class="field full">
+          <label>Descricao</label>
+          <input id="folha-descricao" value="Folha de pagamento" />
+        </div>
+      </div>
+
+      <div class="kpi-grid" style="margin-bottom:18px;">
+        <div class="kpi-card"><div class="kpi-label">Salario base</div><div class="kpi-value" id="folha-total-base">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Horas extras</div><div class="kpi-value" id="folha-total-extras">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Bruto</div><div class="kpi-value" id="folha-total-bruto">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Descontos</div><div class="kpi-value negative" id="folha-total-descontos-geral">R$ 0,00</div></div>
+        <div class="kpi-card"><div class="kpi-label">Liquido</div><div class="kpi-value positive" id="folha-total-liquido">R$ 0,00</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Motorista</th>
+              <th>Horas</th>
+              <th>R$/h</th>
+              <th>Extras</th>
+              <th>R$/extra</th>
+              <th>Adic.</th>
+              <th>Bonus</th>
+              <th>INSS</th>
+              <th>Vale</th>
+              <th>Adiant.</th>
+              <th>Outros desc.</th>
+              <th>Base</th>
+              <th>Bruto</th>
+              <th>Descontos</th>
+              <th>Liquido</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${motoristas.map((motorista) => `
+              <tr data-folha-motorista-id="${motorista.id}">
+                <td>${motorista.nome}</td>
+                <td><input class="folha-horas-normais" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-valor-hora" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-horas-extras" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-adicional-noturno" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-bonus" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-desconto-inss" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-desconto-vale" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-outros-descontos" type="number" min="0" step="0.01" value="0" /></td>
+                <td class="folha-salario-base">R$ 0,00</td>
+                <td class="folha-salario-bruto">R$ 0,00</td>
+                <td class="folha-total-descontos">R$ 0,00</td>
+                <td class="folha-salario-liquido positive">R$ 0,00</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="btn-row" style="margin-top:18px;">
+        <button class="primary-btn" id="btn-salvar-folha" type="button">Gerar folha e lancamento</button>
+        <button class="ghost-btn" id="btn-recalcular-folha" type="button">Recalcular</button>
+      </div>
+      <p id="mensagem-folha" class="mensagem"></p>
+    </section>
+  `;
+
+  container.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("input", atualizarTotaisFolha);
+  });
+
+  document.getElementById("btn-fechar-folha").onclick = () => {
+    container.innerHTML = "";
+  };
+
+  document.getElementById("btn-recalcular-folha").onclick = atualizarTotaisFolha;
+
+  document.getElementById("btn-salvar-folha").onclick = async () => {
+    const mensagem = document.getElementById("mensagem-folha");
+    const itens = Array.from(document.querySelectorAll("[data-folha-motorista-id]")).map((row) => ({
+      motorista_id: Number(row.dataset.folhaMotoristaId),
+      horas_normais: normalizarNumero(row.querySelector(".folha-horas-normais").value),
+      valor_hora: normalizarNumero(row.querySelector(".folha-valor-hora").value),
+      horas_extras: normalizarNumero(row.querySelector(".folha-horas-extras").value),
+      valor_hora_extra: normalizarNumero(row.querySelector(".folha-valor-hora-extra").value),
+      adicional_noturno: normalizarNumero(row.querySelector(".folha-adicional-noturno").value),
+      bonus: normalizarNumero(row.querySelector(".folha-bonus").value),
+      desconto_inss: normalizarNumero(row.querySelector(".folha-desconto-inss").value),
+      desconto_vale: normalizarNumero(row.querySelector(".folha-desconto-vale").value),
+      desconto_adiantamento: normalizarNumero(row.querySelector(".folha-desconto-adiantamento").value),
+      outros_descontos: normalizarNumero(row.querySelector(".folha-outros-descontos").value),
+      observacao: ""
+    })).filter((item) => (
+      item.horas_normais > 0 ||
+      item.horas_extras > 0 ||
+      item.bonus > 0 ||
+      item.adicional_noturno > 0 ||
+      item.desconto_inss > 0 ||
+      item.desconto_vale > 0 ||
+      item.desconto_adiantamento > 0 ||
+      item.outros_descontos > 0
+    ));
+
+    if (!itens.length) {
+      mensagem.textContent = "Preencha ao menos uma linha da folha.";
+      return;
+    }
+
+    try {
+      const folha = await apiSend("/folha-pagamento", "POST", {
+        periodo: document.getElementById("folha-periodo").value,
+        data_pagamento: document.getElementById("folha-data-pagamento").value,
+        descricao: document.getElementById("folha-descricao").value,
+        gerar_lancamento: true,
+        itens
+      });
+      mensagem.textContent = `Folha gerada com liquido de ${formatarValor(folha.totais.salario_liquido)}.`;
+      mostrarToast("Folha de pagamento gerada.", "success");
+      await renderizarHistoricoFolha();
+    } catch (erro) {
+      mensagem.textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
+  };
+
+  atualizarTotaisFolha();
+}
 
 // =========================================================
 // MODULO DE PLANO DE CONTAS
@@ -3311,7 +3583,10 @@ async function loadPage(pageKey) {
         abrirFormMotorista();
       };
 
+      document.getElementById("btn-folha-pagamento").onclick = abrirTelaFolhaPagamento;
+
       await renderizarMotoristas();
+      await renderizarHistoricoFolha();
     }
   } catch (erro) {
     pageContent.innerHTML = `

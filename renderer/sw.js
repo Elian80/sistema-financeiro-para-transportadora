@@ -1,4 +1,4 @@
-const CACHE_NAME = "financeiro-pwa-v18";
+const CACHE_NAME = "financeiro-pwa-v19";
 
 const APP_SHELL = [
   "/",
@@ -38,7 +38,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (["/lancamentos", "/veiculos", "/motoristas", "/classificacoes", "/plano-contas", "/contas-receber", "/relatorios", "/ativos", "/passivos", "/estoque"].some((path) => url.pathname.startsWith(path))) {
+  if (["/lancamentos", "/veiculos", "/motoristas", "/folha-pagamento", "/classificacoes", "/plano-contas", "/contas-receber", "/relatorios", "/ativos", "/passivos", "/estoque"].some((path) => url.pathname.startsWith(path))) {
     event.respondWith(fetch(request));
     return;
   }
