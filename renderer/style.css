@@ -1182,7 +1182,7 @@ body.sidebar-collapsed .nav-btn.active {
   width: 100%;
   color: #111;
   background: #fff;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   page-break-inside: avoid;
 }
 
@@ -1191,7 +1191,7 @@ body.sidebar-collapsed .nav-btn.active {
   border-collapse: collapse;
   table-layout: fixed;
   font-family: Arial, sans-serif;
-  font-size: 9px;
+  font-size: 7.5px;
   color: #111;
 }
 
@@ -1212,8 +1212,8 @@ body.sidebar-collapsed .nav-btn.active {
 
 .salary-slip-table td {
   border: 1px solid #111;
-  height: 15px;
-  padding: 1px 3px;
+  height: 12px;
+  padding: 0 2px;
   vertical-align: middle;
   background: #fff;
   overflow: hidden;
@@ -1225,12 +1225,12 @@ body.sidebar-collapsed .nav-btn.active {
 }
 
 .salary-slip-table tr.slip-spacer td {
-  height: 7px;
+  height: 4px;
 }
 
 .salary-slip-table .slip-declaration td {
-  height: 6px;
-  font-size: 7px;
+  height: 5px;
+  font-size: 6px;
   border-top: none;
   text-align: center;
 }
@@ -1246,13 +1246,13 @@ body.sidebar-collapsed .nav-btn.active {
 
 .slip-title {
   text-align: center;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
 }
 
 .slip-signature {
   text-align: center;
-  font-size: 8px;
+  font-size: 6.5px;
   vertical-align: top !important;
 }
 
@@ -1265,11 +1265,11 @@ body.sidebar-collapsed .nav-btn.active {
 }
 
 .slip-item-row td {
-  height: 15px;
+  height: 12px;
 }
 
 .slip-date-row td {
-  height: 15px;
+  height: 12px;
   text-align: center;
   font-weight: 700;
 }
@@ -1290,8 +1290,8 @@ body.sidebar-collapsed .nav-btn.active {
   border-left: none;
   border-right: none;
   border-bottom: none;
-  height: 14px;
-  font-size: 8px;
+  height: 10px;
+  font-size: 6.5px;
 }
 
 .receipt-grid {
@@ -1405,8 +1405,8 @@ body.sidebar-collapsed .nav-btn.active {
 
 @media print {
   @page {
-    size: A4 landscape;
-    margin: 6mm;
+    size: A4 portrait;
+    margin: 5mm;
   }
 
   body * {
@@ -1431,7 +1431,7 @@ body.sidebar-collapsed .nav-btn.active {
   .payroll-receipt {
     display: block !important;
     font-family: Arial, sans-serif;
-    font-size: 9px;
+    font-size: 7.5px;
     padding: 0 !important;
   }
 

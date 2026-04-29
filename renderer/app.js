@@ -1974,7 +1974,7 @@ function renderizarReciboPagamento(folha, item, motorista) {
   ].filter((linha) => linha.valor > 0);
 
   const linhas = [...proventos.map((linha) => ({ ...linha, tipo: "provento" })), ...descontos.map((linha) => ({ ...linha, tipo: "desconto" }))];
-  const linhasRecibo = [...linhas, ...Array.from({ length: Math.max(0, 16 - linhas.length) }).map(() => null)];
+  const linhasRecibo = [...linhas, ...Array.from({ length: Math.max(0, 8 - linhas.length) }).map(() => null)];
   const renderizarVia = (via, titulo) => `
     <section class="salary-slip-copy">
       <table class="salary-slip-table">
