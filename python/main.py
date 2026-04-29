@@ -591,14 +591,42 @@ def arredondar_moeda(valor: float) -> float:
     return round(float(valor or 0), 2)
 
 
+TABELA_INSS_2026 = [
+    (1621.00, 0.075),
+    (2902.84, 0.09),
+    (4354.27, 0.12),
+    (8475.55, 0.14),
+]
+
+
+def calcular_inss(base_calculo: float) -> float:
+    base = min(float(base_calculo or 0), TABELA_INSS_2026[-1][0])
+    contribuicao = 0
+    limite_anterior = 0
+
+    for limite, aliquota in TABELA_INSS_2026:
+        if base <= limite_anterior:
+            break
+        faixa = min(base, limite) - limite_anterior
+        contribuicao += faixa * aliquota
+        limite_anterior = limite
+
+    return arredondar_moeda(contribuicao)
+
+
 def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
     salario_contratual = float(item.salario_contratual or motorista.get("salario_base", 0) or 0)
     salario_base = salario_contratual if item.horas_normais > 0 else 0
     valor_extras = item.horas_extras * item.valor_hora_extra
     total_adicionais = item.adicional_noturno + item.bonus
     salario_bruto = salario_base + valor_extras + total_adicionais
+    base_inss = salario_bruto
+    desconto_inss = calcular_inss(base_inss)
+    base_fgts = salario_bruto
+    fgts = base_fgts * 0.08
+    base_irrf = max(salario_bruto - desconto_inss, 0)
     total_descontos = (
-        item.desconto_inss
+        desconto_inss
         + item.desconto_irrf
         + item.desconto_vale
         + item.desconto_adiantamento
@@ -615,7 +643,7 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
         "valor_hora_extra": item.valor_hora_extra,
         "adicional_noturno": item.adicional_noturno,
         "bonus": item.bonus,
-        "desconto_inss": item.desconto_inss,
+        "desconto_inss": desconto_inss,
         "desconto_irrf": item.desconto_irrf,
         "desconto_vale": item.desconto_vale,
         "desconto_adiantamento": item.desconto_adiantamento,
@@ -628,10 +656,10 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
         "total_descontos": arredondar_moeda(total_descontos),
         "salario_liquido": arredondar_moeda(salario_liquido),
         "salario_contratual": arredondar_moeda(salario_contratual),
-        "base_inss": arredondar_moeda(item.base_inss or salario_bruto),
-        "base_fgts": arredondar_moeda(item.base_fgts or salario_bruto),
-        "fgts": arredondar_moeda(item.fgts or (salario_bruto * 0.08)),
-        "base_irrf": arredondar_moeda(item.base_irrf or max(salario_bruto - item.desconto_inss, 0)),
+        "base_inss": arredondar_moeda(base_inss),
+        "base_fgts": arredondar_moeda(base_fgts),
+        "fgts": arredondar_moeda(fgts),
+        "base_irrf": arredondar_moeda(base_irrf),
     }
 
 

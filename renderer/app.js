@@ -20,6 +20,13 @@ const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
 const mobileMenuBtn = document.getElementById("mobile-menu-btn");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 
+const TABELA_INSS_2026 = [
+  { limite: 1621.00, aliquota: 0.075 },
+  { limite: 2902.84, aliquota: 0.09 },
+  { limite: 4354.27, aliquota: 0.12 },
+  { limite: 8475.55, aliquota: 0.14 },
+];
+
 function extrairMensagemErroApi(resultado, padrao = "Erro na operacao.") {
   const detalhe = resultado?.detail;
   if (Array.isArray(detalhe)) {
@@ -90,6 +97,22 @@ function sparklineSvg(pontos = "4,32 18,22 32,28 46,14 60,18 74,8 88,12") {
 function kpiTrend(valor, tipo = "positive") {
   const texto = valor || "+0.0%";
   return `<span class="kpi-trend ${tipo}">${texto}</span>`;
+}
+
+function calcularInssAutomatico(baseCalculo) {
+  const teto = TABELA_INSS_2026[TABELA_INSS_2026.length - 1].limite;
+  const base = Math.min(Math.max(normalizarNumero(baseCalculo), 0), teto);
+  let contribuicao = 0;
+  let limiteAnterior = 0;
+
+  TABELA_INSS_2026.forEach((faixa) => {
+    if (base <= limiteAnterior) return;
+    const valorFaixa = Math.min(base, faixa.limite) - limiteAnterior;
+    contribuicao += valorFaixa * faixa.aliquota;
+    limiteAnterior = faixa.limite;
+  });
+
+  return Math.round(contribuicao * 100) / 100;
 }
 
 const pages = {
@@ -1623,11 +1646,6 @@ function abrirFormMotorista(dadosMotorista = {}) {
         </div>
 
         <div class="field">
-          <label>INSS %</label>
-          <input id="m-inss-percentual" type="number" min="0" step="0.01" value="${dados.inss_percentual || 0}" />
-        </div>
-
-        <div class="field">
           <label>IRRF %</label>
           <input id="m-irrf-percentual" type="number" min="0" step="0.01" value="${dados.irrf_percentual || 0}" />
         </div>
@@ -1704,7 +1722,7 @@ function abrirFormMotorista(dadosMotorista = {}) {
       salario_base: normalizarNumero(document.getElementById("m-salario-base").value),
       carga_horaria_mensal: normalizarNumero(document.getElementById("m-carga-horaria").value) || 220,
       valor_hora_extra: normalizarNumero(document.getElementById("m-valor-hora-extra").value),
-      inss_percentual: normalizarNumero(document.getElementById("m-inss-percentual").value),
+      inss_percentual: 0,
       irrf_percentual: normalizarNumero(document.getElementById("m-irrf-percentual").value),
       vale_refeicao: normalizarNumero(document.getElementById("m-vale-refeicao").value),
       convenio_medico: normalizarNumero(document.getElementById("m-convenio-medico").value),
@@ -1766,7 +1784,6 @@ function calcularLinhaFolha(row) {
   const valorHoraExtra = normalizarNumero(row.querySelector(".folha-valor-hora-extra")?.value);
   const adicionalNoturno = normalizarNumero(row.querySelector(".folha-adicional-noturno")?.value);
   const bonus = normalizarNumero(row.querySelector(".folha-bonus")?.value);
-  const descontoInss = normalizarNumero(row.querySelector(".folha-desconto-inss")?.value);
   const descontoIrrf = normalizarNumero(row.querySelector(".folha-desconto-irrf")?.value);
   const descontoVale = normalizarNumero(row.querySelector(".folha-desconto-vale")?.value);
   const descontoAdiantamento = normalizarNumero(row.querySelector(".folha-desconto-adiantamento")?.value);
@@ -1776,15 +1793,22 @@ function calcularLinhaFolha(row) {
   const valorExtras = horasExtras * valorHoraExtra;
   const totalAdicionais = adicionalNoturno + bonus;
   const salarioBruto = salarioBase + valorExtras + totalAdicionais;
+  const descontoInss = calcularInssAutomatico(salarioBruto);
+  const fgts = Math.round(salarioBruto * 0.08 * 100) / 100;
   const totalDescontos = descontoInss + descontoIrrf + descontoVale + descontoAdiantamento + outrosDescontos;
   const salarioLiquido = Math.max(salarioBruto - totalDescontos, 0);
+  const campoInss = row.querySelector(".folha-desconto-inss");
+
+  if (campoInss) {
+    campoInss.value = descontoInss.toFixed(2);
+  }
 
   row.querySelector(".folha-salario-base").textContent = formatarValor(salarioBase);
   row.querySelector(".folha-salario-bruto").textContent = formatarValor(salarioBruto);
   row.querySelector(".folha-total-descontos").textContent = formatarValor(totalDescontos);
   row.querySelector(".folha-salario-liquido").textContent = formatarValor(salarioLiquido);
 
-  return { salarioBase, valorExtras, totalAdicionais, salarioBruto, totalDescontos, salarioLiquido };
+  return { salarioBase, valorExtras, totalAdicionais, salarioBruto, descontoInss, fgts, totalDescontos, salarioLiquido };
 }
 
 function atualizarTotaisFolha() {
@@ -1868,7 +1892,6 @@ async function renderizarHistoricoFolha() {
 
 function gerarDadosItemFolha(row) {
   const calculo = calcularLinhaFolha(row);
-  const descontoInss = normalizarNumero(row.querySelector(".folha-desconto-inss")?.value);
   return {
     motorista_id: Number(row.dataset.folhaMotoristaId),
     horas_normais: normalizarNumero(row.querySelector(".folha-horas-normais").value),
@@ -1877,7 +1900,7 @@ function gerarDadosItemFolha(row) {
     valor_hora_extra: normalizarNumero(row.querySelector(".folha-valor-hora-extra").value),
     adicional_noturno: normalizarNumero(row.querySelector(".folha-adicional-noturno").value),
     bonus: normalizarNumero(row.querySelector(".folha-bonus").value),
-    desconto_inss: descontoInss,
+    desconto_inss: calculo.descontoInss,
     desconto_irrf: normalizarNumero(row.querySelector(".folha-desconto-irrf")?.value),
     desconto_vale: normalizarNumero(row.querySelector(".folha-desconto-vale").value),
     desconto_adiantamento: normalizarNumero(row.querySelector(".folha-desconto-adiantamento").value),
@@ -1885,13 +1908,14 @@ function gerarDadosItemFolha(row) {
     salario_contratual: normalizarNumero(row.dataset.salarioContratual),
     base_inss: calculo.salarioBruto,
     base_fgts: calculo.salarioBruto,
-    fgts: calculo.salarioBruto * 0.08,
-    base_irrf: Math.max(calculo.salarioBruto - descontoInss, 0),
+    fgts: calculo.fgts,
+    base_irrf: Math.max(calculo.salarioBruto - calculo.descontoInss, 0),
     observacao: ""
   };
 }
 
 function renderizarReciboPagamento(folha, item, motorista) {
+  const percentualEfetivoInss = item.base_inss > 0 ? ((item.desconto_inss || 0) / item.base_inss) * 100 : 0;
   const proventos = [
     { codigo: "011", descricao: "Salario-Base", referencia: `${item.horas_normais || 0} h`, valor: item.salario_base || 0 },
     { codigo: "012", descricao: "Horas extras", referencia: `${item.horas_extras || 0} h`, valor: item.valor_extras || 0 },
@@ -1899,7 +1923,7 @@ function renderizarReciboPagamento(folha, item, motorista) {
   ].filter((linha) => linha.valor > 0);
 
   const descontos = [
-    { codigo: "310", descricao: "INSS", referencia: `${motorista.inss_percentual || 0}%`, valor: item.desconto_inss || 0 },
+    { codigo: "310", descricao: "INSS", referencia: percentualEfetivoInss ? `${percentualEfetivoInss.toFixed(2)}% efetivo` : "Automatico", valor: item.desconto_inss || 0 },
     { codigo: "311", descricao: "IRRF", referencia: `${motorista.irrf_percentual || 0}%`, valor: item.desconto_irrf || 0 },
     { codigo: "914", descricao: "Vale Refeicao", referencia: "", valor: item.desconto_vale || 0 },
     { codigo: "915", descricao: "Adiantamento", referencia: "", valor: item.desconto_adiantamento || 0 },
@@ -2083,7 +2107,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
               const salarioBase = normalizarNumero(motorista.salario_base);
               const cargaHoraria = normalizarNumero(motorista.carga_horaria_mensal) || 220;
               const valorHoraExtra = normalizarNumero(motorista.valor_hora_extra);
-              const descontoInss = salarioBase * (normalizarNumero(motorista.inss_percentual) / 100);
+              const descontoInss = calcularInssAutomatico(salarioBase);
               const baseIrrf = Math.max(salarioBase - descontoInss, 0);
               const descontoIrrf = baseIrrf * (normalizarNumero(motorista.irrf_percentual) / 100);
               const vale = normalizarNumero(motorista.vale_refeicao);
@@ -2097,7 +2121,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
                 <td><input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="${valorHoraExtra.toFixed(2)}" /></td>
                 <td><input class="folha-adicional-noturno" type="number" min="0" step="0.01" value="0" /></td>
                 <td><input class="folha-bonus" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-desconto-inss" type="number" min="0" step="0.01" value="${descontoInss.toFixed(2)}" /></td>
+                <td><input class="folha-desconto-inss" type="number" min="0" step="0.01" value="${descontoInss.toFixed(2)}" readonly /></td>
                 <td><input class="folha-desconto-irrf" type="number" min="0" step="0.01" value="${descontoIrrf.toFixed(2)}" /></td>
                 <td><input class="folha-desconto-vale" type="number" min="0" step="0.01" value="${vale.toFixed(2)}" /></td>
                 <td><input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></td>
