@@ -1622,3 +1622,268 @@ select:focus {
   }
 }
 
+/* Fluid responsive layer */
+:root {
+  --layout-gap: clamp(10px, 1.5vw, 20px);
+  --panel-pad: clamp(12px, 1.6vw, 22px);
+  --card-min: min(100%, 210px);
+  --form-min: min(100%, 260px);
+  --wide-card-min: min(100%, 360px);
+}
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.app-shell {
+  width: min(100%, 1920px);
+  margin: 0 auto;
+  padding: var(--layout-gap);
+  gap: var(--layout-gap);
+}
+
+.main-area,
+.page-content,
+.panel-box,
+.table-wrap {
+  min-width: 0;
+}
+
+.page-content {
+  width: 100%;
+}
+
+.panel-box,
+.kpi-card {
+  padding: var(--panel-pad);
+}
+
+.dashboard-grid,
+.kpi-grid,
+.vehicle-grid,
+.account-plan-grid {
+  grid-template-columns: repeat(auto-fit, minmax(var(--card-min), 1fr)) !important;
+  gap: var(--layout-gap);
+}
+
+.content-grid,
+.receivable-layout,
+.dashboard-layout {
+  grid-template-columns: repeat(auto-fit, minmax(var(--wide-card-min), 1fr)) !important;
+  gap: var(--layout-gap);
+}
+
+.report-charts {
+  grid-template-columns: repeat(auto-fit, minmax(var(--wide-card-min), 1fr)) !important;
+  gap: var(--layout-gap);
+}
+
+.form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(var(--form-min), 1fr));
+}
+
+.compact-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+
+.field.full {
+  grid-column: 1 / -1;
+}
+
+.table-toolbar,
+.btn-row,
+.topbar-actions {
+  min-width: 0;
+}
+
+.btn-row {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+.data-table {
+  min-width: 760px;
+}
+
+.receivable-table {
+  min-width: 1280px;
+}
+
+.report-charts canvas {
+  height: clamp(210px, 28vw, 320px) !important;
+  max-height: none;
+}
+
+.filter-popup-card,
+.modal-content {
+  width: min(100%, 980px);
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --card-min: min(100%, 240px);
+    --wide-card-min: min(100%, 440px);
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)) !important;
+  }
+
+  .content-grid,
+  .receivable-layout {
+    grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .topbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .topbar-search {
+    grid-column: 1 / -1;
+    order: 4;
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --card-min: min(100%, 180px);
+    --wide-card-min: min(100%, 100%);
+    --form-min: min(100%, 220px);
+  }
+
+  .app-shell {
+    display: block;
+  }
+
+  .main-area {
+    width: 100%;
+  }
+
+  .topbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+
+  .page-heading {
+    min-width: 0;
+  }
+
+  .page-heading h2,
+  .page-heading p {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --layout-gap: 10px;
+    --panel-pad: 12px;
+  }
+
+  .topbar {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .topbar-actions,
+  .topbar-search {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .topbar-actions {
+    justify-content: space-between;
+  }
+
+  .topbar-actions .ghost-btn {
+    flex: 1 1 92px;
+  }
+
+  .table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .table-toolbar > div,
+  .table-toolbar .btn-row,
+  .btn-row > button {
+    width: 100%;
+  }
+
+  .btn-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  .kpi-card {
+    min-height: 126px;
+  }
+
+  .kpi-value {
+    font-size: clamp(22px, 8vw, 28px);
+  }
+
+  .data-table {
+    min-width: 680px;
+  }
+
+  .receivable-table {
+    min-width: 1120px;
+  }
+
+  .filter-popup {
+    padding: 8px;
+  }
+
+  .filter-popup-card {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    padding: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar,
+  .panel-box,
+  .kpi-card {
+    border-radius: 14px;
+  }
+
+  .page-heading h2 {
+    font-size: 20px;
+  }
+
+  .page-heading p,
+  .topbar-search {
+    font-size: 12px;
+  }
+
+  .icon-btn,
+  .user-avatar,
+  .sidebar-toggle,
+  .mobile-menu-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  input,
+  select {
+    padding: 12px;
+  }
+}
+
