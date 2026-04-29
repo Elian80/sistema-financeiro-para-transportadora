@@ -1534,6 +1534,8 @@ async function renderizarMotoristas() {
       <thead>
         <tr>
           <th>Nome</th>
+          <th>Cargo</th>
+          <th>Salario base</th>
           <th>Telefone</th>
           <th>CNH</th>
           <th>Acoes</th>
@@ -1544,10 +1546,13 @@ async function renderizarMotoristas() {
         ${motoristas.map(m => `
           <tr>
             <td>${m.nome}</td>
+            <td>${m.cargo || "-"}</td>
+            <td>${formatarValor(m.salario_base || 0)}</td>
             <td>${m.telefone}</td>
             <td>${m.cnh}</td>
             <td>
               <div class="action-row">
+                <button class="small-btn" onclick="abrirFolhaMotorista(${m.id})">Folha</button>
                 <button class="small-btn edit-btn" onclick="editarMotoristaPorId(${m.id})">Editar</button>
                 <button class="small-btn delete-btn" onclick="excluirMotorista(${m.id})">Excluir</button>
               </div>
@@ -1559,12 +1564,13 @@ async function renderizarMotoristas() {
   `;
 }
 
-function abrirFormMotorista(nome = "", telefone = "", cnh = "") {
+function abrirFormMotorista(dadosMotorista = {}) {
   const container = document.getElementById("form-motorista-container");
   if (!container) return;
 
   const titulo = editandoMotoristaId ? "Alterar motorista" : "Novo motorista";
   const textoBotao = editandoMotoristaId ? "Salvar alteracao" : "Salvar";
+  const dados = dadosMotorista || {};
 
   container.innerHTML = `
     <div class="panel-box">
@@ -1573,17 +1579,107 @@ function abrirFormMotorista(nome = "", telefone = "", cnh = "") {
       <div class="form-grid">
         <div class="field">
           <label>Nome</label>
-          <input id="m-nome" value="${nome}" />
+          <input id="m-nome" value="${dados.nome || ""}" />
         </div>
 
         <div class="field">
           <label>Telefone</label>
-          <input id="m-telefone" value="${telefone}" />
+          <input id="m-telefone" value="${dados.telefone || ""}" />
         </div>
 
-        <div class="field full">
+        <div class="field">
           <label>CNH</label>
-          <input id="m-cnh" value="${cnh}" />
+          <input id="m-cnh" value="${dados.cnh || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Cargo</label>
+          <input id="m-cargo" value="${dados.cargo || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Admissao</label>
+          <input id="m-admissao" type="date" value="${dados.admissao || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Lotacao</label>
+          <input id="m-lotacao" value="${dados.lotacao || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Salario base</label>
+          <input id="m-salario-base" type="number" min="0" step="0.01" value="${dados.salario_base || 0}" />
+        </div>
+
+        <div class="field">
+          <label>Carga horaria mensal</label>
+          <input id="m-carga-horaria" type="number" min="0" step="0.01" value="${dados.carga_horaria_mensal || 220}" />
+        </div>
+
+        <div class="field">
+          <label>Valor hora extra</label>
+          <input id="m-valor-hora-extra" type="number" min="0" step="0.01" value="${dados.valor_hora_extra || 0}" />
+        </div>
+
+        <div class="field">
+          <label>INSS %</label>
+          <input id="m-inss-percentual" type="number" min="0" step="0.01" value="${dados.inss_percentual || 0}" />
+        </div>
+
+        <div class="field">
+          <label>IRRF %</label>
+          <input id="m-irrf-percentual" type="number" min="0" step="0.01" value="${dados.irrf_percentual || 0}" />
+        </div>
+
+        <div class="field">
+          <label>Vale refeicao</label>
+          <input id="m-vale-refeicao" type="number" min="0" step="0.01" value="${dados.vale_refeicao || 0}" />
+        </div>
+
+        <div class="field">
+          <label>Convenio medico</label>
+          <input id="m-convenio-medico" type="number" min="0" step="0.01" value="${dados.convenio_medico || 0}" />
+        </div>
+
+        <div class="field">
+          <label>Outros descontos padrao</label>
+          <input id="m-outros-descontos-padrao" type="number" min="0" step="0.01" value="${dados.outros_descontos_padrao || 0}" />
+        </div>
+
+        <div class="field">
+          <label>PIS</label>
+          <input id="m-pis" value="${dados.pis || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Banco</label>
+          <input id="m-banco" value="${dados.banco || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Agencia</label>
+          <input id="m-agencia" value="${dados.agencia || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Conta</label>
+          <input id="m-conta" value="${dados.conta || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Tipo de conta</label>
+          <input id="m-tipo-conta" value="${dados.tipo_conta || ""}" />
+        </div>
+
+        <div class="field">
+          <label>Empregador</label>
+          <input id="m-empregador" value="${dados.empregador || "ADELIA TRANSPORTES"}" />
+        </div>
+
+        <div class="field">
+          <label>CNPJ do empregador</label>
+          <input id="m-empregador-cnpj" value="${dados.empregador_cnpj || ""}" />
         </div>
 
         <div class="field full btn-row">
@@ -1601,7 +1697,25 @@ function abrirFormMotorista(nome = "", telefone = "", cnh = "") {
     const payload = {
       nome: document.getElementById("m-nome").value,
       telefone: document.getElementById("m-telefone").value,
-      cnh: document.getElementById("m-cnh").value
+      cnh: document.getElementById("m-cnh").value,
+      cargo: document.getElementById("m-cargo").value,
+      admissao: document.getElementById("m-admissao").value || null,
+      lotacao: document.getElementById("m-lotacao").value,
+      salario_base: normalizarNumero(document.getElementById("m-salario-base").value),
+      carga_horaria_mensal: normalizarNumero(document.getElementById("m-carga-horaria").value) || 220,
+      valor_hora_extra: normalizarNumero(document.getElementById("m-valor-hora-extra").value),
+      inss_percentual: normalizarNumero(document.getElementById("m-inss-percentual").value),
+      irrf_percentual: normalizarNumero(document.getElementById("m-irrf-percentual").value),
+      vale_refeicao: normalizarNumero(document.getElementById("m-vale-refeicao").value),
+      convenio_medico: normalizarNumero(document.getElementById("m-convenio-medico").value),
+      outros_descontos_padrao: normalizarNumero(document.getElementById("m-outros-descontos-padrao").value),
+      pis: document.getElementById("m-pis").value,
+      banco: document.getElementById("m-banco").value,
+      agencia: document.getElementById("m-agencia").value,
+      conta: document.getElementById("m-conta").value,
+      tipo_conta: document.getElementById("m-tipo-conta").value,
+      empregador: document.getElementById("m-empregador").value,
+      empregador_cnpj: document.getElementById("m-empregador-cnpj").value
     };
 
     const url = editandoMotoristaId ? `/motoristas/${editandoMotoristaId}` : "/motoristas";
@@ -1632,11 +1746,7 @@ window.editarMotoristaPorId = async (id) => {
 
   editandoMotoristaId = id;
 
-  abrirFormMotorista(
-    motorista.nome || "",
-    motorista.telefone || "",
-    motorista.cnh || ""
-  );
+  abrirFormMotorista(motorista);
 };
 
 window.excluirMotorista = async (id) => {
@@ -1658,6 +1768,7 @@ function calcularLinhaFolha(row) {
   const adicionalNoturno = normalizarNumero(row.querySelector(".folha-adicional-noturno")?.value);
   const bonus = normalizarNumero(row.querySelector(".folha-bonus")?.value);
   const descontoInss = normalizarNumero(row.querySelector(".folha-desconto-inss")?.value);
+  const descontoIrrf = normalizarNumero(row.querySelector(".folha-desconto-irrf")?.value);
   const descontoVale = normalizarNumero(row.querySelector(".folha-desconto-vale")?.value);
   const descontoAdiantamento = normalizarNumero(row.querySelector(".folha-desconto-adiantamento")?.value);
   const outrosDescontos = normalizarNumero(row.querySelector(".folha-outros-descontos")?.value);
@@ -1665,7 +1776,7 @@ function calcularLinhaFolha(row) {
   const valorExtras = horasExtras * valorHoraExtra;
   const totalAdicionais = adicionalNoturno + bonus;
   const salarioBruto = salarioBase + valorExtras + totalAdicionais;
-  const totalDescontos = descontoInss + descontoVale + descontoAdiantamento + outrosDescontos;
+  const totalDescontos = descontoInss + descontoIrrf + descontoVale + descontoAdiantamento + outrosDescontos;
   const salarioLiquido = Math.max(salarioBruto - totalDescontos, 0);
 
   row.querySelector(".folha-salario-base").textContent = formatarValor(salarioBase);
@@ -1732,6 +1843,7 @@ async function renderizarHistoricoFolha() {
               <th>Descontos</th>
               <th>Liquido</th>
               <th>Lancamento</th>
+              <th>Acoes</th>
             </tr>
           </thead>
           <tbody>
@@ -1744,6 +1856,7 @@ async function renderizarHistoricoFolha() {
                 <td>${formatarValor(folha.totais?.total_descontos || 0)}</td>
                 <td class="positive">${formatarValor(folha.totais?.salario_liquido || 0)}</td>
                 <td>${folha.lancamento_id ? `#${folha.lancamento_id}` : "-"}</td>
+                <td><button class="small-btn" onclick="imprimirFolhaSalva(${folha.id})">Imprimir</button></td>
               </tr>
             `).join("")}
           </tbody>
@@ -1753,11 +1866,160 @@ async function renderizarHistoricoFolha() {
   `;
 }
 
-async function abrirTelaFolhaPagamento() {
+function valorPadraoHora(motorista) {
+  const salarioBase = normalizarNumero(motorista.salario_base);
+  const cargaHoraria = normalizarNumero(motorista.carga_horaria_mensal) || 220;
+  return cargaHoraria > 0 ? salarioBase / cargaHoraria : 0;
+}
+
+function gerarDadosItemFolha(row) {
+  const salarioBruto = calcularLinhaFolha(row).salarioBruto;
+  const descontoInss = normalizarNumero(row.querySelector(".folha-desconto-inss")?.value);
+  return {
+    motorista_id: Number(row.dataset.folhaMotoristaId),
+    horas_normais: normalizarNumero(row.querySelector(".folha-horas-normais").value),
+    valor_hora: normalizarNumero(row.querySelector(".folha-valor-hora").value),
+    horas_extras: normalizarNumero(row.querySelector(".folha-horas-extras").value),
+    valor_hora_extra: normalizarNumero(row.querySelector(".folha-valor-hora-extra").value),
+    adicional_noturno: normalizarNumero(row.querySelector(".folha-adicional-noturno").value),
+    bonus: normalizarNumero(row.querySelector(".folha-bonus").value),
+    desconto_inss: descontoInss,
+    desconto_irrf: normalizarNumero(row.querySelector(".folha-desconto-irrf")?.value),
+    desconto_vale: normalizarNumero(row.querySelector(".folha-desconto-vale").value),
+    desconto_adiantamento: normalizarNumero(row.querySelector(".folha-desconto-adiantamento").value),
+    outros_descontos: normalizarNumero(row.querySelector(".folha-outros-descontos").value),
+    salario_contratual: normalizarNumero(row.dataset.salarioContratual),
+    base_inss: salarioBruto,
+    base_fgts: salarioBruto,
+    fgts: salarioBruto * 0.08,
+    base_irrf: Math.max(salarioBruto - descontoInss, 0),
+    observacao: ""
+  };
+}
+
+function renderizarReciboPagamento(folha, item, motorista) {
+  const proventos = [
+    { codigo: "011", descricao: "Salario-Base", referencia: `${item.horas_normais || 0} h`, valor: item.salario_base || 0 },
+    { codigo: "012", descricao: "Horas extras", referencia: `${item.horas_extras || 0} h`, valor: item.valor_extras || 0 },
+    { codigo: "013", descricao: "Adicionais/Bonus", referencia: "", valor: item.total_adicionais || 0 },
+  ].filter((linha) => linha.valor > 0);
+
+  const descontos = [
+    { codigo: "310", descricao: "INSS", referencia: `${motorista.inss_percentual || 0}%`, valor: item.desconto_inss || 0 },
+    { codigo: "311", descricao: "IRRF", referencia: `${motorista.irrf_percentual || 0}%`, valor: item.desconto_irrf || 0 },
+    { codigo: "914", descricao: "Vale Refeicao", referencia: "", valor: item.desconto_vale || 0 },
+    { codigo: "915", descricao: "Adiantamento", referencia: "", valor: item.desconto_adiantamento || 0 },
+    { codigo: "924", descricao: "Convenio medico / outros", referencia: "", valor: item.outros_descontos || 0 },
+  ].filter((linha) => linha.valor > 0);
+
+  const linhas = [...proventos.map((linha) => ({ ...linha, tipo: "provento" })), ...descontos.map((linha) => ({ ...linha, tipo: "desconto" }))];
+
+  return `
+    <section id="recibo-folha-print" class="payroll-receipt print-area">
+      <div class="receipt-grid receipt-header">
+        <div class="receipt-title">
+          <h2>Recibo de Pagamento</h2>
+          <p>( Folha de Pagamento )</p>
+        </div>
+        <div><span>Data e Assinatura</span><strong>____ / ____ / ______</strong></div>
+      </div>
+
+      <div class="receipt-grid receipt-four">
+        <div><span>Empregador</span><strong>${motorista.empregador || "ADELIA TRANSPORTES"}</strong></div>
+        <div><span>Inscricao CNPJ</span><strong>${motorista.empregador_cnpj || ""}</strong></div>
+        <div><span>Admissao</span><strong>${formatarDataCurta(motorista.admissao || "")}</strong></div>
+        <div><span>Competencia</span><strong>${folha.periodo || ""}</strong></div>
+      </div>
+
+      <div class="receipt-grid receipt-three">
+        <div><span>Empregado</span><strong>${item.motorista_nome || motorista.nome || ""}</strong></div>
+        <div><span>Cargo</span><strong>${motorista.cargo || ""}</strong></div>
+        <div><span>Lotacao</span><strong>${motorista.lotacao || ""}</strong></div>
+      </div>
+
+      <div class="receipt-grid receipt-five">
+        <div><span>PIS</span><strong>${motorista.pis || ""}</strong></div>
+        <div><span>Banco</span><strong>${motorista.banco || ""}</strong></div>
+        <div><span>Agencia</span><strong>${motorista.agencia || ""}</strong></div>
+        <div><span>Conta</span><strong>${motorista.conta || ""}</strong></div>
+        <div><span>Tipo de Conta</span><strong>${motorista.tipo_conta || ""}</strong></div>
+      </div>
+
+      <div class="receipt-section-title">Discriminacao das Verbas</div>
+      <table class="receipt-table">
+        <thead>
+          <tr>
+            <th>Cod.</th>
+            <th>Descricao</th>
+            <th>Referencia</th>
+            <th>Provento</th>
+            <th>Desconto</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${linhas.map((linha) => `
+            <tr>
+              <td>${linha.codigo}</td>
+              <td>${linha.descricao}</td>
+              <td>${linha.referencia}</td>
+              <td>${linha.tipo === "provento" ? formatarValor(linha.valor) : ""}</td>
+              <td>${linha.tipo === "desconto" ? formatarValor(linha.valor) : ""}</td>
+            </tr>
+          `).join("")}
+          ${Array.from({ length: Math.max(5, 10 - linhas.length) }).map(() => `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>`).join("")}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3"></td>
+            <td><span>Total de Proventos</span><strong>${formatarValor(item.salario_bruto || 0)}</strong></td>
+            <td><span>Total de Descontos</span><strong>${formatarValor(item.total_descontos || 0)}</strong></td>
+          </tr>
+          <tr>
+            <td colspan="4"></td>
+            <td class="receipt-net"><span>Liquido a Receber</span><strong>${formatarValor(item.salario_liquido || 0)}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="receipt-grid receipt-footer">
+        <div><span>Salario Contratual</span><strong>${formatarValor(item.salario_contratual || motorista.salario_base || 0)}</strong></div>
+        <div><span>Base de Calculo do INSS</span><strong>${formatarValor(item.base_inss || 0)}</strong></div>
+        <div><span>Base de Calculo do FGTS</span><strong>${formatarValor(item.base_fgts || 0)}</strong></div>
+        <div><span>FGTS</span><strong>${formatarValor(item.fgts || 0)}</strong></div>
+        <div><span>Base de Calculo do IRRF</span><strong>${formatarValor(item.base_irrf || 0)}</strong></div>
+      </div>
+    </section>
+  `;
+}
+
+async function imprimirReciboFolha(folha, item) {
+  const motoristas = await carregarMotoristas();
+  const motorista = motoristas.find((registro) => registro.id === item.motorista_id) || {};
+  const container = document.getElementById("recibo-folha-container") || document.body.appendChild(document.createElement("div"));
+  container.id = "recibo-folha-container";
+  container.innerHTML = renderizarReciboPagamento(folha, item, motorista);
+  window.print();
+}
+
+window.imprimirFolhaSalva = async (folhaId) => {
+  const folhas = await carregarFolhasPagamento();
+  const folha = folhas.find((item) => item.id === folhaId);
+  if (!folha || !(folha.itens || []).length) return;
+  await imprimirReciboFolha(folha, folha.itens[0]);
+};
+
+window.abrirFolhaMotorista = async (motoristaId) => {
+  await abrirTelaFolhaPagamento(motoristaId);
+};
+
+async function abrirTelaFolhaPagamento(motoristaId = null) {
   const container = document.getElementById("folha-pagamento-container");
   if (!container) return;
 
-  const motoristas = await carregarMotoristas();
+  const todosMotoristas = await carregarMotoristas();
+  const motoristas = motoristaId
+    ? todosMotoristas.filter((motorista) => motorista.id === motoristaId)
+    : todosMotoristas;
 
   if (!motoristas.length) {
     container.innerHTML = `<div class="panel-box"><p>Nenhum motorista cadastrado para gerar folha.</p></div>`;
@@ -1813,6 +2075,7 @@ async function abrirTelaFolhaPagamento() {
               <th>Adic.</th>
               <th>Bonus</th>
               <th>INSS</th>
+              <th>IRRF</th>
               <th>Vale</th>
               <th>Adiant.</th>
               <th>Outros desc.</th>
@@ -1823,25 +2086,37 @@ async function abrirTelaFolhaPagamento() {
             </tr>
           </thead>
           <tbody>
-            ${motoristas.map((motorista) => `
-              <tr data-folha-motorista-id="${motorista.id}">
+            ${motoristas.map((motorista) => {
+              const salarioBase = normalizarNumero(motorista.salario_base);
+              const cargaHoraria = normalizarNumero(motorista.carga_horaria_mensal) || 220;
+              const valorHora = valorPadraoHora(motorista);
+              const valorHoraExtra = normalizarNumero(motorista.valor_hora_extra) || (valorHora * 1.5);
+              const descontoInss = salarioBase * (normalizarNumero(motorista.inss_percentual) / 100);
+              const baseIrrf = Math.max(salarioBase - descontoInss, 0);
+              const descontoIrrf = baseIrrf * (normalizarNumero(motorista.irrf_percentual) / 100);
+              const vale = normalizarNumero(motorista.vale_refeicao);
+              const convenio = normalizarNumero(motorista.convenio_medico);
+              const outros = normalizarNumero(motorista.outros_descontos_padrao) + convenio;
+              return `
+              <tr data-folha-motorista-id="${motorista.id}" data-salario-contratual="${salarioBase}">
                 <td>${motorista.nome}</td>
-                <td><input class="folha-horas-normais" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-valor-hora" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-horas-normais" type="number" min="0" step="0.01" value="${cargaHoraria}" /></td>
+                <td><input class="folha-valor-hora" type="number" min="0" step="0.01" value="${valorHora.toFixed(2)}" /></td>
                 <td><input class="folha-horas-extras" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="${valorHoraExtra.toFixed(2)}" /></td>
                 <td><input class="folha-adicional-noturno" type="number" min="0" step="0.01" value="0" /></td>
                 <td><input class="folha-bonus" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-desconto-inss" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-desconto-vale" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-desconto-inss" type="number" min="0" step="0.01" value="${descontoInss.toFixed(2)}" /></td>
+                <td><input class="folha-desconto-irrf" type="number" min="0" step="0.01" value="${descontoIrrf.toFixed(2)}" /></td>
+                <td><input class="folha-desconto-vale" type="number" min="0" step="0.01" value="${vale.toFixed(2)}" /></td>
                 <td><input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-outros-descontos" type="number" min="0" step="0.01" value="0" /></td>
+                <td><input class="folha-outros-descontos" type="number" min="0" step="0.01" value="${outros.toFixed(2)}" /></td>
                 <td class="folha-salario-base">R$ 0,00</td>
                 <td class="folha-salario-bruto">R$ 0,00</td>
                 <td class="folha-total-descontos">R$ 0,00</td>
                 <td class="folha-salario-liquido positive">R$ 0,00</td>
               </tr>
-            `).join("")}
+            `;}).join("")}
           </tbody>
         </table>
       </div>
@@ -1866,25 +2141,13 @@ async function abrirTelaFolhaPagamento() {
 
   document.getElementById("btn-salvar-folha").onclick = async () => {
     const mensagem = document.getElementById("mensagem-folha");
-    const itens = Array.from(document.querySelectorAll("[data-folha-motorista-id]")).map((row) => ({
-      motorista_id: Number(row.dataset.folhaMotoristaId),
-      horas_normais: normalizarNumero(row.querySelector(".folha-horas-normais").value),
-      valor_hora: normalizarNumero(row.querySelector(".folha-valor-hora").value),
-      horas_extras: normalizarNumero(row.querySelector(".folha-horas-extras").value),
-      valor_hora_extra: normalizarNumero(row.querySelector(".folha-valor-hora-extra").value),
-      adicional_noturno: normalizarNumero(row.querySelector(".folha-adicional-noturno").value),
-      bonus: normalizarNumero(row.querySelector(".folha-bonus").value),
-      desconto_inss: normalizarNumero(row.querySelector(".folha-desconto-inss").value),
-      desconto_vale: normalizarNumero(row.querySelector(".folha-desconto-vale").value),
-      desconto_adiantamento: normalizarNumero(row.querySelector(".folha-desconto-adiantamento").value),
-      outros_descontos: normalizarNumero(row.querySelector(".folha-outros-descontos").value),
-      observacao: ""
-    })).filter((item) => (
+    const itens = Array.from(document.querySelectorAll("[data-folha-motorista-id]")).map(gerarDadosItemFolha).filter((item) => (
       item.horas_normais > 0 ||
       item.horas_extras > 0 ||
       item.bonus > 0 ||
       item.adicional_noturno > 0 ||
       item.desconto_inss > 0 ||
+      item.desconto_irrf > 0 ||
       item.desconto_vale > 0 ||
       item.desconto_adiantamento > 0 ||
       item.outros_descontos > 0
@@ -1906,6 +2169,9 @@ async function abrirTelaFolhaPagamento() {
       mensagem.textContent = `Folha gerada com liquido de ${formatarValor(folha.totais.salario_liquido)}.`;
       mostrarToast("Folha de pagamento gerada.", "success");
       await renderizarHistoricoFolha();
+      if (folha.itens?.length === 1) {
+        await imprimirReciboFolha(folha, folha.itens[0]);
+      }
     } catch (erro) {
       mensagem.textContent = erro.message;
       mostrarToast(erro.message, "error");

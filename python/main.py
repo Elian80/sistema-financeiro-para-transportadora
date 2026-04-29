@@ -274,11 +274,46 @@ class MotoristaIn(BaseModel):
     nome: str = Field(..., min_length=1)
     telefone: str = ""
     cnh: str = ""
+    cargo: str = ""
+    admissao: Optional[date] = None
+    lotacao: str = ""
+    pis: str = ""
+    banco: str = ""
+    agencia: str = ""
+    conta: str = ""
+    tipo_conta: str = ""
+    empregador: str = ""
+    empregador_cnpj: str = ""
+    salario_base: float = 0
+    carga_horaria_mensal: float = 220
+    valor_hora_extra: float = 0
+    inss_percentual: float = 0
+    irrf_percentual: float = 0
+    vale_refeicao: float = 0
+    convenio_medico: float = 0
+    outros_descontos_padrao: float = 0
 
-    @field_validator("nome", "telefone", "cnh")
+    @field_validator("nome", "telefone", "cnh", "cargo", "lotacao", "pis", "banco", "agencia", "conta", "tipo_conta", "empregador", "empregador_cnpj")
     @classmethod
     def limpar_campos_motorista(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator(
+        "salario_base",
+        "carga_horaria_mensal",
+        "valor_hora_extra",
+        "inss_percentual",
+        "irrf_percentual",
+        "vale_refeicao",
+        "convenio_medico",
+        "outros_descontos_padrao",
+    )
+    @classmethod
+    def validar_numero_motorista(cls, value: float) -> float:
+        valor = float(value or 0)
+        if valor < 0:
+            raise ValueError("Valores do motorista nao podem ser negativos.")
+        return valor
 
 
 class FolhaPagamentoItemIn(BaseModel):
@@ -290,9 +325,15 @@ class FolhaPagamentoItemIn(BaseModel):
     adicional_noturno: float = 0
     bonus: float = 0
     desconto_inss: float = 0
+    desconto_irrf: float = 0
     desconto_vale: float = 0
     desconto_adiantamento: float = 0
     outros_descontos: float = 0
+    salario_contratual: float = 0
+    base_inss: float = 0
+    base_fgts: float = 0
+    fgts: float = 0
+    base_irrf: float = 0
     observacao: str = ""
 
     @field_validator(
@@ -303,9 +344,15 @@ class FolhaPagamentoItemIn(BaseModel):
         "adicional_noturno",
         "bonus",
         "desconto_inss",
+        "desconto_irrf",
         "desconto_vale",
         "desconto_adiantamento",
         "outros_descontos",
+        "salario_contratual",
+        "base_inss",
+        "base_fgts",
+        "fgts",
+        "base_irrf",
     )
     @classmethod
     def validar_numero_nao_negativo(cls, value: float) -> float:
@@ -551,6 +598,7 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
     salario_bruto = salario_base + valor_extras + total_adicionais
     total_descontos = (
         item.desconto_inss
+        + item.desconto_irrf
         + item.desconto_vale
         + item.desconto_adiantamento
         + item.outros_descontos
@@ -567,6 +615,7 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
         "adicional_noturno": item.adicional_noturno,
         "bonus": item.bonus,
         "desconto_inss": item.desconto_inss,
+        "desconto_irrf": item.desconto_irrf,
         "desconto_vale": item.desconto_vale,
         "desconto_adiantamento": item.desconto_adiantamento,
         "outros_descontos": item.outros_descontos,
@@ -577,6 +626,11 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
         "salario_bruto": arredondar_moeda(salario_bruto),
         "total_descontos": arredondar_moeda(total_descontos),
         "salario_liquido": arredondar_moeda(salario_liquido),
+        "salario_contratual": arredondar_moeda(item.salario_contratual or motorista.get("salario_base", 0)),
+        "base_inss": arredondar_moeda(item.base_inss or salario_bruto),
+        "base_fgts": arredondar_moeda(item.base_fgts or salario_bruto),
+        "fgts": arredondar_moeda(item.fgts or (salario_bruto * 0.08)),
+        "base_irrf": arredondar_moeda(item.base_irrf or max(salario_bruto - item.desconto_inss, 0)),
     }
 
 
@@ -1877,6 +1931,24 @@ def criar_motorista(dados: MotoristaIn):
         "nome": dados.nome,
         "telefone": dados.telefone,
         "cnh": dados.cnh,
+        "cargo": dados.cargo,
+        "admissao": str(dados.admissao) if dados.admissao else "",
+        "lotacao": dados.lotacao,
+        "pis": dados.pis,
+        "banco": dados.banco,
+        "agencia": dados.agencia,
+        "conta": dados.conta,
+        "tipo_conta": dados.tipo_conta,
+        "empregador": dados.empregador,
+        "empregador_cnpj": dados.empregador_cnpj,
+        "salario_base": dados.salario_base,
+        "carga_horaria_mensal": dados.carga_horaria_mensal,
+        "valor_hora_extra": dados.valor_hora_extra,
+        "inss_percentual": dados.inss_percentual,
+        "irrf_percentual": dados.irrf_percentual,
+        "vale_refeicao": dados.vale_refeicao,
+        "convenio_medico": dados.convenio_medico,
+        "outros_descontos_padrao": dados.outros_descontos_padrao,
     }
 
     motoristas.append(novo_motorista)
@@ -1899,6 +1971,24 @@ def atualizar_motorista(motorista_id: int, dados: MotoristaIn):
     motorista["nome"] = dados.nome
     motorista["telefone"] = dados.telefone
     motorista["cnh"] = dados.cnh
+    motorista["cargo"] = dados.cargo
+    motorista["admissao"] = str(dados.admissao) if dados.admissao else ""
+    motorista["lotacao"] = dados.lotacao
+    motorista["pis"] = dados.pis
+    motorista["banco"] = dados.banco
+    motorista["agencia"] = dados.agencia
+    motorista["conta"] = dados.conta
+    motorista["tipo_conta"] = dados.tipo_conta
+    motorista["empregador"] = dados.empregador
+    motorista["empregador_cnpj"] = dados.empregador_cnpj
+    motorista["salario_base"] = dados.salario_base
+    motorista["carga_horaria_mensal"] = dados.carga_horaria_mensal
+    motorista["valor_hora_extra"] = dados.valor_hora_extra
+    motorista["inss_percentual"] = dados.inss_percentual
+    motorista["irrf_percentual"] = dados.irrf_percentual
+    motorista["vale_refeicao"] = dados.vale_refeicao
+    motorista["convenio_medico"] = dados.convenio_medico
+    motorista["outros_descontos_padrao"] = dados.outros_descontos_padrao
 
     salvar_json(ARQUIVO_MOTORISTAS, motoristas)
     return motorista

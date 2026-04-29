@@ -1075,6 +1075,119 @@ body.sidebar-collapsed .nav-btn.active {
   padding: 22px;
 }
 
+.payroll-receipt {
+  display: none;
+}
+
+.receipt-grid {
+  display: grid;
+  border-left: 1px solid #111;
+  border-top: 1px solid #111;
+}
+
+.receipt-grid > div {
+  min-height: 34px;
+  padding: 4px 6px;
+  border-right: 1px solid #111;
+  border-bottom: 1px solid #111;
+}
+
+.receipt-grid span,
+.receipt-table span {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.receipt-grid strong,
+.receipt-table strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.receipt-header {
+  grid-template-columns: 1fr 1.35fr;
+}
+
+.receipt-title {
+  text-align: center;
+}
+
+.receipt-title h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.receipt-title p {
+  margin: 2px 0 0;
+  font-size: 15px;
+}
+
+.receipt-four {
+  grid-template-columns: 1.45fr 0.75fr 0.35fr 0.8fr;
+}
+
+.receipt-three {
+  grid-template-columns: 1.4fr 0.9fr 0.9fr;
+}
+
+.receipt-five {
+  grid-template-columns: 0.7fr 0.6fr 0.7fr 0.8fr 0.8fr;
+}
+
+.receipt-footer {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.receipt-section-title {
+  border: 1px solid #111;
+  border-top: none;
+  padding: 3px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.receipt-table th,
+.receipt-table td {
+  border: 1px solid #111;
+  padding: 4px 6px;
+  color: #111;
+  font-size: 13px;
+  height: 24px;
+}
+
+.receipt-table th:nth-child(1),
+.receipt-table td:nth-child(1) {
+  width: 48px;
+  text-align: center;
+}
+
+.receipt-table th:nth-child(3),
+.receipt-table td:nth-child(3),
+.receipt-table th:nth-child(4),
+.receipt-table td:nth-child(4),
+.receipt-table th:nth-child(5),
+.receipt-table td:nth-child(5) {
+  width: 130px;
+  text-align: right;
+}
+
+.receipt-table tbody tr {
+  height: 28px;
+}
+
+.receipt-net {
+  background: #d6d6d6 !important;
+}
+
 @media print {
   body * {
     visibility: hidden !important;
@@ -1095,12 +1208,19 @@ body.sidebar-collapsed .nav-btn.active {
     padding: 20px;
   }
 
+  .payroll-receipt {
+    display: block !important;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    padding: 0 !important;
+  }
+
   .print-area .action-row,
   .print-area .ghost-btn,
   .print-area .primary-btn,
   .print-area button,
-  .print-area th:last-child,
-  .print-area td:last-child {
+  .print-area:not(.payroll-receipt) th:last-child,
+  .print-area:not(.payroll-receipt) td:last-child {
     display: none !important;
   }
 
@@ -1111,9 +1231,14 @@ body.sidebar-collapsed .nav-btn.active {
 
   .print-area th,
   .print-area td {
-    border: 1px solid #ccc !important;
+    border: 1px solid #111 !important;
     color: black !important;
     background: white !important;
+  }
+
+  .payroll-receipt .receipt-net,
+  .payroll-receipt .receipt-net * {
+    background: #d6d6d6 !important;
   }
 }
 
