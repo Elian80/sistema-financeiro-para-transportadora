@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "data_inicio": "2026-04-28",
+    "contrato": "1234",
+    "cte_ticket": "1524",
+    "valor": 35000.0,
+    "carga": "1",
+    "ton_qnt": "20",
+    "tomador": "vga",
+    "origem_destino": "sc sc",
+    "bonificacao": 10.0,
+    "veiculo_id": 3,
+    "descontos": 2500.0,
+    "desconto_classificacao": "2.3 DESPESAS BANCARIAS",
+    "status_pagamento": "recebido",
+    "data_recebimento": "2026-04-28",
+    "valor_total_receber": 32510.0
+  }
+]

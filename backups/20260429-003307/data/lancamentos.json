@@ -1,0 +1,36 @@
+[
+  {
+    "id": 1,
+    "data": "2026-04-28",
+    "classificacao": "1.1 COMBUSTIVEL",
+    "descricao": "comustivel",
+    "valor": 1500.0,
+    "veiculo_id": 3,
+    "empresa_id": 0,
+    "obra_servico": "",
+    "tipo_financeiro": "custo",
+    "created_at": "2026-04-28T20:15:16",
+    "updated_at": "2026-04-28T20:15:16",
+    "kilometragem": 100.0,
+    "litros": 350.0,
+    "numero_nf": "1234",
+    "data_nf": "2026-04-28"
+  },
+  {
+    "id": 2,
+    "data": "2026-04-28",
+    "classificacao": "3.1 RECEBIMENTO SERVICOS PRESTADOS",
+    "descricao": "1",
+    "valor": 72000.0,
+    "veiculo_id": 4,
+    "empresa_id": null,
+    "obra_servico": "",
+    "tipo_financeiro": "receita",
+    "created_at": "2026-04-28T22:37:31",
+    "updated_at": "2026-04-28T22:37:31",
+    "kilometragem": null,
+    "litros": null,
+    "numero_nf": "",
+    "data_nf": ""
+  }
+]
