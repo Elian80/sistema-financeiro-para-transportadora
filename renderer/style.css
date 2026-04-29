@@ -1373,6 +1373,18 @@ body.sidebar-collapsed .nav-btn::before {
   color: #22D3EE;
 }
 
+.install-pwa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.install-pwa-btn[hidden] {
+  display: none !important;
+}
+
 .notification-btn {
   position: relative;
 }

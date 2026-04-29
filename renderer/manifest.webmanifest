@@ -2,12 +2,15 @@
   "name": "Adelia Transportes Financeiro",
   "short_name": "Financeiro",
   "description": "Sistema financeiro, operacional e de frota.",
-  "start_url": "/",
+  "id": "/app",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0b1020",
-  "theme_color": "#0b1020",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#0B0F1A",
+  "theme_color": "#0B0F1A",
   "orientation": "any",
+  "categories": ["business", "finance", "productivity"],
   "icons": [
     {
       "src": "/icons/icon.svg",
