@@ -1762,7 +1762,6 @@ async function carregarFolhasPagamento() {
 
 function calcularLinhaFolha(row) {
   const horasNormais = normalizarNumero(row.querySelector(".folha-horas-normais")?.value);
-  const valorHora = normalizarNumero(row.querySelector(".folha-valor-hora")?.value);
   const horasExtras = normalizarNumero(row.querySelector(".folha-horas-extras")?.value);
   const valorHoraExtra = normalizarNumero(row.querySelector(".folha-valor-hora-extra")?.value);
   const adicionalNoturno = normalizarNumero(row.querySelector(".folha-adicional-noturno")?.value);
@@ -1772,7 +1771,8 @@ function calcularLinhaFolha(row) {
   const descontoVale = normalizarNumero(row.querySelector(".folha-desconto-vale")?.value);
   const descontoAdiantamento = normalizarNumero(row.querySelector(".folha-desconto-adiantamento")?.value);
   const outrosDescontos = normalizarNumero(row.querySelector(".folha-outros-descontos")?.value);
-  const salarioBase = horasNormais * valorHora;
+  const salarioContratual = normalizarNumero(row.dataset.salarioContratual);
+  const salarioBase = horasNormais > 0 ? salarioContratual : 0;
   const valorExtras = horasExtras * valorHoraExtra;
   const totalAdicionais = adicionalNoturno + bonus;
   const salarioBruto = salarioBase + valorExtras + totalAdicionais;
@@ -1866,19 +1866,13 @@ async function renderizarHistoricoFolha() {
   `;
 }
 
-function valorPadraoHora(motorista) {
-  const salarioBase = normalizarNumero(motorista.salario_base);
-  const cargaHoraria = normalizarNumero(motorista.carga_horaria_mensal) || 220;
-  return cargaHoraria > 0 ? salarioBase / cargaHoraria : 0;
-}
-
 function gerarDadosItemFolha(row) {
-  const salarioBruto = calcularLinhaFolha(row).salarioBruto;
+  const calculo = calcularLinhaFolha(row);
   const descontoInss = normalizarNumero(row.querySelector(".folha-desconto-inss")?.value);
   return {
     motorista_id: Number(row.dataset.folhaMotoristaId),
     horas_normais: normalizarNumero(row.querySelector(".folha-horas-normais").value),
-    valor_hora: normalizarNumero(row.querySelector(".folha-valor-hora").value),
+    valor_hora: 0,
     horas_extras: normalizarNumero(row.querySelector(".folha-horas-extras").value),
     valor_hora_extra: normalizarNumero(row.querySelector(".folha-valor-hora-extra").value),
     adicional_noturno: normalizarNumero(row.querySelector(".folha-adicional-noturno").value),
@@ -1889,10 +1883,10 @@ function gerarDadosItemFolha(row) {
     desconto_adiantamento: normalizarNumero(row.querySelector(".folha-desconto-adiantamento").value),
     outros_descontos: normalizarNumero(row.querySelector(".folha-outros-descontos").value),
     salario_contratual: normalizarNumero(row.dataset.salarioContratual),
-    base_inss: salarioBruto,
-    base_fgts: salarioBruto,
-    fgts: salarioBruto * 0.08,
-    base_irrf: Math.max(salarioBruto - descontoInss, 0),
+    base_inss: calculo.salarioBruto,
+    base_fgts: calculo.salarioBruto,
+    fgts: calculo.salarioBruto * 0.08,
+    base_irrf: Math.max(calculo.salarioBruto - descontoInss, 0),
     observacao: ""
   };
 }
@@ -2069,7 +2063,6 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
             <tr>
               <th>Motorista</th>
               <th>Horas</th>
-              <th>R$/h</th>
               <th>Extras</th>
               <th>R$/extra</th>
               <th>Adic.</th>
@@ -2089,8 +2082,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
             ${motoristas.map((motorista) => {
               const salarioBase = normalizarNumero(motorista.salario_base);
               const cargaHoraria = normalizarNumero(motorista.carga_horaria_mensal) || 220;
-              const valorHora = valorPadraoHora(motorista);
-              const valorHoraExtra = normalizarNumero(motorista.valor_hora_extra) || (valorHora * 1.5);
+              const valorHoraExtra = normalizarNumero(motorista.valor_hora_extra);
               const descontoInss = salarioBase * (normalizarNumero(motorista.inss_percentual) / 100);
               const baseIrrf = Math.max(salarioBase - descontoInss, 0);
               const descontoIrrf = baseIrrf * (normalizarNumero(motorista.irrf_percentual) / 100);
@@ -2101,7 +2093,6 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
               <tr data-folha-motorista-id="${motorista.id}" data-salario-contratual="${salarioBase}">
                 <td>${motorista.nome}</td>
                 <td><input class="folha-horas-normais" type="number" min="0" step="0.01" value="${cargaHoraria}" /></td>
-                <td><input class="folha-valor-hora" type="number" min="0" step="0.01" value="${valorHora.toFixed(2)}" /></td>
                 <td><input class="folha-horas-extras" type="number" min="0" step="0.01" value="0" /></td>
                 <td><input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="${valorHoraExtra.toFixed(2)}" /></td>
                 <td><input class="folha-adicional-noturno" type="number" min="0" step="0.01" value="0" /></td>

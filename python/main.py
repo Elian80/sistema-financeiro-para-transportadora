@@ -592,7 +592,8 @@ def arredondar_moeda(valor: float) -> float:
 
 
 def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
-    salario_base = item.horas_normais * item.valor_hora
+    salario_contratual = float(item.salario_contratual or motorista.get("salario_base", 0) or 0)
+    salario_base = salario_contratual if item.horas_normais > 0 else 0
     valor_extras = item.horas_extras * item.valor_hora_extra
     total_adicionais = item.adicional_noturno + item.bonus
     salario_bruto = salario_base + valor_extras + total_adicionais
@@ -626,7 +627,7 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
         "salario_bruto": arredondar_moeda(salario_bruto),
         "total_descontos": arredondar_moeda(total_descontos),
         "salario_liquido": arredondar_moeda(salario_liquido),
-        "salario_contratual": arredondar_moeda(item.salario_contratual or motorista.get("salario_base", 0)),
+        "salario_contratual": arredondar_moeda(salario_contratual),
         "base_inss": arredondar_moeda(item.base_inss or salario_bruto),
         "base_fgts": arredondar_moeda(item.base_fgts or salario_bruto),
         "fgts": arredondar_moeda(item.fgts or (salario_bruto * 0.08)),
