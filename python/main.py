@@ -241,7 +241,7 @@ class VeiculoIn(BaseModel):
     @field_validator("tipo")
     @classmethod
     def validar_tipo(cls, value: str) -> str:
-        tipos_validos = {"Caminhao", "Carro", "Maquina"}
+        tipos_validos = {"Caminhao", "Carro", "Maquina", "Motocicleta"}
         if value not in tipos_validos:
             raise ValueError("Tipo de veiculo invalido.")
         return value

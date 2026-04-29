@@ -270,6 +270,7 @@ const pages = {
               <option value="Caminhao">Caminhao</option>
               <option value="Carro">Carro</option>
               <option value="Maquina">Maquina</option>
+              <option value="Motocicleta">Motocicleta</option>
             </select>
           </div>
 
@@ -1192,6 +1193,7 @@ function iconePorTipo(tipo) {
   if (tipo === "Caminhao") return "🚚";
   if (tipo === "Carro") return "🚗";
   if (tipo === "Maquina") return "🚜";
+  if (tipo === "Motocicleta") return "🏍️";
   return "🚘";
 }
 
@@ -1390,6 +1392,7 @@ function abrirFormVeiculo(
             <option value="Caminhao" ${tipo === "Caminhao" ? "selected" : ""}>Caminhao</option>
             <option value="Carro" ${tipo === "Carro" ? "selected" : ""}>Carro</option>
             <option value="Maquina" ${tipo === "Maquina" ? "selected" : ""}>Maquina</option>
+            <option value="Motocicleta" ${tipo === "Motocicleta" ? "selected" : ""}>Motocicleta</option>
           </select>
         </div>
 
