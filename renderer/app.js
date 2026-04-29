@@ -2131,61 +2131,50 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
         <div class="kpi-card"><div class="kpi-label">Liquido</div><div class="kpi-value positive" id="folha-total-liquido">R$ 0,00</div></div>
       </div>
 
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Motorista</th>
-              <th>Horas</th>
-              <th>Extras</th>
-              <th>R$/extra</th>
-              <th>Adic.</th>
-              <th>Bonus</th>
-              <th>INSS</th>
-              <th>IRRF</th>
-              <th>Vale</th>
-              <th>Adiant.</th>
-              <th>Outros desc.</th>
-              <th>Descricao outros</th>
-              <th>Base</th>
-              <th>Bruto</th>
-              <th>Descontos</th>
-              <th>Liquido</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${motoristas.map((motorista) => {
-              const salarioBase = normalizarNumero(motorista.salario_base);
-              const cargaHoraria = normalizarNumero(motorista.carga_horaria_mensal) || 220;
-              const valorHoraExtra = normalizarNumero(motorista.valor_hora_extra);
-              const descontoInss = calcularInssAutomatico(salarioBase);
-              const baseIrrf = Math.max(salarioBase - descontoInss, 0);
-              const descontoIrrf = baseIrrf * (normalizarNumero(motorista.irrf_percentual) / 100);
-              const vale = normalizarNumero(motorista.vale_refeicao);
-              const convenio = normalizarNumero(motorista.convenio_medico);
-              const outros = normalizarNumero(motorista.outros_descontos_padrao) + convenio;
-              return `
-              <tr data-folha-motorista-id="${motorista.id}" data-salario-contratual="${salarioBase}">
-                <td>${motorista.nome}</td>
-                <td><input class="folha-horas-normais" type="number" min="0" step="0.01" value="${cargaHoraria}" /></td>
-                <td><input class="folha-horas-extras" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="${valorHoraExtra.toFixed(2)}" /></td>
-                <td><input class="folha-adicional-noturno" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-bonus" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-desconto-inss" type="number" min="0" step="0.01" value="${descontoInss.toFixed(2)}" readonly /></td>
-                <td><input class="folha-desconto-irrf" type="number" min="0" step="0.01" value="${descontoIrrf.toFixed(2)}" /></td>
-                <td><input class="folha-desconto-vale" type="number" min="0" step="0.01" value="${vale.toFixed(2)}" /></td>
-                <td><input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></td>
-                <td><input class="folha-outros-descontos" type="number" min="0" step="0.01" value="${outros.toFixed(2)}" /></td>
-                <td><input class="folha-outros-descricao" value="" placeholder="Descricao" style="${outros > 0 ? "" : "display:none;"}" /></td>
-                <td class="folha-salario-base">R$ 0,00</td>
-                <td class="folha-salario-bruto">R$ 0,00</td>
-                <td class="folha-total-descontos">R$ 0,00</td>
-                <td class="folha-salario-liquido positive">R$ 0,00</td>
-              </tr>
-            `;}).join("")}
-          </tbody>
-        </table>
+      <div class="payroll-driver-list">
+        ${motoristas.map((motorista) => {
+          const salarioBase = normalizarNumero(motorista.salario_base);
+          const cargaHoraria = normalizarNumero(motorista.carga_horaria_mensal) || 220;
+          const valorHoraExtra = normalizarNumero(motorista.valor_hora_extra);
+          const descontoInss = calcularInssAutomatico(salarioBase);
+          const baseIrrf = Math.max(salarioBase - descontoInss, 0);
+          const descontoIrrf = baseIrrf * (normalizarNumero(motorista.irrf_percentual) / 100);
+          const vale = normalizarNumero(motorista.vale_refeicao);
+          const convenio = normalizarNumero(motorista.convenio_medico);
+          const outros = normalizarNumero(motorista.outros_descontos_padrao) + convenio;
+          return `
+            <article class="payroll-driver-card" data-folha-motorista-id="${motorista.id}" data-salario-contratual="${salarioBase}">
+              <div class="payroll-driver-head">
+                <div>
+                  <h4>${motorista.nome}</h4>
+                  <span>${motorista.cargo || "Motorista"}</span>
+                </div>
+                <strong>${formatarValor(salarioBase)}</strong>
+              </div>
+
+              <div class="payroll-field-grid">
+                <label>Horas normais<input class="folha-horas-normais" type="number" min="0" step="0.01" value="${cargaHoraria}" /></label>
+                <label>Horas extras<input class="folha-horas-extras" type="number" min="0" step="0.01" value="0" /></label>
+                <label>Valor hora extra<input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="${valorHoraExtra.toFixed(2)}" /></label>
+                <label>Adicional<input class="folha-adicional-noturno" type="number" min="0" step="0.01" value="0" /></label>
+                <label>Bonus<input class="folha-bonus" type="number" min="0" step="0.01" value="0" /></label>
+                <label>INSS<input class="folha-desconto-inss" type="number" min="0" step="0.01" value="${descontoInss.toFixed(2)}" readonly /></label>
+                <label>IRRF<input class="folha-desconto-irrf" type="number" min="0" step="0.01" value="${descontoIrrf.toFixed(2)}" /></label>
+                <label>Vale<input class="folha-desconto-vale" type="number" min="0" step="0.01" value="${vale.toFixed(2)}" /></label>
+                <label>Adiantamento<input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></label>
+                <label>Outros descontos<input class="folha-outros-descontos" type="number" min="0" step="0.01" value="${outros.toFixed(2)}" /></label>
+                <label class="payroll-description-field">Descricao outros<input class="folha-outros-descricao" value="" placeholder="Descricao" style="${outros > 0 ? "" : "display:none;"}" /></label>
+              </div>
+
+              <div class="payroll-result-grid">
+                <div><span>Base</span><strong class="folha-salario-base">R$ 0,00</strong></div>
+                <div><span>Bruto</span><strong class="folha-salario-bruto">R$ 0,00</strong></div>
+                <div><span>Descontos</span><strong class="folha-total-descontos">R$ 0,00</strong></div>
+                <div><span>Liquido</span><strong class="folha-salario-liquido positive">R$ 0,00</strong></div>
+              </div>
+            </article>
+          `;
+        }).join("")}
       </div>
 
       <div class="btn-row" style="margin-top:18px;">

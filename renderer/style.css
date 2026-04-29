@@ -1082,42 +1082,96 @@ body.sidebar-collapsed .nav-btn.active {
 
 .payroll-modal-content {
   margin: 24px 0;
-  max-width: min(1720px, calc(100vw - 24px));
+  max-width: min(1280px, calc(100vw - 24px));
 }
 
-.payroll-modal-content .table-wrap {
+.payroll-driver-list {
+  display: grid;
+  gap: 16px;
   max-height: calc(100vh - 330px);
   overflow: auto;
+  padding-right: 4px;
 }
 
-.payroll-modal-content .data-table {
-  min-width: 1850px;
+.payroll-driver-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 16px;
 }
 
-.payroll-modal-content .data-table th,
-.payroll-modal-content .data-table td {
-  padding: 12px 14px;
-  vertical-align: top;
+.payroll-driver-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
 }
 
-.payroll-modal-content .data-table input {
-  min-width: 118px;
-  padding: 12px 14px;
+.payroll-driver-head h4 {
+  margin: 0;
+  font-size: 18px;
 }
 
-.payroll-modal-content .data-table th:first-child,
-.payroll-modal-content .data-table td:first-child {
-  min-width: 190px;
+.payroll-driver-head span,
+.payroll-result-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
 }
 
-.payroll-modal-content .data-table th:nth-last-child(-n + 4),
-.payroll-modal-content .data-table td:nth-last-child(-n + 4) {
-  min-width: 128px;
-  white-space: nowrap;
+.payroll-field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.payroll-field-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.payroll-field-grid input {
+  min-height: 46px;
+}
+
+.payroll-description-field {
+  grid-column: span 2;
+}
+
+.payroll-result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.payroll-result-grid > div {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(79, 140, 255, 0.06);
+}
+
+.payroll-result-grid strong {
+  display: block;
+  margin-top: 4px;
+}
+
+@media (max-width: 760px) {
+  .payroll-description-field {
+    grid-column: 1 / -1;
+  }
+
+  .payroll-result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .folha-outros-descricao {
-  min-width: 260px !important;
+  min-width: 0;
 }
 
 .payroll-receipt {
