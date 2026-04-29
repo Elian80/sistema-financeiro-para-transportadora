@@ -463,6 +463,31 @@ option {
   min-width: 112px;
 }
 
+.panel-box.filter-launcher {
+  width: fit-content;
+  min-height: 0;
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 14px;
+}
+
+.filter-launcher > div,
+.filter-launcher > .table-toolbar {
+  display: none;
+}
+
+.filter-launcher.vertical {
+  align-items: center;
+  flex-direction: row;
+}
+
+.filter-open-btn {
+  min-width: auto;
+  padding: 9px 13px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
 .filter-popup {
   position: fixed;
   inset: 0;
@@ -710,13 +735,8 @@ body.sidebar-collapsed .nav-btn.active {
     font-size: 26px;
   }
 
-  .filter-launcher {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .filter-open-btn {
-    width: 100%;
+    width: auto;
   }
 
   .filter-popup-header {
