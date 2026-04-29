@@ -703,14 +703,6 @@ const pages = {
 
           <p id="mensagem-conta-receber" class="mensagem"></p>
         </div>
-
-        <div class="panel-box filter-launcher vertical">
-          <div>
-            <h3>Filtros</h3>
-            <p>Localize contas por periodo, contrato, tomador ou veiculo.</p>
-          </div>
-          ${botaoFiltros("painel-filtros-contas-receber")}
-        </div>
       </section>
 
       ${popupFiltros("painel-filtros-contas-receber", "Filtros de contas a receber", "Localize contas por periodo, contrato, tomador ou veiculo.", `
@@ -778,7 +770,10 @@ const pages = {
             <span id="cr-total-registros">0 registros</span>
           </div>
 
-          <button type="button" class="primary-btn" id="btn-imprimir-contas-receber">Imprimir</button>
+          <div class="btn-row">
+            ${botaoFiltros("painel-filtros-contas-receber")}
+            <button type="button" class="primary-btn" id="btn-imprimir-contas-receber">Imprimir</button>
+          </div>
         </div>
 
         <div class="table-wrap receivable-table-wrap">
