@@ -1082,11 +1082,42 @@ body.sidebar-collapsed .nav-btn.active {
 
 .payroll-modal-content {
   margin: 24px 0;
-  max-width: min(1500px, calc(100vw - 32px));
+  max-width: min(1720px, calc(100vw - 24px));
+}
+
+.payroll-modal-content .table-wrap {
+  max-height: calc(100vh - 330px);
+  overflow: auto;
+}
+
+.payroll-modal-content .data-table {
+  min-width: 1850px;
+}
+
+.payroll-modal-content .data-table th,
+.payroll-modal-content .data-table td {
+  padding: 12px 14px;
+  vertical-align: top;
+}
+
+.payroll-modal-content .data-table input {
+  min-width: 118px;
+  padding: 12px 14px;
+}
+
+.payroll-modal-content .data-table th:first-child,
+.payroll-modal-content .data-table td:first-child {
+  min-width: 190px;
+}
+
+.payroll-modal-content .data-table th:nth-last-child(-n + 4),
+.payroll-modal-content .data-table td:nth-last-child(-n + 4) {
+  min-width: 128px;
+  white-space: nowrap;
 }
 
 .folha-outros-descricao {
-  min-width: 180px;
+  min-width: 260px !important;
 }
 
 .payroll-receipt {
