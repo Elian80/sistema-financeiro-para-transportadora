@@ -380,7 +380,7 @@ def garantir_arquivo_json(caminho: Path) -> None:
 def ler_json(caminho: Path):
     """
     Le um JSON com seguranca.
-    Se o arquivo estiver vazio, corrompido ou invalido, retorna lista vazia.
+    Se o arquivo estiver corrompido, mostra erro claro em vez de ocultar os dados.
     """
     garantir_arquivo_json(caminho)
 
@@ -390,12 +390,17 @@ def ler_json(caminho: Path):
 
         # Garante que sempre seja uma lista.
         if not isinstance(dados, list):
-            return []
+            raise HTTPException(status_code=500, detail=f"Arquivo de dados invalido: {caminho.name}")
 
         return dados
 
-    except (json.JSONDecodeError, OSError):
-        return []
+    except json.JSONDecodeError as erro:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Arquivo de dados corrompido: {caminho.name}. Corrija o JSON antes de continuar."
+        ) from erro
+    except OSError as erro:
+        raise HTTPException(status_code=500, detail=f"Nao foi possivel ler {caminho.name}.") from erro
 
 
 def salvar_json(caminho: Path, dados) -> None:
