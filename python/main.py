@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import date, datetime
 import io
 import json
+import unicodedata
 import zipfile
 from xml.sax.saxutils import escape
 
@@ -137,6 +138,12 @@ CLASSIFICACOES = [
 STATUS_VEICULO_VALIDOS = {"Ativo", "Manutencao", "Inativo"}
 
 
+def normalizar_texto(valor: str) -> str:
+    texto = str(valor or "").strip().lower()
+    texto = unicodedata.normalize("NFD", texto)
+    return "".join(caractere for caractere in texto if unicodedata.category(caractere) != "Mn")
+
+
 # =========================================================
 # MODELOS DE ENTRADA
 # =========================================================
@@ -241,10 +248,18 @@ class VeiculoIn(BaseModel):
     @field_validator("tipo")
     @classmethod
     def validar_tipo(cls, value: str) -> str:
-        tipos_validos = {"Caminhao", "Carro", "Maquina", "Motocicleta"}
-        if value not in tipos_validos:
+        tipo_normalizado = normalizar_texto(value)
+        tipos_validos = {
+            "caminhao": "Caminhao",
+            "caminho": "Caminhao",
+            "carro": "Carro",
+            "maquina": "Maquina",
+            "moto": "Motocicleta",
+            "motocicleta": "Motocicleta",
+        }
+        if tipo_normalizado not in tipos_validos:
             raise ValueError("Tipo de veiculo invalido.")
-        return value
+        return tipos_validos[tipo_normalizado]
 
     @field_validator("status")
     @classmethod
