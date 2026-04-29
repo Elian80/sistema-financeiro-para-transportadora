@@ -1075,6 +1075,20 @@ body.sidebar-collapsed .nav-btn.active {
   padding: 22px;
 }
 
+.payroll-modal-overlay {
+  align-items: flex-start;
+  overflow: auto;
+}
+
+.payroll-modal-content {
+  margin: 24px 0;
+  max-width: min(1500px, calc(100vw - 32px));
+}
+
+.folha-outros-descricao {
+  min-width: 180px;
+}
+
 .payroll-receipt {
   display: none;
 }

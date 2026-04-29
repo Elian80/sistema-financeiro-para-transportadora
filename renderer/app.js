@@ -1798,9 +1798,13 @@ function calcularLinhaFolha(row) {
   const totalDescontos = descontoInss + descontoIrrf + descontoVale + descontoAdiantamento + outrosDescontos;
   const salarioLiquido = Math.max(salarioBruto - totalDescontos, 0);
   const campoInss = row.querySelector(".folha-desconto-inss");
+  const campoDescricaoOutros = row.querySelector(".folha-outros-descricao");
 
   if (campoInss) {
     campoInss.value = descontoInss.toFixed(2);
+  }
+  if (campoDescricaoOutros) {
+    campoDescricaoOutros.style.display = outrosDescontos > 0 ? "block" : "none";
   }
 
   row.querySelector(".folha-salario-base").textContent = formatarValor(salarioBase);
@@ -1943,7 +1947,7 @@ function gerarDadosItemFolha(row) {
     base_fgts: calculo.salarioBruto,
     fgts: calculo.fgts,
     base_irrf: Math.max(calculo.salarioBruto - calculo.descontoInss, 0),
-    observacao: ""
+    observacao: row.querySelector(".folha-outros-descricao")?.value.trim() || ""
   };
 }
 
@@ -1960,7 +1964,7 @@ function renderizarReciboPagamento(folha, item, motorista) {
     { codigo: "311", descricao: "IRRF", referencia: `${motorista.irrf_percentual || 0}%`, valor: item.desconto_irrf || 0 },
     { codigo: "914", descricao: "Vale Refeicao", referencia: "", valor: item.desconto_vale || 0 },
     { codigo: "915", descricao: "Adiantamento", referencia: "", valor: item.desconto_adiantamento || 0 },
-    { codigo: "924", descricao: "Convenio medico / outros", referencia: "", valor: item.outros_descontos || 0 },
+    { codigo: "924", descricao: item.observacao || "Convenio medico / outros", referencia: "", valor: item.outros_descontos || 0 },
   ].filter((linha) => linha.valor > 0);
 
   const linhas = [...proventos.map((linha) => ({ ...linha, tipo: "provento" })), ...descontos.map((linha) => ({ ...linha, tipo: "desconto" }))];
@@ -2094,7 +2098,8 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
   const dataPagamento = hoje.toISOString().slice(0, 10);
 
   container.innerHTML = `
-    <section class="panel-box">
+    <div class="modal-overlay payroll-modal-overlay" id="modal-folha-pagamento">
+      <section class="modal-content modal-xl payroll-modal-content">
       <div class="table-toolbar">
         <div>
           <h3 style="margin:0;">Lancamento de folha de pagamento</h3>
@@ -2141,6 +2146,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
               <th>Vale</th>
               <th>Adiant.</th>
               <th>Outros desc.</th>
+              <th>Descricao outros</th>
               <th>Base</th>
               <th>Bruto</th>
               <th>Descontos</th>
@@ -2171,6 +2177,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
                 <td><input class="folha-desconto-vale" type="number" min="0" step="0.01" value="${vale.toFixed(2)}" /></td>
                 <td><input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></td>
                 <td><input class="folha-outros-descontos" type="number" min="0" step="0.01" value="${outros.toFixed(2)}" /></td>
+                <td><input class="folha-outros-descricao" value="" placeholder="Descricao" style="${outros > 0 ? "" : "display:none;"}" /></td>
                 <td class="folha-salario-base">R$ 0,00</td>
                 <td class="folha-salario-bruto">R$ 0,00</td>
                 <td class="folha-total-descontos">R$ 0,00</td>
@@ -2186,7 +2193,8 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
         <button class="ghost-btn" id="btn-recalcular-folha" type="button">Recalcular</button>
       </div>
       <p id="mensagem-folha" class="mensagem"></p>
-    </section>
+      </section>
+    </div>
   `;
 
   container.querySelectorAll("input").forEach((input) => {
@@ -2196,6 +2204,12 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
   document.getElementById("btn-fechar-folha").onclick = () => {
     container.innerHTML = "";
   };
+
+  document.getElementById("modal-folha-pagamento").addEventListener("click", (event) => {
+    if (event.target.id === "modal-folha-pagamento") {
+      container.innerHTML = "";
+    }
+  });
 
   document.getElementById("btn-recalcular-folha").onclick = atualizarTotaisFolha;
 
@@ -2229,6 +2243,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
       mensagem.textContent = `Folha gerada com liquido de ${formatarValor(folha.totais.salario_liquido)}.`;
       mostrarToast("Folha de pagamento gerada.", "success");
       await renderizarHistoricoFolha();
+      container.innerHTML = "";
       if (folha.itens?.length === 1) {
         await imprimirReciboFolha(folha, folha.itens[0]);
       }
