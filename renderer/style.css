@@ -1887,3 +1887,178 @@ body {
   }
 }
 
+/* Light theme contrast repair */
+body[data-theme="light"] {
+  --bg: #F3F6FA;
+  --panel: #FFFFFF;
+  --panel-strong: #FFFFFF;
+  --surface: #F8FAFC;
+  --surface-hover: #EEF6FF;
+  --line: rgba(15, 23, 42, 0.14);
+  --text: #0F172A;
+  --muted: #334155;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.12), transparent 28rem),
+    radial-gradient(circle at 85% 8%, rgba(59, 130, 246, 0.1), transparent 24rem),
+    #F3F6FA;
+  color: #0F172A;
+}
+
+body[data-theme="light"] .sidebar,
+body[data-theme="light"] .topbar,
+body[data-theme="light"] .panel-box,
+body[data-theme="light"] .kpi-card,
+body[data-theme="light"] .vehicle-card,
+body[data-theme="light"] .account-group,
+body[data-theme="light"] .modal-content,
+body[data-theme="light"] .filter-popup-card {
+  background: #FFFFFF;
+  color: #0F172A;
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+body[data-theme="light"] .sidebar {
+  background: linear-gradient(180deg, #FFFFFF, #F8FAFC);
+}
+
+body[data-theme="light"] .panel-box:hover,
+body[data-theme="light"] .kpi-card:hover,
+body[data-theme="light"] .vehicle-card:hover {
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(34, 211, 238, 0.08);
+}
+
+body[data-theme="light"] .topbar-search,
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] .ghost-btn,
+body[data-theme="light"] .icon-btn,
+body[data-theme="light"] .user-avatar,
+body[data-theme="light"] .sidebar-toggle,
+body[data-theme="light"] .mobile-menu-btn,
+body[data-theme="light"] .table-wrap,
+body[data-theme="light"] .receivable-total-box,
+body[data-theme="light"] .photo-preview-box {
+  background: #F8FAFC;
+  color: #0F172A;
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+body[data-theme="light"] input::placeholder {
+  color: #64748B;
+}
+
+body[data-theme="light"] .topbar-search input {
+  color: #0F172A;
+}
+
+body[data-theme="light"] .topbar-search svg,
+body[data-theme="light"] .topbar-actions svg,
+body[data-theme="light"] .nav-icon {
+  color: #334155;
+  stroke: #334155;
+}
+
+body[data-theme="light"] .sidebar-toggle span,
+body[data-theme="light"] .mobile-menu-btn span {
+  background: #0F172A;
+}
+
+body[data-theme="light"] .nav-btn {
+  color: #334155;
+  border-color: transparent;
+}
+
+body[data-theme="light"] .nav-btn:hover {
+  background: #EEF6FF;
+  color: #0F172A;
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+body[data-theme="light"] .nav-btn.active {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(59, 130, 246, 0.1));
+  color: #0F5E75;
+  border-color: rgba(8, 145, 178, 0.28);
+  box-shadow: inset 3px 0 0 #0891B2;
+}
+
+body[data-theme="light"] .kpi-card::before {
+  background: radial-gradient(circle at 80% 12%, rgba(34, 211, 238, 0.11), transparent 9rem);
+}
+
+body[data-theme="light"] .kpi-label,
+body[data-theme="light"] label,
+body[data-theme="light"] .topbar p,
+body[data-theme="light"] .brand p,
+body[data-theme="light"] .dashboard-note,
+body[data-theme="light"] .empty-row,
+body[data-theme="light"] .ranking-row,
+body[data-theme="light"] .account-group-title span,
+body[data-theme="light"] .receivable-total-box span,
+body[data-theme="light"] .vehicle-meta-row,
+body[data-theme="light"] .vehicle-observacao,
+body[data-theme="light"] .filter-popup-header p,
+body[data-theme="light"] .table-toolbar span {
+  color: #334155;
+}
+
+body[data-theme="light"] .kpi-value,
+body[data-theme="light"] .topbar h2,
+body[data-theme="light"] .brand h1,
+body[data-theme="light"] .panel-box h3,
+body[data-theme="light"] .ranking-row strong,
+body[data-theme="light"] .status-line strong,
+body[data-theme="light"] .account-group-title strong,
+body[data-theme="light"] .vehicle-meta-row strong,
+body[data-theme="light"] .vehicle-body h3 {
+  color: #0F172A;
+}
+
+body[data-theme="light"] .data-table th {
+  background: #EAF6FF;
+  color: #0F172A;
+  border-bottom-color: rgba(15, 23, 42, 0.16);
+}
+
+body[data-theme="light"] .data-table td {
+  color: #1E293B;
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+
+body[data-theme="light"] .data-table tbody tr:hover {
+  background: #F1F8FF;
+}
+
+body[data-theme="light"] .filter-popup {
+  background: rgba(15, 23, 42, 0.28);
+}
+
+body[data-theme="light"] .filter-close-btn,
+body[data-theme="light"] .small-btn {
+  color: #0F172A;
+}
+
+body[data-theme="light"] .status-summary,
+body[data-theme="light"] .ranking-list,
+body[data-theme="light"] .account-items span {
+  background: #F8FAFC;
+  color: #0F172A;
+}
+
+body[data-theme="light"] .status-line {
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+
+body[data-theme="light"] .positive {
+  color: #15803D;
+}
+
+body[data-theme="light"] .negative {
+  color: #B91C1C;
+}
+
+body[data-theme="light"] .warning {
+  color: #B45309;
+}
+

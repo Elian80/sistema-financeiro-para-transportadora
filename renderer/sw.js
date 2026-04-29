@@ -1,4 +1,4 @@
-const CACHE_NAME = "financeiro-pwa-v14";
+const CACHE_NAME = "financeiro-pwa-v15";
 
 const APP_SHELL = [
   "/",
