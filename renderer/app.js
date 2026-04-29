@@ -460,14 +460,6 @@ const pages = {
 
           <p id="mensagem" class="mensagem"></p>
         </div>
-
-        <div class="panel-box filter-launcher vertical">
-          <div>
-            <h3>Filtros</h3>
-            <p>Abra os filtros quando precisar conferir lancamentos especificos.</p>
-          </div>
-          ${botaoFiltros("painel-filtros-lancamentos")}
-        </div>
       </div>
 
       ${popupFiltros("painel-filtros-lancamentos", "Filtros de lancamentos", "Filtre por classificacao, periodo, descricao ou veiculo.", `
@@ -537,6 +529,7 @@ const pages = {
           </div>
 
           <div class="btn-row">
+            ${botaoFiltros("painel-filtros-lancamentos")}
             <button type="button" class="ghost-btn" id="btn-tela-cheia-lancamentos">Tela completa</button>
             <button type="button" class="primary-btn" id="btn-imprimir-lancamentos">Imprimir</button>
           </div>
