@@ -1178,6 +1178,117 @@ body.sidebar-collapsed .nav-btn.active {
   display: none;
 }
 
+.salary-slip-copy {
+  width: 100%;
+  color: #111;
+  background: #fff;
+  margin-bottom: 12px;
+  page-break-inside: avoid;
+}
+
+.salary-slip-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  color: #111;
+}
+
+.salary-slip-table col:nth-child(1) { width: 3%; }
+.salary-slip-table col:nth-child(2) { width: 8%; }
+.salary-slip-table col:nth-child(3) { width: 9%; }
+.salary-slip-table col:nth-child(4) { width: 8%; }
+.salary-slip-table col:nth-child(5) { width: 8%; }
+.salary-slip-table col:nth-child(6) { width: 5%; }
+.salary-slip-table col:nth-child(7) { width: 5%; }
+.salary-slip-table col:nth-child(8) { width: 10%; }
+.salary-slip-table col:nth-child(9) { width: 12%; }
+.salary-slip-table col:nth-child(10) { width: 12%; }
+.salary-slip-table col:nth-child(11) { width: 2%; }
+.salary-slip-table col:nth-child(12) { width: 4%; }
+.salary-slip-table col:nth-child(13) { width: 6%; }
+.salary-slip-table col:nth-child(14) { width: 8%; }
+
+.salary-slip-table td {
+  border: 1px solid #111;
+  height: 18px;
+  padding: 2px 4px;
+  vertical-align: middle;
+  background: #fff;
+  overflow: hidden;
+}
+
+.salary-slip-table tr.slip-spacer td {
+  height: 8px;
+}
+
+.salary-slip-table .slip-declaration td {
+  height: 8px;
+  font-size: 8px;
+  border-top: none;
+  text-align: center;
+}
+
+.slip-label,
+.slip-employee-head td,
+.slip-items-head td,
+.slip-total-labels td,
+.slip-bases-head td,
+.slip-copy-label td {
+  font-weight: 700;
+}
+
+.slip-title {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.slip-signature {
+  text-align: center;
+  font-size: 9px;
+  vertical-align: top !important;
+}
+
+.slip-employee-head td,
+.slip-items-head td,
+.slip-total-labels td,
+.slip-bases-head td {
+  font-size: 9px;
+  text-align: center;
+}
+
+.slip-item-row td {
+  height: 18px;
+}
+
+.slip-date-row td {
+  height: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.slip-right,
+.slip-money {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.slip-net-row td:nth-child(3),
+.slip-net-row td:nth-child(4) {
+  background: #d9d9d9 !important;
+  font-weight: 700;
+}
+
+.slip-copy-label td {
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  height: 16px;
+  font-size: 9px;
+}
+
 .receipt-grid {
   display: grid;
   border-left: 1px solid #111;
@@ -1310,7 +1421,7 @@ body.sidebar-collapsed .nav-btn.active {
   .payroll-receipt {
     display: block !important;
     font-family: Arial, sans-serif;
-    font-size: 12px;
+    font-size: 10px;
     padding: 0 !important;
   }
 
@@ -1336,7 +1447,9 @@ body.sidebar-collapsed .nav-btn.active {
   }
 
   .payroll-receipt .receipt-net,
-  .payroll-receipt .receipt-net * {
+  .payroll-receipt .receipt-net *,
+  .payroll-receipt .slip-net-row td:nth-child(3),
+  .payroll-receipt .slip-net-row td:nth-child(4) {
     background: #d6d6d6 !important;
   }
 }
