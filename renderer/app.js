@@ -12,6 +12,9 @@ const pageSubtitle = document.getElementById("page-subtitle");
 const navButtons = document.querySelectorAll(".nav-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const themeToggleBtn = document.getElementById("theme-toggle-btn");
+const settingsBtn = document.getElementById("settings-btn");
+const notificationBtn = document.getElementById("notification-btn");
+const globalSearch = document.getElementById("global-search");
 const sidebar = document.getElementById("sidebar");
 const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
 const mobileMenuBtn = document.getElementById("mobile-menu-btn");
@@ -42,6 +45,16 @@ let editandoPassivoId = null;
 let editandoProdutoId = null;
 let cacheVeiculos = [];
 
+function aplicarIconesNavegacao() {
+  navButtons.forEach((button) => {
+    if (button.querySelector(".nav-icon")) return;
+    const iconName = button.dataset.icon || "circle";
+    const label = button.textContent.trim();
+    const fallback = button.dataset.short || label.slice(0, 2).toUpperCase();
+    button.innerHTML = `<span class="nav-icon" data-lucide="${iconName}">${fallback}</span><span class="nav-label">${label}</span>`;
+  });
+}
+
 // =========================================================
 // DEFINICAO DAS PAGINAS DO SISTEMA
 // =========================================================
@@ -64,6 +77,19 @@ function popupFiltros(painelId, titulo, subtitulo, conteudo) {
       </div>
     </div>
   `;
+}
+
+function sparklineSvg(pontos = "4,32 18,22 32,28 46,14 60,18 74,8 88,12") {
+  return `
+    <svg class="sparkline" viewBox="0 0 92 38" aria-hidden="true">
+      <polyline points="${pontos}" />
+    </svg>
+  `;
+}
+
+function kpiTrend(valor, tipo = "positive") {
+  const texto = valor || "+0.0%";
+  return `<span class="kpi-trend ${tipo}">${texto}</span>`;
 }
 
 const pages = {
@@ -93,41 +119,49 @@ const pages = {
         <section class="kpi-card dashboard-hero">
           <div class="kpi-label">Saldo do periodo</div>
           <div class="kpi-value" id="dashboard-saldo">R$ 0,00</div>
+          ${kpiTrend("+12.4%", "positive")}
+          ${sparklineSvg("4,30 18,24 32,27 46,16 60,19 74,10 88,14")}
           <div class="dashboard-note" id="dashboard-periodo">Carregando dados...</div>
         </section>
 
         <section class="kpi-card">
           <div class="kpi-label">Receitas</div>
           <div class="kpi-value positive" id="dashboard-receitas">R$ 0,00</div>
+          ${kpiTrend("+8.5%", "positive")}
+          ${sparklineSvg("4,31 18,25 32,20 46,22 60,12 74,10 88,6")}
           <div class="dashboard-note" id="dashboard-receitas-qtd">0 lancamentos</div>
         </section>
 
         <section class="kpi-card">
           <div class="kpi-label">Despesas</div>
           <div class="kpi-value negative" id="dashboard-despesas">R$ 0,00</div>
+          ${kpiTrend("-3.2%", "negative")}
+          ${sparklineSvg("4,12 18,16 32,13 46,22 60,20 74,28 88,25")}
           <div class="dashboard-note" id="dashboard-despesas-qtd">0 lancamentos</div>
         </section>
 
         <section class="kpi-card">
           <div class="kpi-label">Frota ativa</div>
           <div class="kpi-value" id="dashboard-frota-ativa">0</div>
+          ${kpiTrend("+2.0%", "positive")}
+          ${sparklineSvg("4,26 18,26 32,22 46,22 60,18 74,18 88,14")}
           <div class="dashboard-note" id="dashboard-frota-total">0 veiculos cadastrados</div>
         </section>
       </div>
 
       <div class="kpi-grid" style="margin-bottom:18px;">
-        <section class="kpi-card"><div class="kpi-label">Custos operacionais</div><div class="kpi-value negative" id="dashboard-custos">R$ 0,00</div></section>
-        <section class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="dashboard-investimentos">R$ 0,00</div></section>
-        <section class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="dashboard-lucro-bruto">R$ 0,00</div></section>
-        <section class="kpi-card"><div class="kpi-label">Lucro liquido</div><div class="kpi-value" id="dashboard-lucro-liquido">R$ 0,00</div></section>
-        <section class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value warning" id="dashboard-contas-pendentes">R$ 0,00</div></section>
-        <section class="kpi-card"><div class="kpi-label">Total de ativos</div><div class="kpi-value positive" id="dashboard-total-ativos">R$ 0,00</div></section>
-        <section class="kpi-card"><div class="kpi-label">Total de passivos</div><div class="kpi-value negative" id="dashboard-total-passivos">R$ 0,00</div></section>
-        <section class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="dashboard-patrimonio">R$ 0,00</div></section>
+        <section class="kpi-card"><div class="kpi-label">Custos operacionais</div><div class="kpi-value negative" id="dashboard-custos">R$ 0,00</div>${kpiTrend("-1.8%", "negative")}${sparklineSvg("4,12 18,18 32,16 46,22 60,19 74,28 88,26")}</section>
+        <section class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="dashboard-investimentos">R$ 0,00</div>${kpiTrend("+4.1%", "positive")}${sparklineSvg("4,30 18,30 32,24 46,18 60,20 74,14 88,9")}</section>
+        <section class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="dashboard-lucro-bruto">R$ 0,00</div>${kpiTrend("+6.7%", "positive")}${sparklineSvg("4,32 18,24 32,26 46,18 60,12 74,14 88,8")}</section>
+        <section class="kpi-card"><div class="kpi-label">Lucro liquido</div><div class="kpi-value" id="dashboard-lucro-liquido">R$ 0,00</div>${kpiTrend("+5.3%", "positive")}${sparklineSvg("4,30 18,28 32,20 46,22 60,16 74,10 88,12")}</section>
+        <section class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value warning" id="dashboard-contas-pendentes">R$ 0,00</div>${kpiTrend("alerta", "warning")}${sparklineSvg("4,18 18,14 32,22 46,18 60,26 74,22 88,30")}</section>
+        <section class="kpi-card"><div class="kpi-label">Total de ativos</div><div class="kpi-value positive" id="dashboard-total-ativos">R$ 0,00</div>${kpiTrend("+9.0%", "positive")}${sparklineSvg("4,32 18,26 32,24 46,18 60,16 74,12 88,8")}</section>
+        <section class="kpi-card"><div class="kpi-label">Total de passivos</div><div class="kpi-value negative" id="dashboard-total-passivos">R$ 0,00</div>${kpiTrend("-2.4%", "negative")}${sparklineSvg("4,14 18,18 32,22 46,20 60,25 74,28 88,30")}</section>
+        <section class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="dashboard-patrimonio">R$ 0,00</div>${kpiTrend("+7.2%", "positive")}${sparklineSvg("4,32 18,24 32,27 46,18 60,20 74,12 88,10")}</section>
       </div>
 
       <section class="report-charts">
-        <div class="panel-box"><h3>Receitas x despesas</h3><canvas id="dash-chart-receitas-despesas" height="150"></canvas></div>
+        <div class="panel-box chart-card chart-card-wide"><h3>Evolucao financeira</h3><canvas id="dash-chart-receitas-despesas" height="150"></canvas></div>
         <div class="panel-box"><h3>Custos por veiculo</h3><canvas id="dash-chart-custos-veiculo" height="150"></canvas></div>
         <div class="panel-box"><h3>Despesas por classificacao</h3><canvas id="dash-chart-despesas-classificacao" height="150"></canvas></div>
         <div class="panel-box"><h3>Faturamento mensal</h3><canvas id="dash-chart-faturamento-mensal" height="150"></canvas></div>
@@ -2646,7 +2680,7 @@ function aplicarTema() {
   const config = carregarConfiguracoesLocais();
   const tema = config.tema || localStorage.getItem("financeiro_tema") || "dark";
   document.body.dataset.theme = tema;
-  document.documentElement.style.setProperty("--blue", config.corPrincipal || "#4f8cff");
+  document.documentElement.style.setProperty("--blue", config.corPrincipal || "#22D3EE");
 }
 
 function iniciarConfiguracoes() {
@@ -2654,7 +2688,7 @@ function iniciarConfiguracoes() {
   document.getElementById("config-empresa").value = config.nomeEmpresa || "";
   document.getElementById("config-logo").value = config.logoEmpresa || "";
   document.getElementById("config-tema").value = config.tema || localStorage.getItem("financeiro_tema") || "dark";
-  document.getElementById("config-cor").value = config.corPrincipal || "#4f8cff";
+  document.getElementById("config-cor").value = config.corPrincipal || "#22D3EE";
   document.getElementById("config-moeda").value = config.moeda || "BRL";
   document.getElementById("config-relatorio").value = config.dadosRelatorio || "";
   document.getElementById("form-configuracoes").addEventListener("submit", (event) => {
@@ -2975,23 +3009,24 @@ function criarGraficoDashboard(canvasId, tipo, labels, datasets) {
 }
 
 function renderizarGraficoReceitasDespesas(dados) {
-  criarGraficoDashboard("dash-chart-receitas-despesas", "bar", ["Periodo"], [
-    { label: "Faturamento", data: [dados.resumo.faturamento], backgroundColor: "#22c55e" },
-    { label: "Custos", data: [dados.resumo.custos_operacionais], backgroundColor: "#ef4444" },
-    { label: "Despesas", data: [dados.resumo.despesas_administrativas], backgroundColor: "#f59e0b" }
+  const labels = dados.periodo.length ? dados.periodo.map(i => i.periodo) : ["Periodo"];
+  criarGraficoDashboard("dash-chart-receitas-despesas", "line", labels, [
+    { label: "Receita", data: dados.periodo.length ? dados.periodo.map(i => i.total_receitas) : [dados.resumo.faturamento], borderColor: "#22C55E", backgroundColor: "rgba(34,197,94,0.14)", tension: 0.38, fill: true },
+    { label: "Custo", data: dados.periodo.length ? dados.periodo.map(i => i.total_custos) : [dados.resumo.custos_operacionais], borderColor: "#EF4444", backgroundColor: "rgba(239,68,68,0.1)", tension: 0.38, fill: true },
+    { label: "Lucro", data: dados.periodo.length ? dados.periodo.map(i => i.resultado) : [dados.resumo.lucro_liquido], borderColor: "#22D3EE", backgroundColor: "rgba(34,211,238,0.12)", tension: 0.38, fill: true }
   ]);
 }
 
 function renderizarGraficoCustosPorVeiculo(dados) {
   criarGraficoDashboard("dash-chart-custos-veiculo", "bar", dados.veiculos.slice(0, 8).map(i => i.nome_veiculo), [
-    { label: "Custo total", data: dados.veiculos.slice(0, 8).map(i => i.custo_total_veiculo), backgroundColor: "#4f8cff" }
+    { label: "Custo total", data: dados.veiculos.slice(0, 8).map(i => i.custo_total_veiculo), backgroundColor: "#3B82F6", borderRadius: 10 }
   ]);
 }
 
 function renderizarGraficoDespesasPorClassificacao(dados) {
   const despesas = dados.classificacoes.filter(i => String(i.classificacao).startsWith("2.")).slice(0, 8);
   criarGraficoDashboard("dash-chart-despesas-classificacao", "doughnut", despesas.map(i => i.classificacao), [
-    { label: "Despesas", data: despesas.map(i => Math.abs(i.total)), backgroundColor: ["#ef4444", "#f59e0b", "#4f8cff", "#22c55e", "#a78bfa", "#06b6d4", "#64748b", "#f97316"] }
+    { label: "Despesas", data: despesas.map(i => Math.abs(i.total)), backgroundColor: ["#EF4444", "#F59E0B", "#22D3EE", "#22C55E", "#3B82F6", "#06B6D4", "#64748B", "#F97316"] }
   ]);
 }
 
@@ -3339,9 +3374,35 @@ if (themeToggleBtn) {
   });
 }
 
+settingsBtn?.addEventListener("click", async () => {
+  navButtons.forEach((btn) => btn.classList.remove("active"));
+  fecharSidebarMobile();
+  await loadPage("configuracoes");
+});
+
+notificationBtn?.addEventListener("click", () => {
+  mostrarToast("Nenhuma nova notificacao no momento.", "success");
+});
+
+globalSearch?.addEventListener("keydown", async (event) => {
+  if (event.key !== "Enter") return;
+  const termo = globalSearch.value.trim().toLowerCase();
+  if (!termo) return;
+  const destino = Array.from(navButtons).find((btn) => btn.textContent.toLowerCase().includes(termo));
+  if (destino) {
+    navButtons.forEach((btn) => btn.classList.remove("active"));
+    destino.classList.add("active");
+    await loadPage(destino.dataset.page);
+  } else {
+    mostrarToast("Nenhuma tela encontrada para esta busca.", "error");
+  }
+});
+
 // =========================================================
 // INICIALIZACAO DO SISTEMA
 // =========================================================
 aplicarTema();
 aplicarEstadoSidebar();
+aplicarIconesNavegacao();
 loadPage("dashboard");
+window.lucide?.createIcons();
