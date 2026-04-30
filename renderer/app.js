@@ -986,6 +986,67 @@ const pages = {
     `
   },
 
+  admin: {
+    title: "Painel Master",
+    subtitle: "Empresas, usuarios, permissoes e auditoria",
+    render: () => `
+      <section class="kpi-grid" style="margin-bottom:18px;">
+        <div class="kpi-card"><div class="kpi-label">Empresas</div><div class="kpi-value" id="admin-total-empresas">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Usuarios ativos</div><div class="kpi-value positive" id="admin-usuarios-ativos">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Pendentes</div><div class="kpi-value" id="admin-usuarios-pendentes">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Bloqueadas/Inativas</div><div class="kpi-value negative" id="admin-empresas-bloqueadas">0</div></div>
+      </section>
+
+      <section class="panel-box">
+        <div class="table-toolbar"><div><h3 style="margin:0;">Cadastro de empresa</h3><span>Somente master gerencia todas as empresas</span></div></div>
+        <form id="form-admin-empresa" class="form-grid">
+          <div class="field"><label>Nome da empresa</label><input id="empresa-nome" required /></div>
+          <div class="field"><label>Nome fantasia</label><input id="empresa-nome-fantasia" /></div>
+          <div class="field"><label>CNPJ</label><input id="empresa-cnpj" /></div>
+          <div class="field"><label>Inscricao estadual</label><input id="empresa-ie" /></div>
+          <div class="field"><label>Telefone</label><input id="empresa-telefone" /></div>
+          <div class="field"><label>Email</label><input id="empresa-email" type="email" /></div>
+          <div class="field full"><label>Endereco completo</label><input id="empresa-endereco" /></div>
+          <div class="field"><label>Cidade</label><input id="empresa-cidade" /></div>
+          <div class="field"><label>Estado</label><input id="empresa-estado" maxlength="2" /></div>
+          <div class="field"><label>CEP</label><input id="empresa-cep" /></div>
+          <div class="field"><label>Status</label><select id="empresa-status"><option value="ativo">Ativa</option><option value="pendente">Pendente</option><option value="bloqueado">Bloqueada</option><option value="inativo">Inativa</option></select></div>
+          <div class="field full"><label>Logo</label><input id="empresa-logo-arquivo" type="file" accept="image/*" /><input id="empresa-logo" type="hidden" /></div>
+          <div class="field full"><label>Observacoes</label><input id="empresa-observacoes" /></div>
+          <div class="field full"><button class="primary-btn" type="submit">Salvar empresa</button></div>
+        </form>
+        <p id="mensagem-admin-empresa" class="mensagem"></p>
+      </section>
+
+      <section class="panel-box">
+        <div class="table-toolbar"><div><h3 style="margin:0;">Empresas cadastradas</h3><span>Bloqueie, aprove ou desative empresas</span></div></div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Empresa</th><th>CNPJ</th><th>Email</th><th>Status</th><th>Acoes</th></tr></thead><tbody id="tabela-admin-empresas"></tbody></table></div>
+      </section>
+
+      <section class="panel-box">
+        <div class="table-toolbar"><div><h3 style="margin:0;">Cadastro de usuario</h3><span>Vincule usuarios a empresas e perfis</span></div></div>
+        <form id="form-admin-usuario" class="form-grid">
+          <div class="field"><label>Nome</label><input id="admin-usuario-nome" required /></div>
+          <div class="field"><label>Email</label><input id="admin-usuario-email" type="email" required /></div>
+          <div class="field"><label>Senha inicial</label><input id="admin-usuario-senha" type="password" required /></div>
+          <div class="field"><label>Empresa</label><select id="admin-usuario-empresa"></select></div>
+          <div class="field"><label>Perfil</label><select id="admin-usuario-perfil"><option value="visualizador">Visualizador</option><option value="operador">Operador</option><option value="financeiro">Financeiro</option><option value="gestor">Gestor</option><option value="admin">Admin</option><option value="master">Master</option></select></div>
+          <div class="field"><label>Status</label><select id="admin-usuario-status"><option value="ativo">Ativo</option><option value="pendente">Pendente</option><option value="bloqueado">Bloqueado</option><option value="inativo">Inativo</option></select></div>
+          <div class="field"><label>Telefone</label><input id="admin-usuario-telefone" /></div>
+          <div class="field"><label>Cargo/Função</label><input id="admin-usuario-cargo" /></div>
+          <div class="field full"><button class="primary-btn" type="submit">Salvar usuario</button></div>
+        </form>
+        <p id="mensagem-admin-usuario" class="mensagem"></p>
+        <div class="table-wrap" style="margin-top:16px;"><table class="data-table"><thead><tr><th>Nome</th><th>Email</th><th>Empresa</th><th>Perfil</th><th>Status</th><th>Ultimo login</th><th>Acoes</th></tr></thead><tbody id="tabela-admin-usuarios"></tbody></table></div>
+      </section>
+
+      <section class="panel-box">
+        <div class="table-toolbar"><div><h3 style="margin:0;">Auditoria</h3><span>Ultimas acoes administrativas</span></div></div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Acao</th><th>Entidade</th><th>ID</th><th>IP</th></tr></thead><tbody id="tabela-admin-auditoria"></tbody></table></div>
+      </section>
+    `
+  },
+
   relatorios: {
     title: "Relatorios",
     subtitle: "Indicadores financeiros, graficos e exportacoes",
@@ -3451,6 +3512,22 @@ function iniciarConfiguracoes() {
   });
 }
 
+function obterUsuarioSessao() {
+  try {
+    return JSON.parse(sessionStorage.getItem("financeiro_usuario") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function aplicarPermissoesVisuais() {
+  const usuario = obterUsuarioSessao();
+  const adminButton = document.querySelector('[data-page="admin"]');
+  if (adminButton && usuario.perfil !== "master") {
+    adminButton.hidden = true;
+  }
+}
+
 async function renderizarUsuarios() {
   const tabela = document.getElementById("tabela-usuarios");
   if (!tabela) return;
@@ -3498,6 +3575,161 @@ window.desativarUsuario = async (usuarioId) => {
   if (!confirm("Deseja desativar este usuario?")) return;
   await apiSend(`/usuarios/${usuarioId}/desativar`, "POST", {});
   await renderizarUsuarios();
+};
+
+async function iniciarAdminMaster() {
+  await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
+
+  const logoArquivo = document.getElementById("empresa-logo-arquivo");
+  logoArquivo?.addEventListener("change", async () => {
+    const arquivo = logoArquivo.files?.[0];
+    if (!arquivo) return;
+    if (arquivo.size > 1024 * 1024) {
+      mostrarToast("Logo deve ter no maximo 1MB.", "error");
+      logoArquivo.value = "";
+      return;
+    }
+    document.getElementById("empresa-logo").value = await arquivoParaBase64(arquivo);
+  });
+
+  document.getElementById("form-admin-empresa")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const mensagem = document.getElementById("mensagem-admin-empresa");
+    try {
+      await apiSend("/empresas", "POST", {
+        nome: document.getElementById("empresa-nome").value.trim(),
+        nome_fantasia: document.getElementById("empresa-nome-fantasia").value.trim(),
+        cnpj: document.getElementById("empresa-cnpj").value.trim(),
+        inscricao_estadual: document.getElementById("empresa-ie").value.trim(),
+        telefone: document.getElementById("empresa-telefone").value.trim(),
+        email: document.getElementById("empresa-email").value.trim(),
+        endereco: document.getElementById("empresa-endereco").value.trim(),
+        cidade: document.getElementById("empresa-cidade").value.trim(),
+        estado: document.getElementById("empresa-estado").value.trim().toUpperCase(),
+        cep: document.getElementById("empresa-cep").value.trim(),
+        logo: document.getElementById("empresa-logo").value,
+        observacoes: document.getElementById("empresa-observacoes").value.trim(),
+        status: document.getElementById("empresa-status").value
+      });
+      event.target.reset();
+      document.getElementById("empresa-logo").value = "";
+      mensagem.textContent = "Empresa salva com sucesso.";
+      await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), preencherSelectEmpresasAdmin()]);
+    } catch (erro) {
+      mensagem.textContent = erro.message;
+    }
+  });
+
+  document.getElementById("form-admin-usuario")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const mensagem = document.getElementById("mensagem-admin-usuario");
+    try {
+      await apiSend("/usuarios", "POST", {
+        nome: document.getElementById("admin-usuario-nome").value.trim(),
+        email: document.getElementById("admin-usuario-email").value.trim(),
+        senha: document.getElementById("admin-usuario-senha").value,
+        empresa_id: Number(document.getElementById("admin-usuario-empresa").value),
+        perfil: document.getElementById("admin-usuario-perfil").value,
+        status: document.getElementById("admin-usuario-status").value,
+        telefone: document.getElementById("admin-usuario-telefone").value.trim(),
+        cargo: document.getElementById("admin-usuario-cargo").value.trim()
+      });
+      event.target.reset();
+      mensagem.textContent = "Usuario salvo com sucesso.";
+      await Promise.all([renderizarAdminResumo(), renderizarAdminUsuarios()]);
+    } catch (erro) {
+      mensagem.textContent = erro.message;
+    }
+  });
+}
+
+async function renderizarAdminResumo() {
+  const resumo = await apiGet("/admin/resumo");
+  document.getElementById("admin-total-empresas").textContent = resumo.empresas || 0;
+  document.getElementById("admin-usuarios-ativos").textContent = resumo.usuarios_ativos || 0;
+  document.getElementById("admin-usuarios-pendentes").textContent = resumo.usuarios_pendentes || 0;
+  document.getElementById("admin-empresas-bloqueadas").textContent = resumo.empresas_bloqueadas || 0;
+}
+
+async function preencherSelectEmpresasAdmin() {
+  const select = document.getElementById("admin-usuario-empresa");
+  if (!select) return [];
+  const empresas = await apiGet("/empresas");
+  select.innerHTML = empresas.map((empresa) => `<option value="${empresa.id}">${escapeHtml(empresa.nome)}</option>`).join("");
+  return empresas;
+}
+
+async function renderizarAdminEmpresas() {
+  const tabela = document.getElementById("tabela-admin-empresas");
+  const empresas = await preencherSelectEmpresasAdmin();
+  if (!tabela) return;
+  tabela.innerHTML = empresas.map((empresa) => `
+    <tr>
+      <td>${escapeHtml(empresa.nome)}</td>
+      <td>${escapeHtml(empresa.cnpj || "-")}</td>
+      <td>${escapeHtml(empresa.email || "-")}</td>
+      <td>${escapeHtml(empresa.status)}</td>
+      <td><div class="action-row">
+        <button class="small-btn" onclick="acaoEmpresa(${empresa.id}, 'aprovar')">Aprovar</button>
+        <button class="small-btn delete-btn" onclick="acaoEmpresa(${empresa.id}, 'bloquear')">Bloquear</button>
+        <button class="small-btn delete-btn" onclick="excluirEmpresaAdmin(${empresa.id})">Desativar</button>
+      </div></td>
+    </tr>
+  `).join("") || `<tr><td colspan="5" class="empty-row">Nenhuma empresa cadastrada.</td></tr>`;
+}
+
+async function renderizarAdminUsuarios() {
+  const tabela = document.getElementById("tabela-admin-usuarios");
+  if (!tabela) return;
+  const [usuarios, empresas] = await Promise.all([apiGet("/usuarios"), apiGet("/empresas")]);
+  const nomesEmpresas = new Map(empresas.map((empresa) => [empresa.id, empresa.nome]));
+  tabela.innerHTML = usuarios.map((usuario) => `
+    <tr>
+      <td>${escapeHtml(usuario.nome)}</td>
+      <td>${escapeHtml(usuario.email)}</td>
+      <td>${escapeHtml(nomesEmpresas.get(usuario.empresa_id) || usuario.empresa_id)}</td>
+      <td>${escapeHtml(usuario.perfil)}</td>
+      <td>${escapeHtml(usuario.status)}</td>
+      <td>${usuario.ultimo_login ? formatarDataCurta(usuario.ultimo_login) : "-"}</td>
+      <td><div class="action-row">
+        <button class="small-btn" onclick="acaoUsuario(${usuario.id}, 'aprovar')">Aprovar</button>
+        <button class="small-btn delete-btn" onclick="acaoUsuario(${usuario.id}, 'bloquear')">Bloquear</button>
+        <button class="small-btn delete-btn" onclick="acaoUsuario(${usuario.id}, 'desativar')">Desativar</button>
+        <button class="small-btn" onclick="acaoUsuario(${usuario.id}, 'forcar-troca-senha')">Trocar senha</button>
+      </div></td>
+    </tr>
+  `).join("") || `<tr><td colspan="7" class="empty-row">Nenhum usuario cadastrado.</td></tr>`;
+}
+
+async function renderizarAdminAuditoria() {
+  const tabela = document.getElementById("tabela-admin-auditoria");
+  if (!tabela) return;
+  const logs = await apiGet("/audit-logs");
+  tabela.innerHTML = logs.map((log) => `
+    <tr>
+      <td>${log.created_at ? formatarDataCurta(log.created_at) : "-"}</td>
+      <td>${escapeHtml(log.acao)}</td>
+      <td>${escapeHtml(log.entidade)}</td>
+      <td>${escapeHtml(log.entidade_id)}</td>
+      <td>${escapeHtml(log.ip || "-")}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="5" class="empty-row">Nenhum log encontrado.</td></tr>`;
+}
+
+window.acaoEmpresa = async (empresaId, acao) => {
+  await apiSend(`/empresas/${empresaId}/${acao}`, "POST", {});
+  await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminAuditoria()]);
+};
+
+window.excluirEmpresaAdmin = async (empresaId) => {
+  if (!confirm("Deseja desativar esta empresa?")) return;
+  await apiDelete(`/empresas/${empresaId}`);
+  await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminAuditoria()]);
+};
+
+window.acaoUsuario = async (usuarioId, acao) => {
+  await apiSend(`/usuarios/${usuarioId}/${acao}`, "POST", {});
+  await Promise.all([renderizarAdminResumo(), renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
 };
 
 // =========================================================
@@ -4055,6 +4287,11 @@ function iniciarBotoesPopupFiltros() {
 // NAVEGACAO ENTRE ABAS
 // =========================================================
 async function loadPage(pageKey) {
+  if (pageKey === "admin" && obterUsuarioSessao().perfil !== "master") {
+    pageKey = "dashboard";
+    mostrarToast("Acesso administrativo disponivel apenas para usuario master.", "error");
+  }
+
   const page = pages[pageKey];
   if (!page) return;
 
@@ -4095,6 +4332,10 @@ async function loadPage(pageKey) {
     if (pageKey === "configuracoes") {
       iniciarConfiguracoes();
       iniciarUsuarios();
+    }
+
+    if (pageKey === "admin") {
+      await iniciarAdminMaster();
     }
 
     if (pageKey === "veiculos") {
@@ -4201,5 +4442,6 @@ aplicarTema();
 aplicarEstadoSidebar();
 aplicarIconesNavegacao();
 exigirLogin();
+aplicarPermissoesVisuais();
 loadPage("dashboard");
 window.lucide?.createIcons();

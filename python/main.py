@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.admin_routes import router as admin_router
 from backend.auth import router as auth_router
-from backend.database import Base, SessionLocal, engine
+from backend.database import Base, SessionLocal, engine, garantir_colunas_runtime
 from backend.dependencies import usuario_pode_escrever
 from backend.models import Usuario
 from backend.security import decodificar_token
@@ -85,7 +85,7 @@ async def aplicar_seguranca(request: Request, call_next):
             usuario = db.get(Usuario, int(payload.get("sub")))
             if not usuario or usuario.status != "ativo":
                 return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Usuario inativo ou inexistente."})
-            if usuario.empresa_id != 1 and usuario.perfil != "admin":
+            if usuario.empresa_id != 1 and usuario.perfil not in {"master", "admin"}:
                 return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Dados legados disponiveis apenas para a empresa padrao ate a migracao completa."})
             if request.method not in {"GET", "HEAD", "OPTIONS"}:
                 dominio = next((valor for prefixo, valor in DOMINIOS_LEGADOS.items() if caminho.startswith(prefixo)), "")
@@ -109,6 +109,7 @@ async def aplicar_seguranca(request: Request, call_next):
 @app.on_event("startup")
 def inicializar_banco():
     Base.metadata.create_all(bind=engine)
+    garantir_colunas_runtime()
 
 
 app.include_router(auth_router)

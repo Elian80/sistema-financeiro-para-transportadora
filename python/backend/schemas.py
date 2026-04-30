@@ -19,18 +19,25 @@ def validar_email_formato(email: str) -> str:
 
 class EmpresaBase(BaseModel):
     nome: str = Field(..., min_length=1, max_length=160)
+    nome_fantasia: str = Field("", max_length=160)
     cnpj: str = Field("", max_length=20)
+    inscricao_estadual: str = Field("", max_length=40)
     telefone: str = Field("", max_length=30)
     email: str = ""
     endereco: str = Field("", max_length=255)
+    cidade: str = Field("", max_length=120)
+    estado: str = Field("", max_length=2)
+    cep: str = Field("", max_length=12)
+    logo: str = ""
+    observacoes: str = Field("", max_length=1000)
     status: str = "ativo"
 
-    @field_validator("nome", "telefone", "email", "endereco", "status")
+    @field_validator("nome", "nome_fantasia", "inscricao_estadual", "telefone", "endereco", "cidade", "estado", "cep", "observacoes", "status", mode="before")
     @classmethod
     def strip_texto(cls, value: str) -> str:
         return str(value or "").strip()
 
-    @field_validator("cnpj")
+    @field_validator("cnpj", mode="before")
     @classmethod
     def validar_cnpj(cls, value: str) -> str:
         cnpj = limpar_cnpj(value)
@@ -45,10 +52,18 @@ class EmpresaBase(BaseModel):
             raise ValueError("Status invalido.")
         return value
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validar_email(cls, value: str) -> str:
         return validar_email_formato(value)
+
+    @field_validator("logo", mode="before")
+    @classmethod
+    def validar_logo(cls, value: str) -> str:
+        texto = str(value or "")
+        if texto and len(texto) > 1_500_000:
+            raise ValueError("Logo muito grande. Use imagem menor que aproximadamente 1MB.")
+        return texto
 
 
 class EmpresaCreate(EmpresaBase):
@@ -73,8 +88,10 @@ class UsuarioBase(BaseModel):
     perfil: str
     status: str = "ativo"
     empresa_id: int | None = None
+    telefone: str = Field("", max_length=30)
+    cargo: str = Field("", max_length=100)
 
-    @field_validator("nome", "perfil", "status")
+    @field_validator("nome", "perfil", "status", "telefone", "cargo", mode="before")
     @classmethod
     def strip_texto(cls, value: str) -> str:
         return str(value or "").strip()
@@ -93,7 +110,7 @@ class UsuarioBase(BaseModel):
             raise ValueError("Status invalido.")
         return value
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validar_email(cls, value: str) -> str:
         return validar_email_formato(value)

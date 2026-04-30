@@ -6,8 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
 
-PERFIS_VALIDOS = ("admin", "gestor", "financeiro", "operador", "visualizador")
-STATUS_VALIDOS = ("ativo", "inativo")
+PERFIS_VALIDOS = ("master", "admin", "gestor", "financeiro", "operador", "visualizador")
+STATUS_VALIDOS = ("ativo", "inativo", "bloqueado", "pendente")
 
 
 class TimestampMixin:
@@ -20,10 +20,17 @@ class Empresa(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     nome: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
+    nome_fantasia: Mapped[str] = mapped_column(String(160), default="", nullable=False)
     cnpj: Mapped[str] = mapped_column(String(20), nullable=True, unique=True, index=True)
+    inscricao_estadual: Mapped[str] = mapped_column(String(40), default="", nullable=False)
     telefone: Mapped[str] = mapped_column(String(30), default="", nullable=False)
     email: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     endereco: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    cidade: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    estado: Mapped[str] = mapped_column(String(2), default="", nullable=False)
+    cep: Mapped[str] = mapped_column(String(12), default="", nullable=False)
+    logo: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    observacoes: Mapped[str] = mapped_column(Text, default="", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="ativo", nullable=False)
 
     usuarios: Mapped[list["Usuario"]] = relationship(back_populates="empresa")
@@ -40,6 +47,8 @@ class Usuario(Base, TimestampMixin):
     senha_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     perfil: Mapped[str] = mapped_column(String(30), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="ativo", nullable=False)
+    telefone: Mapped[str] = mapped_column(String(30), default="", nullable=False)
+    cargo: Mapped[str] = mapped_column(String(100), default="", nullable=False)
     ultimo_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deve_trocar_senha: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 

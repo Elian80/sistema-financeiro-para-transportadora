@@ -34,7 +34,17 @@ def login(dados: LoginIn, request: Request, db: Session = Depends(get_db)):
     if not usuario or not verificar_senha(dados.senha, usuario.senha_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login ou senha invalidos.")
     if usuario.status != "ativo":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario inativo.")
+        db.add(AuditLog(
+            empresa_id=usuario.empresa_id,
+            usuario_id=usuario.id,
+            acao="login_bloqueado",
+            entidade="usuario",
+            entidade_id=str(usuario.id),
+            detalhes=f"Status: {usuario.status}",
+            ip=ip,
+        ))
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Usuario {usuario.status}.")
 
     usuario.ultimo_login = datetime.now()
     token = criar_access_token(str(usuario.id), usuario.empresa_id, usuario.perfil)

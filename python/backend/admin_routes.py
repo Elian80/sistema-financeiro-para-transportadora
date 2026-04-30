@@ -32,23 +32,27 @@ def registrar_auditoria(db: Session, request: Request, usuario: Usuario, acao: s
 
 
 def exigir_admin_ou_gestor(usuario: Usuario) -> None:
-    if usuario.perfil not in {"admin", "gestor"}:
+    if usuario.perfil not in {"master", "admin", "gestor"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+
+
+def pode_gerenciar_todas_empresas(usuario: Usuario) -> bool:
+    return usuario.perfil == "master"
 
 
 @router.get("/empresas", response_model=list[EmpresaOut])
 def listar_empresas(db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
-    if usuario.perfil == "admin":
+    if pode_gerenciar_todas_empresas(usuario):
         return db.query(Empresa).order_by(Empresa.nome).all()
-    if usuario.perfil == "gestor":
+    if usuario.perfil in {"admin", "gestor"}:
         return [db.get(Empresa, usuario.empresa_id)]
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
 
 
 @router.post("/empresas", response_model=EmpresaOut)
 def criar_empresa(dados: EmpresaCreate, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
-    if usuario.perfil != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente admin cria empresas.")
+    if not pode_gerenciar_todas_empresas(usuario):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master cria empresas.")
     if dados.cnpj and db.query(Empresa).filter(Empresa.cnpj == dados.cnpj).first():
         raise HTTPException(status_code=400, detail="CNPJ ja cadastrado.")
     empresa = Empresa(**dados.model_dump())
@@ -62,7 +66,7 @@ def criar_empresa(dados: EmpresaCreate, request: Request, db: Session = Depends(
 
 @router.get("/empresas/{empresa_id}", response_model=EmpresaOut)
 def obter_empresa(empresa_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
-    if usuario.perfil != "admin" and usuario.empresa_id != empresa_id:
+    if not pode_gerenciar_todas_empresas(usuario) and usuario.empresa_id != empresa_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
     empresa = db.get(Empresa, empresa_id)
     if not empresa:
@@ -72,8 +76,8 @@ def obter_empresa(empresa_id: int, db: Session = Depends(get_db), usuario: Usuar
 
 @router.put("/empresas/{empresa_id}", response_model=EmpresaOut)
 def atualizar_empresa(empresa_id: int, dados: EmpresaUpdate, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
-    if usuario.perfil != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente admin altera empresas.")
+    if not pode_gerenciar_todas_empresas(usuario) and usuario.empresa_id != empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
     empresa = db.get(Empresa, empresa_id)
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa nao encontrada.")
@@ -90,8 +94,8 @@ def atualizar_empresa(empresa_id: int, dados: EmpresaUpdate, request: Request, d
 
 @router.delete("/empresas/{empresa_id}")
 def excluir_empresa(empresa_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
-    if usuario.perfil != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente admin exclui empresas.")
+    if not pode_gerenciar_todas_empresas(usuario):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master desativa empresas.")
     empresa = db.get(Empresa, empresa_id)
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa nao encontrada.")
@@ -101,11 +105,37 @@ def excluir_empresa(empresa_id: int, request: Request, db: Session = Depends(get
     return {"mensagem": "Empresa desativada com sucesso."}
 
 
+@router.post("/empresas/{empresa_id}/bloquear")
+def bloquear_empresa(empresa_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if not pode_gerenciar_todas_empresas(usuario):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master bloqueia empresas.")
+    empresa = db.get(Empresa, empresa_id)
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa nao encontrada.")
+    empresa.status = "bloqueado"
+    registrar_auditoria(db, request, usuario, "bloquear", "empresa", str(empresa.id))
+    db.commit()
+    return {"mensagem": "Empresa bloqueada com sucesso."}
+
+
+@router.post("/empresas/{empresa_id}/aprovar")
+def aprovar_empresa(empresa_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if not pode_gerenciar_todas_empresas(usuario):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master aprova empresas.")
+    empresa = db.get(Empresa, empresa_id)
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa nao encontrada.")
+    empresa.status = "ativo"
+    registrar_auditoria(db, request, usuario, "aprovar", "empresa", str(empresa.id))
+    db.commit()
+    return {"mensagem": "Empresa aprovada com sucesso."}
+
+
 @router.get("/usuarios", response_model=list[UsuarioOut])
 def listar_usuarios(db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
-    if usuario.perfil == "admin":
+    if usuario.perfil == "master":
         return db.query(Usuario).order_by(Usuario.nome).all()
-    if usuario.perfil == "gestor":
+    if usuario.perfil in {"admin", "gestor"}:
         return db.query(Usuario).filter(Usuario.empresa_id == usuario.empresa_id).order_by(Usuario.nome).all()
     return [usuario]
 
@@ -113,9 +143,9 @@ def listar_usuarios(db: Session = Depends(get_db), usuario: Usuario = Depends(ge
 @router.post("/usuarios", response_model=UsuarioOut)
 def criar_usuario(dados: UsuarioCreate, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
     exigir_admin_ou_gestor(usuario)
-    empresa_id = dados.empresa_id if usuario.perfil == "admin" and dados.empresa_id else usuario.empresa_id
-    if usuario.perfil == "gestor" and empresa_id != usuario.empresa_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Gestor gerencia apenas a propria empresa.")
+    empresa_id = dados.empresa_id if usuario.perfil == "master" and dados.empresa_id else usuario.empresa_id
+    if usuario.perfil in {"admin", "gestor"} and empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
     if db.query(Usuario).filter(Usuario.email == dados.email.lower()).first():
         raise HTTPException(status_code=400, detail="Email ja cadastrado.")
     validar_senha_forte(dados.senha)
@@ -126,6 +156,8 @@ def criar_usuario(dados: UsuarioCreate, request: Request, db: Session = Depends(
         senha_hash=gerar_hash_senha(dados.senha),
         perfil=dados.perfil,
         status=dados.status,
+        telefone=dados.telefone,
+        cargo=dados.cargo,
         deve_trocar_senha=True,
     )
     db.add(novo)
@@ -141,7 +173,7 @@ def obter_usuario(usuario_id: int, db: Session = Depends(get_db), usuario: Usuar
     alvo = db.get(Usuario, usuario_id)
     if not alvo:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
-    if usuario.perfil == "admin" or alvo.id == usuario.id or (usuario.perfil == "gestor" and alvo.empresa_id == usuario.empresa_id):
+    if usuario.perfil == "master" or alvo.id == usuario.id or (usuario.perfil in {"admin", "gestor"} and alvo.empresa_id == usuario.empresa_id):
         return alvo
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
 
@@ -152,11 +184,13 @@ def atualizar_usuario(usuario_id: int, dados: UsuarioUpdate, request: Request, d
     alvo = db.get(Usuario, usuario_id)
     if not alvo:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
-    if usuario.perfil == "gestor" and alvo.empresa_id != usuario.empresa_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Gestor gerencia apenas a propria empresa.")
+    if usuario.perfil in {"admin", "gestor"} and alvo.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
     alvo.nome = dados.nome
     alvo.perfil = dados.perfil
     alvo.status = dados.status
+    alvo.telefone = dados.telefone
+    alvo.cargo = dados.cargo
     if dados.senha:
         validar_senha_forte(dados.senha)
         alvo.senha_hash = gerar_hash_senha(dados.senha)
@@ -173,8 +207,8 @@ def excluir_usuario(usuario_id: int, request: Request, db: Session = Depends(get
     alvo = db.get(Usuario, usuario_id)
     if not alvo:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
-    if usuario.perfil == "gestor" and alvo.empresa_id != usuario.empresa_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Gestor gerencia apenas a propria empresa.")
+    if usuario.perfil in {"admin", "gestor"} and alvo.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
     alvo.status = "inativo"
     registrar_auditoria(db, request, usuario, "desativar", "usuario", str(alvo.id))
     db.commit()
@@ -188,8 +222,8 @@ def alterar_senha(usuario_id: int, dados: AlterarSenhaIn, request: Request, db: 
         raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
     if usuario.perfil not in {"admin", "gestor"} and usuario.id != usuario_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
-    if usuario.perfil == "gestor" and alvo.empresa_id != usuario.empresa_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Gestor gerencia apenas a propria empresa.")
+    if usuario.perfil in {"admin", "gestor"} and alvo.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
     validar_senha_forte(dados.senha)
     alvo.senha_hash = gerar_hash_senha(dados.senha)
     alvo.deve_trocar_senha = False
@@ -201,3 +235,89 @@ def alterar_senha(usuario_id: int, dados: AlterarSenhaIn, request: Request, db: 
 @router.post("/usuarios/{usuario_id}/desativar")
 def desativar_usuario(usuario_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
     return excluir_usuario(usuario_id, request, db, usuario)
+
+
+@router.post("/usuarios/{usuario_id}/bloquear")
+def bloquear_usuario(usuario_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    exigir_admin_ou_gestor(usuario)
+    alvo = db.get(Usuario, usuario_id)
+    if not alvo:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
+    if usuario.perfil in {"admin", "gestor"} and alvo.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
+    alvo.status = "bloqueado"
+    registrar_auditoria(db, request, usuario, "bloquear", "usuario", str(alvo.id))
+    db.commit()
+    return {"mensagem": "Usuario bloqueado com sucesso."}
+
+
+@router.post("/usuarios/{usuario_id}/aprovar")
+def aprovar_usuario(usuario_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    exigir_admin_ou_gestor(usuario)
+    alvo = db.get(Usuario, usuario_id)
+    if not alvo:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
+    if usuario.perfil in {"admin", "gestor"} and alvo.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
+    alvo.status = "ativo"
+    registrar_auditoria(db, request, usuario, "aprovar", "usuario", str(alvo.id))
+    db.commit()
+    return {"mensagem": "Usuario aprovado com sucesso."}
+
+
+@router.post("/usuarios/{usuario_id}/forcar-troca-senha")
+def forcar_troca_senha(usuario_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    exigir_admin_ou_gestor(usuario)
+    alvo = db.get(Usuario, usuario_id)
+    if not alvo:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
+    alvo.deve_trocar_senha = True
+    registrar_auditoria(db, request, usuario, "forcar_troca_senha", "usuario", str(alvo.id))
+    db.commit()
+    return {"mensagem": "Troca de senha obrigatoria ativada."}
+
+
+@router.get("/admin/resumo")
+def resumo_admin(db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if usuario.perfil != "master":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master acessa o painel global.")
+    return {
+        "empresas": db.query(Empresa).count(),
+        "empresas_bloqueadas": db.query(Empresa).filter(Empresa.status.in_(["bloqueado", "inativo"])).count(),
+        "usuarios": db.query(Usuario).count(),
+        "usuarios_ativos": db.query(Usuario).filter(Usuario.status == "ativo").count(),
+        "usuarios_pendentes": db.query(Usuario).filter(Usuario.status == "pendente").count(),
+        "ultimos_logs": [
+            {
+                "acao": log.acao,
+                "entidade": log.entidade,
+                "entidade_id": log.entidade_id,
+                "created_at": log.created_at,
+            }
+            for log in db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(10).all()
+        ],
+    }
+
+
+@router.get("/audit-logs")
+def listar_audit_logs(db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if usuario.perfil == "master":
+        logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(100).all()
+    elif usuario.perfil in {"admin", "gestor"}:
+        logs = db.query(AuditLog).filter(AuditLog.empresa_id == usuario.empresa_id).order_by(AuditLog.created_at.desc()).limit(100).all()
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+    return [
+        {
+            "id": log.id,
+            "empresa_id": log.empresa_id,
+            "usuario_id": log.usuario_id,
+            "acao": log.acao,
+            "entidade": log.entidade,
+            "entidade_id": log.entidade_id,
+            "detalhes": log.detalhes,
+            "ip": log.ip,
+            "created_at": log.created_at,
+        }
+        for log in logs
+    ]

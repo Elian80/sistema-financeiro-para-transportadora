@@ -1,35 +1,38 @@
-# Testes de Segurança
+# Testes de Seguranca
 
 Data: 2026-04-30
 
 ## Testes Executados
 
-| # | Cenário | Resultado |
+| # | Cenario | Resultado esperado |
 |---|---|---|
-| 1 | Usuário sem token acessando `GET /veiculos` | `401` |
-| 2 | Usuário de outra empresa acessando rotas legadas JSON | `403` |
-| 3 | Perfil `visualizador` tentando criar lançamento | `403` |
-| 4 | Perfil `operador` tentando criar usuário | `403` |
-| 5 | Senha/hash retornando no login | Não retorna |
-| 6 | Token inválido em rota protegida | `401` |
-| 7 | Usuário inativo tentando logar | `403` |
-| 8 | Busca com payload simples de SQL injection | Sem efeito SQL, rota retorna controlado |
-| 9 | XSS no frontend | Criada função `escapeHtml`; aplicada no cadastro de usuários. Pendência: aplicar em todos os renders antigos |
-| 10 | CORS com origem desconhecida em produção | CORS agora vem de `CORS_ORIGINS`; pendente validar com domínio real de produção |
+| 1 | Usuario sem token acessa `GET /veiculos` | `401` |
+| 2 | Token invalido em rota protegida | `401` |
+| 3 | Login master `master@sistema.local` | `200` e sem senha na resposta |
+| 4 | Master acessa `GET /admin/resumo` | `200` |
+| 5 | Usuario pendente/bloqueado/inativo tenta login | `403` |
+| 6 | Perfil `visualizador` tenta criar lancamento | `403` |
+| 7 | Perfil `operador` tenta criar usuario | `403` |
+| 8 | Usuario comum de outra empresa acessa rotas JSON legadas | `403` |
+| 9 | Payload simples de SQL injection em busca/login | Sem execucao SQL indevida |
+| 10 | Texto HTML em campos administrativos | Escapado nas novas telas |
 
-## Comandos Usados
+## Comandos de Validacao
 
 ```bash
 python -m py_compile python/main.py python/web.py python/backend/*.py scripts/*.py
 node --check renderer/app.js
 node --check renderer/login.js
+alembic upgrade head
+python scripts/migrar_json_para_postgres.py
 ```
 
-Também foi usado `fastapi.testclient.TestClient` para validar autenticação e permissões.
+Tambem foi usado `fastapi.testclient.TestClient` para validar autenticacao, perfis e bloqueios.
 
-## Pendências de Teste
+## Pendencias de Teste
 
-- Testar PostgreSQL real local com `alembic upgrade head`.
-- Testar migração JSON em uma base PostgreSQL vazia.
-- Revisar visualmente a tela de usuários.
-- Aplicar escape HTML em todos os pontos antigos que usam `innerHTML`.
+- Testar em PostgreSQL real com dados completos de producao.
+- Criar suite `pytest` permanente.
+- Validar visualmente o painel master em celular.
+- Validar Cloudflare Tunnel em rede externa real.
+- Revisar XSS em todos os modulos antigos com `innerHTML`.

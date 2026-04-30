@@ -39,7 +39,7 @@ def request_user(request: Request) -> Usuario:
 
 def require_roles(perfis: list[str]) -> Callable[[Usuario], Usuario]:
     def dependency(usuario: Usuario = Depends(get_current_user)) -> Usuario:
-        if usuario.perfil == "admin" or usuario.perfil in perfis:
+        if usuario.perfil in {"master", "admin"} or usuario.perfil in perfis:
             return usuario
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
 
@@ -47,7 +47,7 @@ def require_roles(perfis: list[str]) -> Callable[[Usuario], Usuario]:
 
 
 def usuario_pode_escrever(usuario: Usuario, dominio: str) -> bool:
-    if usuario.perfil in {"admin", "gestor"}:
+    if usuario.perfil in {"master", "admin", "gestor"}:
         return True
     if usuario.perfil == "visualizador":
         return False

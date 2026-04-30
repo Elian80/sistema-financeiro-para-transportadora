@@ -37,7 +37,9 @@ echo Abrindo navegador...
 start "" "http://127.0.0.1:8000"
 
 echo.
-echo Sistema iniciado. Login inicial: admin@sistema.local / trocar123
+echo Sistema iniciado.
+echo Master inicial: master@sistema.local / Master123
+echo Admin da empresa padrao: admin@sistema.local / trocar123
 echo Mantenha a janela "Financeiro - Servidor Web" aberta enquanto estiver usando o sistema.
 echo.
 pause

@@ -14,20 +14,20 @@
     <div class="login-card">
       <div class="login-left">
         <div class="brand-badge">F</div>
-        <h1>ADÉLIA TRANSPORTES</h1>
+        <h1>Financeiro Transportes</h1>
         <p>
-          Sistema de gestão operacional, financeira e de frota.
+          Sistema de gestao operacional, financeira e de frota com acesso seguro por empresa.
         </p>
 
         <div class="login-info">
           <div class="info-box">
             <strong>Controle central</strong>
-            <span>Financeiro, veículos e operação em um só lugar.</span>
+            <span>Financeiro, veiculos, motoristas, estoque e folha em um so lugar.</span>
           </div>
 
           <div class="info-box">
-            <strong>Base futura</strong>
-            <span>Preparado para app Android, QR Code e mapa em tempo real.</span>
+            <strong>Acesso protegido</strong>
+            <span>Login real, permissoes por perfil e separacao de dados por empresa.</span>
           </div>
         </div>
       </div>
@@ -35,30 +35,33 @@
       <div class="login-right">
         <div class="form-box">
           <h2>Entrar</h2>
-          <p class="subtitle">Use seu login e senha para acessar.</p>
+          <p class="subtitle">Use seu e-mail e senha para acessar.</p>
 
           <form id="login-form">
-            <label for="usuario">Login</label>
-            <input type="text" id="usuario" placeholder="Digite seu login" />
+            <label for="usuario">E-mail</label>
+            <input type="email" id="usuario" placeholder="usuario@empresa.com" autocomplete="username" required />
 
             <label for="senha">Senha</label>
-            <input type="password" id="senha" placeholder="Digite sua senha" />
+            <input type="password" id="senha" placeholder="Digite sua senha" autocomplete="current-password" required />
 
-            <button type="submit">Acessar sistema</button>
+            <button type="submit" id="login-submit">Acessar sistema</button>
           </form>
 
           <p id="erro-login" class="erro-login"></p>
+          <p id="login-status" class="login-status"></p>
 
           <div class="login-demo">
-            <span>Teste inicial</span>
-            <strong>Login: teste | Senha: teste</strong>
+            <span>Acesso master inicial</span>
+            <strong>master@sistema.local | Master123</strong>
           </div>
+
+          <button type="button" class="access-link" id="solicitar-acesso">Solicitar cadastro</button>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="login.js?v=10"></script>
+  <script src="login.js?v=11"></script>
   <script src="pwa.js?v=9"></script>
 </body>
 </html>

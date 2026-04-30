@@ -182,10 +182,22 @@ button:hover {
   filter: brightness(1.05);
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .erro-login {
   min-height: 20px;
   margin: 14px 0 0;
   color: #ff9a9a;
+  font-size: 13px;
+}
+
+.login-status {
+  min-height: 20px;
+  margin: 6px 0 0;
+  color: #a7f3d0;
   font-size: 13px;
 }
 
@@ -206,6 +218,19 @@ button:hover {
 
 .login-demo strong {
   font-size: 14px;
+}
+
+.access-link {
+  width: 100%;
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: #d5def3;
+  box-shadow: none;
+}
+
+.access-link:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 @media (max-width: 900px) {

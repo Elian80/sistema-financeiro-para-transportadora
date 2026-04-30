@@ -1,48 +1,49 @@
-# Relatório de Implementação
+# Relatorio de Implementacao
 
 Data: 2026-04-30
 
-## Backup
+## Backups
 
-Backup completo criado antes das alterações:
-
-`C:\Users\julia\Desktop\PROJETO FINANCEIRO\backup_20260430_1858`
+- `C:\Users\julia\Desktop\PROJETO FINANCEIRO\backup_20260430_1858`
+- `C:\Users\julia\Desktop\PROJETO FINANCEIRO\backup_20260430_2006`
 
 ## Arquivos Criados
 
+- `ARCHITECTURE.md`
+- `DATABASE_FLOW.md`
 - `.env.example`
 - `SECURITY_AUDIT.md`
 - `SECURITY_TESTS.md`
 - `BACKUP.md`
-- `README.md`
 - `IMPLEMENTATION_REPORT.md`
 - `alembic.ini`
-- `python/backend/__init__.py`
-- `python/backend/settings.py`
-- `python/backend/database.py`
-- `python/backend/models.py`
-- `python/backend/schemas.py`
-- `python/backend/security.py`
-- `python/backend/dependencies.py`
-- `python/backend/auth.py`
-- `python/backend/admin_routes.py`
-- `python/backend/migrations/env.py`
-- `python/backend/migrations/script.py.mako`
-- `python/backend/migrations/versions/0001_initial_schema.py`
+- `python/backend/*`
+- `python/backend/migrations/*`
 - `scripts/migrar_json_para_postgres.py`
 - `scripts/backup_postgres.py`
 
 ## Arquivos Alterados
 
+- `abrir_link_teste.bat`
+- `iniciar_pwa.bat`
+- `README.md`
 - `python/main.py`
-- `renderer/login.js`
+- `python/backend/models.py`
+- `python/backend/schemas.py`
+- `python/backend/database.py`
+- `python/backend/dependencies.py`
+- `python/backend/auth.py`
+- `python/backend/admin_routes.py`
+- `scripts/migrar_json_para_postgres.py`
 - `renderer/login.html`
-- `renderer/app.js`
+- `renderer/login.css`
+- `renderer/login.js`
 - `renderer/index.html`
+- `renderer/app.js`
 - `renderer/sw.js`
 - `requirements.txt`
 
-## Tabelas Criadas
+## Tabelas Criadas/Preparadas
 
 - `empresas`
 - `usuarios`
@@ -57,16 +58,20 @@ Backup completo criado antes das alterações:
 - `plano_contas`
 - `audit_logs`
 
-## Rotas Criadas
+## Rotas Novas
 
 - `POST /auth/login`
 - `GET /auth/me`
 - `POST /auth/logout`
+- `GET /admin/resumo`
+- `GET /audit-logs`
 - `GET /empresas`
 - `POST /empresas`
 - `GET /empresas/{id}`
 - `PUT /empresas/{id}`
 - `DELETE /empresas/{id}`
+- `POST /empresas/{id}/bloquear`
+- `POST /empresas/{id}/aprovar`
 - `GET /usuarios`
 - `POST /usuarios`
 - `GET /usuarios/{id}`
@@ -74,10 +79,11 @@ Backup completo criado antes das alterações:
 - `DELETE /usuarios/{id}`
 - `POST /usuarios/{id}/alterar-senha`
 - `POST /usuarios/{id}/desativar`
+- `POST /usuarios/{id}/bloquear`
+- `POST /usuarios/{id}/aprovar`
+- `POST /usuarios/{id}/forcar-troca-senha`
 
 ## Rotas Protegidas
-
-As rotas legadas abaixo agora exigem JWT:
 
 - `/veiculos`
 - `/motoristas`
@@ -91,57 +97,56 @@ As rotas legadas abaixo agora exigem JWT:
 - `/folha-pagamento`
 - `/relatorios`
 
+## Como Iniciar
+
+Local:
+
+```bat
+iniciar_pwa.bat
+```
+
+Remoto para teste:
+
+```bat
+abrir_link_teste.bat
+```
+
+Login master:
+
+```text
+master@sistema.local / Master123
+```
+
 ## Vulnerabilidades Corrigidas
 
-- Login fake substituído por autenticação real.
-- Senhas protegidas com bcrypt.
-- JWT obrigatório para rotas de dados.
-- Bloqueio de usuário inativo.
-- CORS removido de `*` e controlado por `.env`.
-- Headers básicos de segurança adicionados.
-- Docs da API ocultáveis por `ENVIRONMENT=production`.
-- Perfis aplicados nas rotas administrativas e nas escritas legadas.
-- Rate limit básico no login.
-- Primeira função `escapeHtml` criada e aplicada ao módulo de usuários.
+- Login fake removido.
+- Senhas com hash bcrypt.
+- JWT obrigatorio nas rotas de dados.
+- Bloqueio de usuarios por status.
+- CORS configuravel.
+- Headers basicos de seguranca.
+- Auditoria de acoes administrativas.
+- Perfil `master` separado de usuarios comuns.
+- Painel administrativo global.
 
 ## Testes Realizados
 
-- `python -m py_compile python/main.py python/web.py python/backend/*.py scripts/*.py`
-- `node --check renderer/app.js`
-- `node --check renderer/login.js`
-- `alembic upgrade head`
-- `GET /veiculos` sem token retorna `401`
-- Login com `admin@sistema.local` retorna `200`
-- `GET /auth/me` com token retorna `200`
-- `GET /veiculos` com token retorna `200`
-- Token inválido retorna `401`
-- Usuário inativo não loga
-- `visualizador` não cria lançamento
-- `operador` não cria usuário
-- Usuário de outra empresa é bloqueado nas rotas legadas JSON
+- Compilacao Python.
+- Validacao JavaScript com `node --check`.
+- `alembic upgrade head`.
+- Migracao inicial JSON para banco.
+- Login master.
+- Acesso `GET /auth/me`.
+- Acesso `GET /admin/resumo`.
+- Bloqueio de usuario inativo/bloqueado.
+- Rotas legadas sem token retornando `401`.
 
-## Como Rodar
+## Pendencias
 
-```bash
-python -m pip install -r requirements.txt
-copy .env.example .env
-alembic upgrade head
-python scripts/migrar_json_para_postgres.py
-npm.cmd run web
-```
-
-Login inicial:
-
-- Email: `admin@sistema.local`
-- Senha: `trocar123`
-
-## Pendências
-
-- Migrar CRUDs legados totalmente para PostgreSQL. Hoje eles estão protegidos por JWT, mas ainda leem/escrevem JSON para manter compatibilidade.
-- Aplicar `empresa_id` nativo em todas as operações legadas após migração completa.
-- Aplicar `escapeHtml` em todos os módulos antigos com `innerHTML`.
-- Implementar refresh token persistido/revogável.
-- Implementar rate limit persistente em Redis/PostgreSQL para produção.
-- Revisar CSP final caso os scripts CDN sejam substituídos por arquivos locais.
-- Criar testes automatizados permanentes com pytest.
-- Rodar validação em PostgreSQL real da máquina de produção.
+- Migrar CRUDs operacionais totalmente para PostgreSQL.
+- Testar tunel Cloudflare em rede externa real.
+- Criar testes automatizados `pytest`.
+- Implementar refresh token revogavel.
+- Persistir rate limit em banco/Redis para producao.
+- Revisar todos os `innerHTML` antigos.
+- Definir armazenamento final de logos.

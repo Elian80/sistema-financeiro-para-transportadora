@@ -5,7 +5,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "python"))
 
-from backend.database import Base, SessionLocal, engine
+from backend.database import Base, SessionLocal, engine, garantir_colunas_runtime
 from backend.models import (
     Ativo,
     ContaReceber,
@@ -59,15 +59,30 @@ def preencher_campos_basicos(objeto, item: dict) -> None:
 
 def main() -> None:
     Base.metadata.create_all(bind=engine)
+    garantir_colunas_runtime()
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     db = SessionLocal()
     try:
         empresa = db.query(Empresa).filter(Empresa.nome == "GM7 Solucoes").first()
         if not empresa:
-            empresa = Empresa(nome="GM7 Solucoes", status="ativo")
+            empresa = Empresa(nome="GM7 Solucoes", nome_fantasia="GM7 Solucoes", status="ativo")
             db.add(empresa)
             db.flush()
+
+        master = db.query(Usuario).filter(Usuario.email == "master@sistema.local").first()
+        if not master:
+            master = Usuario(
+                empresa_id=empresa.id,
+                nome="Master do Sistema",
+                email="master@sistema.local",
+                senha_hash=gerar_hash_senha("Master123"),
+                perfil="master",
+                status="ativo",
+                cargo="Dono do sistema",
+                deve_trocar_senha=True,
+            )
+            db.add(master)
 
         admin = db.query(Usuario).filter(Usuario.email == "admin@sistema.local").first()
         if not admin:
@@ -78,11 +93,16 @@ def main() -> None:
                 senha_hash=gerar_hash_senha("trocar123"),
                 perfil="admin",
                 status="ativo",
+                cargo="Administrador",
                 deve_trocar_senha=True,
             )
             db.add(admin)
 
-        linhas_log = [f"Empresa padrao: {empresa.id} - {empresa.nome}", "Admin inicial: admin@sistema.local / trocar123"]
+        linhas_log = [
+            f"Empresa padrao: {empresa.id} - {empresa.nome}",
+            "Master inicial: master@sistema.local / Master123",
+            "Admin inicial: admin@sistema.local / trocar123",
+        ]
 
         for arquivo, modelo in MAPA.items():
             dados = ler_json(arquivo)
