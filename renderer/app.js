@@ -960,6 +960,29 @@ const pages = {
         </form>
         <p id="mensagem-configuracoes" class="mensagem"></p>
       </section>
+      <section class="panel-box">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Usuarios</h3>
+            <span>Cadastro de acessos e perfis</span>
+          </div>
+        </div>
+        <form id="form-usuario" class="form-grid">
+          <div class="field"><label>Nome</label><input id="usuario-nome" /></div>
+          <div class="field"><label>Email</label><input id="usuario-email" type="email" /></div>
+          <div class="field"><label>Senha inicial</label><input id="usuario-senha" type="password" /></div>
+          <div class="field"><label>Perfil</label><select id="usuario-perfil"><option value="visualizador">Visualizador</option><option value="operador">Operador</option><option value="financeiro">Financeiro</option><option value="gestor">Gestor</option><option value="admin">Admin</option></select></div>
+          <div class="field"><label>Status</label><select id="usuario-status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></div>
+          <div class="field full"><button class="primary-btn" type="submit">Criar usuario</button></div>
+        </form>
+        <p id="mensagem-usuarios" class="mensagem"></p>
+        <div class="table-wrap" style="margin-top:16px;">
+          <table class="data-table">
+            <thead><tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody id="tabela-usuarios"></tbody>
+          </table>
+        </div>
+      </section>
     `
   },
 
@@ -1143,9 +1166,10 @@ function nomeVeiculoPorId(veiculoId) {
 // FUNCOES DE API
 // =========================================================
 async function apiGet(url) {
-  const response = await fetch(`${API_URL}${url}`);
+  const response = await fetch(`${API_URL}${url}`, { headers: authHeaders() });
   const resultado = await response.json();
 
+  tratarNaoAutorizado(response);
   if (!response.ok) {
     throw new Error(extrairMensagemErroApi(resultado, "Falha ao carregar dados."));
   }
@@ -1155,11 +1179,13 @@ async function apiGet(url) {
 
 async function apiDelete(url) {
   const response = await fetch(`${API_URL}${url}`, {
-    method: "DELETE"
+    method: "DELETE",
+    headers: authHeaders()
   });
 
   const resultado = await response.json();
 
+  tratarNaoAutorizado(response);
   if (!response.ok) {
     throw new Error(extrairMensagemErroApi(resultado, "Falha ao excluir registro."));
   }
@@ -1170,17 +1196,40 @@ async function apiDelete(url) {
 async function apiSend(url, method, payload) {
   const response = await fetch(`${API_URL}${url}`, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(payload)
   });
 
   const resultado = await response.json();
 
+  tratarNaoAutorizado(response);
   if (!response.ok) {
     throw new Error(extrairMensagemErroApi(resultado, "Erro ao salvar dados."));
   }
 
   return resultado;
+}
+
+function getAccessToken() {
+  return sessionStorage.getItem("financeiro_access_token") || "";
+}
+
+function authHeaders(headers = {}) {
+  const token = getAccessToken();
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
+}
+
+function tratarNaoAutorizado(response) {
+  if (response.status !== 401) return;
+  sessionStorage.removeItem("financeiro_access_token");
+  sessionStorage.removeItem("financeiro_usuario");
+  window.location.href = "login.html";
+}
+
+function exigirLogin() {
+  if (!getAccessToken()) {
+    window.location.href = "login.html";
+  }
 }
 
 function mostrarErroAmigavel(containerId, erro) {
@@ -1776,6 +1825,15 @@ window.excluirMotorista = async (id) => {
 
 async function carregarFolhasPagamento() {
   return apiGet("/folha-pagamento");
+}
+
+function escapeHtml(texto) {
+  return String(texto ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function calcularLinhaFolha(row) {
@@ -3393,6 +3451,55 @@ function iniciarConfiguracoes() {
   });
 }
 
+async function renderizarUsuarios() {
+  const tabela = document.getElementById("tabela-usuarios");
+  if (!tabela) return;
+  try {
+    const usuarios = await apiGet("/usuarios");
+    tabela.innerHTML = usuarios.map((usuario) => `
+      <tr>
+        <td>${escapeHtml(usuario.nome)}</td>
+        <td>${escapeHtml(usuario.email)}</td>
+        <td>${escapeHtml(usuario.perfil)}</td>
+        <td>${escapeHtml(usuario.status)}</td>
+        <td><button class="small-btn delete-btn" onclick="desativarUsuario(${usuario.id})">Desativar</button></td>
+      </tr>
+    `).join("") || `<tr><td colspan="5" class="empty-row">Nenhum usuario encontrado.</td></tr>`;
+  } catch (erro) {
+    tabela.innerHTML = `<tr><td colspan="5" class="empty-row">${escapeHtml(erro.message)}</td></tr>`;
+  }
+}
+
+function iniciarUsuarios() {
+  const form = document.getElementById("form-usuario");
+  if (!form) return;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const mensagem = document.getElementById("mensagem-usuarios");
+    try {
+      await apiSend("/usuarios", "POST", {
+        nome: document.getElementById("usuario-nome").value.trim(),
+        email: document.getElementById("usuario-email").value.trim(),
+        senha: document.getElementById("usuario-senha").value,
+        perfil: document.getElementById("usuario-perfil").value,
+        status: document.getElementById("usuario-status").value
+      });
+      form.reset();
+      mensagem.textContent = "Usuario criado com sucesso.";
+      await renderizarUsuarios();
+    } catch (erro) {
+      mensagem.textContent = erro.message;
+    }
+  });
+  renderizarUsuarios();
+}
+
+window.desativarUsuario = async (usuarioId) => {
+  if (!confirm("Deseja desativar este usuario?")) return;
+  await apiSend(`/usuarios/${usuarioId}/desativar`, "POST", {});
+  await renderizarUsuarios();
+};
+
 // =========================================================
 // MODULO DE RELATORIOS
 // =========================================================
@@ -3987,6 +4094,7 @@ async function loadPage(pageKey) {
 
     if (pageKey === "configuracoes") {
       iniciarConfiguracoes();
+      iniciarUsuarios();
     }
 
     if (pageKey === "veiculos") {
@@ -4045,6 +4153,8 @@ window.addEventListener("keydown", (event) => {
 });
 
 logoutBtn.addEventListener("click", () => {
+  sessionStorage.removeItem("financeiro_access_token");
+  sessionStorage.removeItem("financeiro_usuario");
   window.location.href = "login.html";
 });
 
@@ -4090,5 +4200,6 @@ globalSearch?.addEventListener("keydown", async (event) => {
 aplicarTema();
 aplicarEstadoSidebar();
 aplicarIconesNavegacao();
+exigirLogin();
 loadPage("dashboard");
 window.lucide?.createIcons();

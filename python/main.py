@@ -7,16 +7,27 @@ import unicodedata
 import zipfile
 from xml.sax.saxutils import escape
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
+
+from backend.admin_routes import router as admin_router
+from backend.auth import router as auth_router
+from backend.database import Base, SessionLocal, engine
+from backend.dependencies import usuario_pode_escrever
+from backend.models import Usuario
+from backend.security import decodificar_token
+from backend.settings import settings
 
 # =========================================================
 # CRIACAO DA API
 # =========================================================
 # Aqui iniciamos o FastAPI, que sera o backend do sistema.
-app = FastAPI()
+app = FastAPI(
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+)
 
 # =========================================================
 # CORS
@@ -26,11 +37,82 @@ app = FastAPI()
 # deixamos allow_credentials=False para evitar conflito com "*".
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+ROTAS_PROTEGIDAS = (
+    "/classificacoes",
+    "/plano-contas",
+    "/lancamentos",
+    "/contas-receber",
+    "/ativos",
+    "/passivos",
+    "/estoque",
+    "/relatorios",
+    "/veiculos",
+    "/motoristas",
+    "/folha-pagamento",
+)
+
+DOMINIOS_LEGADOS = {
+    "/veiculos": "veiculos",
+    "/motoristas": "motoristas",
+    "/lancamentos": "lancamentos",
+    "/contas-receber": "contas",
+    "/ativos": "ativos",
+    "/passivos": "passivos",
+    "/estoque": "estoque",
+    "/plano-contas": "lancamentos",
+    "/folha-pagamento": "folha",
+}
+
+
+@app.middleware("http")
+async def aplicar_seguranca(request: Request, call_next):
+    caminho = request.url.path
+    if caminho.startswith(ROTAS_PROTEGIDAS):
+        authorization = request.headers.get("Authorization", "")
+        if not authorization.startswith("Bearer "):
+            return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Autenticacao obrigatoria."})
+        token = authorization.removeprefix("Bearer ").strip()
+        db = SessionLocal()
+        try:
+            payload = decodificar_token(token)
+            usuario = db.get(Usuario, int(payload.get("sub")))
+            if not usuario or usuario.status != "ativo":
+                return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Usuario inativo ou inexistente."})
+            if usuario.empresa_id != 1 and usuario.perfil != "admin":
+                return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Dados legados disponiveis apenas para a empresa padrao ate a migracao completa."})
+            if request.method not in {"GET", "HEAD", "OPTIONS"}:
+                dominio = next((valor for prefixo, valor in DOMINIOS_LEGADOS.items() if caminho.startswith(prefixo)), "")
+                if dominio and not usuario_pode_escrever(usuario, dominio):
+                    return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Permissao insuficiente."})
+            request.state.usuario = usuario
+        except Exception:
+            return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Token invalido."})
+        finally:
+            db.close()
+
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com"
+    return response
+
+
+@app.on_event("startup")
+def inicializar_banco():
+    Base.metadata.create_all(bind=engine)
+
+
+app.include_router(auth_router)
+app.include_router(admin_router)
 
 # =========================================================
 # CAMINHOS DOS ARQUIVOS
