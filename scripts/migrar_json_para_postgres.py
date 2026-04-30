@@ -86,6 +86,10 @@ def main() -> None:
 
         for arquivo, modelo in MAPA.items():
             dados = ler_json(arquivo)
+            existentes = db.query(modelo).filter(modelo.empresa_id == empresa.id).count()
+            if existentes:
+                linhas_log.append(f"{arquivo}: ignorado, {existentes} registro(s) ja existente(s)")
+                continue
             migrados = 0
             for item in dados:
                 objeto = modelo(empresa_id=empresa.id)
