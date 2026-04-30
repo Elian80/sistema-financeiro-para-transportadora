@@ -5,7 +5,7 @@ const erroLogin = document.getElementById("erro-login");
 const loginStatus = document.getElementById("login-status");
 const loginSubmit = document.getElementById("login-submit");
 const solicitarAcesso = document.getElementById("solicitar-acesso");
-const API_URL = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+const API_URL = window.location.protocol === "file:" ? "http://127.0.0.1:8001" : "";
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();

@@ -2,7 +2,8 @@
 setlocal
 
 set "APP_DIR=%~dp0"
-set "APP_URL=http://127.0.0.1:8000"
+set "APP_PORT=8001"
+set "APP_URL=http://127.0.0.1:%APP_PORT%"
 set "TOOLS_DIR=%APP_DIR%tools"
 set "LOCAL_CLOUDFLARED=%TOOLS_DIR%\cloudflared.exe"
 set "CLOUDFLARED_CMD="
@@ -79,7 +80,7 @@ if not defined CLOUDFLARED_CMD (
 )
 
 echo [5/6] Iniciando servidor web local...
-start "Financeiro - Servidor Web" powershell -NoExit -ExecutionPolicy Bypass -Command "cd '%APP_DIR%python'; python -m uvicorn web:app --host 127.0.0.1 --port 8000 --reload"
+start "Financeiro - Servidor Web" powershell -NoExit -ExecutionPolicy Bypass -Command "cd '%APP_DIR%python'; python -m uvicorn web:app --host 127.0.0.1 --port %APP_PORT%"
 
 echo Aguardando o servidor responder...
 timeout /t 6 /nobreak >nul

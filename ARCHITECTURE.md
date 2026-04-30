@@ -57,7 +57,7 @@ A aba `Admin` no frontend chama:
 
 ## Acesso Remoto de Teste
 
-`abrir_link_teste.bat` inicia o backend local em `http://127.0.0.1:8000` e cria um tunel publico temporario com Cloudflare Tunnel. O link publico deve ser usado apenas para testes.
+`abrir_link_teste.bat` inicia o backend local em `http://127.0.0.1:8001` e cria um tunel publico temporario com Cloudflare Tunnel. O link publico deve ser usado apenas para testes.
 
 ## Pendencias Arquiteturais
 

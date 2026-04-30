@@ -28,13 +28,13 @@ if errorlevel 1 (
 )
 
 echo Iniciando servidor web...
-start "Financeiro - Servidor Web" powershell -NoExit -ExecutionPolicy Bypass -Command "cd '%~dp0python'; python -m uvicorn web:app --host 127.0.0.1 --port 8000 --reload"
+start "Financeiro - Servidor Web" powershell -NoExit -ExecutionPolicy Bypass -Command "cd '%~dp0python'; python -m uvicorn web:app --host 127.0.0.1 --port 8001"
 
 echo Aguardando servidor responder...
 timeout /t 5 /nobreak >nul
 
 echo Abrindo navegador...
-start "" "http://127.0.0.1:8000"
+start "" "http://127.0.0.1:8001"
 
 echo.
 echo Sistema iniciado.
