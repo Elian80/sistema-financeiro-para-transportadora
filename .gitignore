@@ -6,4 +6,5 @@ __pycache__/
 venv/
 python/data/
 backups/
+tools/
 *.log
