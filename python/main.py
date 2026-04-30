@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional
 from datetime import date, datetime
+from contextvars import ContextVar
 import io
 import json
 import unicodedata
@@ -80,24 +81,32 @@ async def aplicar_seguranca(request: Request, call_next):
             return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Autenticacao obrigatoria."})
         token = authorization.removeprefix("Bearer ").strip()
         db = SessionLocal()
+        token_empresa = None
         try:
             payload = decodificar_token(token)
             usuario = db.get(Usuario, int(payload.get("sub")))
             if not usuario or usuario.status != "ativo":
                 return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Usuario inativo ou inexistente."})
-            if usuario.empresa_id != 1 and usuario.perfil not in {"master", "admin"}:
-                return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Dados legados disponiveis apenas para a empresa padrao ate a migracao completa."})
+            if usuario.perfil == "master":
+                return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Usuario master acessa apenas o painel de gerenciamento."})
             if request.method not in {"GET", "HEAD", "OPTIONS"}:
                 dominio = next((valor for prefixo, valor in DOMINIOS_LEGADOS.items() if caminho.startswith(prefixo)), "")
                 if dominio and not usuario_pode_escrever(usuario, dominio):
                     return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Permissao insuficiente."})
             request.state.usuario = usuario
+            token_empresa = EMPRESA_ATUAL_ID.set(usuario.empresa_id)
         except Exception:
             return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Token invalido."})
         finally:
             db.close()
+    else:
+        token_empresa = None
 
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    finally:
+        if token_empresa is not None:
+            EMPRESA_ATUAL_ID.reset(token_empresa)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
@@ -114,6 +123,8 @@ def inicializar_banco():
 
 app.include_router(auth_router)
 app.include_router(admin_router)
+
+EMPRESA_ATUAL_ID: ContextVar[int | None] = ContextVar("empresa_atual_id", default=None)
 
 # =========================================================
 # CAMINHOS DOS ARQUIVOS
@@ -135,6 +146,19 @@ ARQUIVO_PASSIVOS = DATA_DIR / "passivos.json"
 ARQUIVO_ESTOQUE_PRODUTOS = DATA_DIR / "estoque_produtos.json"
 ARQUIVO_ESTOQUE_MOVIMENTACOES = DATA_DIR / "estoque_movimentacoes.json"
 ARQUIVO_FOLHA_PAGAMENTO = DATA_DIR / "folha_pagamento.json"
+ARQUIVOS_MULTIEMPRESA = {
+    ARQUIVO_LANCAMENTOS.name,
+    ARQUIVO_VEICULOS.name,
+    ARQUIVO_MOTORISTAS.name,
+    ARQUIVO_PLANO_CONTAS.name,
+    ARQUIVO_CONTAS_RECEBER.name,
+    ARQUIVO_CONTAS_PAGAR.name,
+    ARQUIVO_ATIVOS.name,
+    ARQUIVO_PASSIVOS.name,
+    ARQUIVO_ESTOQUE_PRODUTOS.name,
+    ARQUIVO_ESTOQUE_MOVIMENTACOES.name,
+    ARQUIVO_FOLHA_PAGAMENTO.name,
+}
 
 # =========================================================
 # CLASSIFICACOES
@@ -560,11 +584,21 @@ def garantir_arquivo_json(caminho: Path) -> None:
             json.dump([], arquivo, ensure_ascii=False, indent=2)
 
 
+def caminho_json_empresa(caminho: Path) -> Path:
+    empresa_id = EMPRESA_ATUAL_ID.get()
+    if not empresa_id or empresa_id == 1 or caminho.name not in ARQUIVOS_MULTIEMPRESA:
+        return caminho
+    pasta_empresa = DATA_DIR / "empresas" / str(empresa_id)
+    pasta_empresa.mkdir(parents=True, exist_ok=True)
+    return pasta_empresa / caminho.name
+
+
 def ler_json(caminho: Path):
     """
     Le um JSON com seguranca.
     Se o arquivo estiver corrompido, mostra erro claro em vez de ocultar os dados.
     """
+    caminho = caminho_json_empresa(caminho)
     garantir_arquivo_json(caminho)
 
     try:
@@ -590,6 +624,8 @@ def salvar_json(caminho: Path, dados) -> None:
     """
     Salva lista no arquivo JSON.
     """
+    caminho = caminho_json_empresa(caminho)
+    caminho.parent.mkdir(parents=True, exist_ok=True)
     with open(caminho, "w", encoding="utf-8") as arquivo:
         json.dump(dados, arquivo, ensure_ascii=False, indent=2)
 

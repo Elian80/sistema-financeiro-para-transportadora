@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from .database import get_db
@@ -132,9 +132,16 @@ def aprovar_empresa(empresa_id: int, request: Request, db: Session = Depends(get
 
 
 @router.get("/usuarios", response_model=list[UsuarioOut])
-def listar_usuarios(db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+def listar_usuarios(
+    empresa_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
     if usuario.perfil == "master":
-        return db.query(Usuario).order_by(Usuario.nome).all()
+        consulta = db.query(Usuario)
+        if empresa_id:
+            consulta = consulta.filter(Usuario.empresa_id == empresa_id)
+        return consulta.order_by(Usuario.nome).all()
     if usuario.perfil in {"admin", "gestor"}:
         return db.query(Usuario).filter(Usuario.empresa_id == usuario.empresa_id).order_by(Usuario.nome).all()
     return [usuario]
@@ -207,12 +214,18 @@ def excluir_usuario(usuario_id: int, request: Request, db: Session = Depends(get
     alvo = db.get(Usuario, usuario_id)
     if not alvo:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
+    if alvo.id == usuario.id:
+        raise HTTPException(status_code=400, detail="Nao e possivel excluir o proprio usuario logado.")
+    if alvo.perfil == "master" and usuario.perfil != "master":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master altera outro master.")
     if usuario.perfil in {"admin", "gestor"} and alvo.empresa_id != usuario.empresa_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
-    alvo.status = "inativo"
-    registrar_auditoria(db, request, usuario, "desativar", "usuario", str(alvo.id))
+    alvo_id = str(alvo.id)
+    alvo_email = alvo.email
+    registrar_auditoria(db, request, usuario, "excluir", "usuario", alvo_id, f"Usuario excluido: {alvo_email}")
+    db.delete(alvo)
     db.commit()
-    return {"mensagem": "Usuario desativado com sucesso."}
+    return {"mensagem": "Usuario excluido com sucesso."}
 
 
 @router.post("/usuarios/{usuario_id}/alterar-senha")
@@ -220,7 +233,7 @@ def alterar_senha(usuario_id: int, dados: AlterarSenhaIn, request: Request, db: 
     alvo = db.get(Usuario, usuario_id)
     if not alvo:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
-    if usuario.perfil not in {"admin", "gestor"} and usuario.id != usuario_id:
+    if usuario.perfil not in {"master", "admin", "gestor"} and usuario.id != usuario_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
     if usuario.perfil in {"admin", "gestor"} and alvo.empresa_id != usuario.empresa_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
@@ -234,7 +247,18 @@ def alterar_senha(usuario_id: int, dados: AlterarSenhaIn, request: Request, db: 
 
 @router.post("/usuarios/{usuario_id}/desativar")
 def desativar_usuario(usuario_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
-    return excluir_usuario(usuario_id, request, db, usuario)
+    exigir_admin_ou_gestor(usuario)
+    alvo = db.get(Usuario, usuario_id)
+    if not alvo:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
+    if alvo.id == usuario.id:
+        raise HTTPException(status_code=400, detail="Nao e possivel desativar o proprio usuario logado.")
+    if usuario.perfil in {"admin", "gestor"} and alvo.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
+    alvo.status = "inativo"
+    registrar_auditoria(db, request, usuario, "desativar", "usuario", str(alvo.id))
+    db.commit()
+    return {"mensagem": "Usuario desativado com sucesso."}
 
 
 @router.post("/usuarios/{usuario_id}/bloquear")
@@ -300,9 +324,16 @@ def resumo_admin(db: Session = Depends(get_db), usuario: Usuario = Depends(get_c
 
 
 @router.get("/audit-logs")
-def listar_audit_logs(db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+def listar_audit_logs(
+    empresa_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
     if usuario.perfil == "master":
-        logs = db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(100).all()
+        consulta = db.query(AuditLog)
+        if empresa_id:
+            consulta = consulta.filter(AuditLog.empresa_id == empresa_id)
+        logs = consulta.order_by(AuditLog.created_at.desc()).limit(100).all()
     elif usuario.perfil in {"admin", "gestor"}:
         logs = db.query(AuditLog).filter(AuditLog.empresa_id == usuario.empresa_id).order_by(AuditLog.created_at.desc()).limit(100).all()
     else:
@@ -321,3 +352,18 @@ def listar_audit_logs(db: Session = Depends(get_db), usuario: Usuario = Depends(
         }
         for log in logs
     ]
+
+
+@router.delete("/audit-logs/{log_id}")
+def excluir_audit_log(log_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if usuario.perfil not in {"master", "admin", "gestor"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+    log = db.get(AuditLog, log_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Log nao encontrado.")
+    if usuario.perfil in {"admin", "gestor"} and log.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuario gerencia apenas a propria empresa.")
+    registrar_auditoria(db, request, usuario, "excluir", "audit_log", str(log.id), f"Log removido: {log.acao}/{log.entidade}")
+    db.delete(log)
+    db.commit()
+    return {"mensagem": "Log excluido com sucesso."}

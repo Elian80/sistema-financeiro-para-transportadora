@@ -102,6 +102,12 @@ Ao entrar como `master`, use a aba `Admin` para:
 - aprovar, bloquear, inativar e forcar troca de senha;
 - consultar logs de auditoria.
 
+O usuario `master` acessa apenas o painel de gerenciamento. As telas operacionais da transportadora ficam liberadas para os usuarios das empresas, conforme permissao, sem mostrar a aba Master/Admin.
+
+Senhas nao sao exibidas em texto puro por seguranca. O master pode definir uma nova senha para qualquer usuario.
+
+Durante a transicao dos modulos legados, os arquivos JSON operacionais sao separados fisicamente por empresa em `python/data/empresas/{empresa_id}/`. A empresa padrao continua usando os JSON atuais em `python/data/`.
+
 ## Backup
 
 Veja `BACKUP.md`.

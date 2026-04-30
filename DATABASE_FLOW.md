@@ -48,6 +48,13 @@ Arquivos atuais mantidos:
 
 O script `scripts/migrar_json_para_postgres.py` cria uma empresa padrao, cria usuarios iniciais e copia os registros JSON para as tabelas SQL associando tudo a empresa padrao.
 
+Para impedir mistura entre empresas enquanto os CRUDs legados ainda usam JSON, o backend escolhe o arquivo conforme a empresa do usuario logado:
+
+- empresa 1: arquivos atuais em `python/data/`;
+- demais empresas: arquivos separados em `python/data/empresas/{empresa_id}/`.
+
+Assim, um usuario de uma empresa nova recebe uma base operacional propria e vazia, sem ler os registros da empresa padrao.
+
 ## Fluxo Frontend ate Banco
 
 1. O usuario autentica no frontend.
@@ -64,7 +71,8 @@ O script `scripts/migrar_json_para_postgres.py` cria uma empresa padrao, cria us
 - `admin` e `gestor` ficam limitados a propria empresa.
 - Perfis operacionais so acessam dados permitidos da propria empresa.
 - Nas rotas SQL, o filtro por `empresa_id` e obrigatorio para usuarios nao master.
-- Nas rotas JSON legadas, o acesso fica restrito ao ambiente padrao ate a migracao completa.
+- Nas rotas JSON legadas, o acesso usa arquivos separados por empresa.
+- O master nao acessa rotas operacionais; ele fica restrito ao painel de gerenciamento.
 
 ## Migrations
 

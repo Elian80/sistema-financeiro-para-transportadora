@@ -52,6 +52,7 @@ let editandoPassivoId = null;
 let editandoProdutoId = null;
 let cacheVeiculos = [];
 let filtroPeriodoFolha = "";
+let adminEmpresaFiltro = "";
 
 function aplicarIconesNavegacao() {
   navButtons.forEach((button) => {
@@ -998,6 +999,15 @@ const pages = {
       </section>
 
       <section class="panel-box">
+        <div class="table-toolbar">
+          <div><h3 style="margin:0;">Empresa em gerenciamento</h3><span>Filtre usuarios e logs por empresa</span></div>
+        </div>
+        <div class="form-grid">
+          <div class="field full"><label>Empresa</label><select id="admin-empresa-gerenciada"></select></div>
+        </div>
+      </section>
+
+      <section class="panel-box">
         <div class="table-toolbar"><div><h3 style="margin:0;">Cadastro de empresa</h3><span>Somente master gerencia todas as empresas</span></div></div>
         <form id="form-admin-empresa" class="form-grid">
           <div class="field"><label>Nome da empresa</label><input id="empresa-nome" required /></div>
@@ -1037,12 +1047,12 @@ const pages = {
           <div class="field full"><button class="primary-btn" type="submit">Salvar usuario</button></div>
         </form>
         <p id="mensagem-admin-usuario" class="mensagem"></p>
-        <div class="table-wrap" style="margin-top:16px;"><table class="data-table"><thead><tr><th>Nome</th><th>Email</th><th>Empresa</th><th>Perfil</th><th>Status</th><th>Ultimo login</th><th>Acoes</th></tr></thead><tbody id="tabela-admin-usuarios"></tbody></table></div>
+        <div class="table-wrap" style="margin-top:16px;"><table class="data-table"><thead><tr><th>Nome</th><th>Email</th><th>Empresa</th><th>Perfil</th><th>Status</th><th>Senha</th><th>Ultimo login</th><th>Acoes</th></tr></thead><tbody id="tabela-admin-usuarios"></tbody></table></div>
       </section>
 
       <section class="panel-box">
         <div class="table-toolbar"><div><h3 style="margin:0;">Auditoria</h3><span>Ultimas acoes administrativas</span></div></div>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Acao</th><th>Entidade</th><th>ID</th><th>IP</th></tr></thead><tbody id="tabela-admin-auditoria"></tbody></table></div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Acao</th><th>Entidade</th><th>ID</th><th>IP</th><th>Acoes</th></tr></thead><tbody id="tabela-admin-auditoria"></tbody></table></div>
       </section>
     `
   },
@@ -3523,9 +3533,14 @@ function obterUsuarioSessao() {
 function aplicarPermissoesVisuais() {
   const usuario = obterUsuarioSessao();
   const adminButton = document.querySelector('[data-page="admin"]');
-  if (adminButton && usuario.perfil !== "master") {
-    adminButton.hidden = true;
-  }
+  navButtons.forEach((button) => {
+    if (usuario.perfil === "master") {
+      button.hidden = button.dataset.page !== "admin";
+      button.classList.toggle("active", button.dataset.page === "admin");
+    } else if (button.dataset.page === "admin") {
+      button.hidden = true;
+    }
+  });
 }
 
 async function renderizarUsuarios() {
@@ -3579,6 +3594,11 @@ window.desativarUsuario = async (usuarioId) => {
 
 async function iniciarAdminMaster() {
   await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
+
+  document.getElementById("admin-empresa-gerenciada")?.addEventListener("change", async (event) => {
+    adminEmpresaFiltro = event.target.value;
+    await Promise.all([renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
+  });
 
   const logoArquivo = document.getElementById("empresa-logo-arquivo");
   logoArquivo?.addEventListener("change", async () => {
@@ -3652,10 +3672,16 @@ async function renderizarAdminResumo() {
 }
 
 async function preencherSelectEmpresasAdmin() {
-  const select = document.getElementById("admin-usuario-empresa");
-  if (!select) return [];
   const empresas = await apiGet("/empresas");
-  select.innerHTML = empresas.map((empresa) => `<option value="${empresa.id}">${escapeHtml(empresa.nome)}</option>`).join("");
+  const selectUsuario = document.getElementById("admin-usuario-empresa");
+  if (selectUsuario) {
+    selectUsuario.innerHTML = empresas.map((empresa) => `<option value="${empresa.id}">${escapeHtml(empresa.nome)}</option>`).join("");
+  }
+  const selectFiltro = document.getElementById("admin-empresa-gerenciada");
+  if (selectFiltro) {
+    selectFiltro.innerHTML = `<option value="">Todas as empresas</option>` + empresas.map((empresa) => `<option value="${empresa.id}">${escapeHtml(empresa.nome)}</option>`).join("");
+    selectFiltro.value = adminEmpresaFiltro;
+  }
   return empresas;
 }
 
@@ -3670,6 +3696,7 @@ async function renderizarAdminEmpresas() {
       <td>${escapeHtml(empresa.email || "-")}</td>
       <td>${escapeHtml(empresa.status)}</td>
       <td><div class="action-row">
+        <button class="small-btn" onclick="gerenciarEmpresaAdmin(${empresa.id})">Gerenciar</button>
         <button class="small-btn" onclick="acaoEmpresa(${empresa.id}, 'aprovar')">Aprovar</button>
         <button class="small-btn delete-btn" onclick="acaoEmpresa(${empresa.id}, 'bloquear')">Bloquear</button>
         <button class="small-btn delete-btn" onclick="excluirEmpresaAdmin(${empresa.id})">Desativar</button>
@@ -3681,7 +3708,8 @@ async function renderizarAdminEmpresas() {
 async function renderizarAdminUsuarios() {
   const tabela = document.getElementById("tabela-admin-usuarios");
   if (!tabela) return;
-  const [usuarios, empresas] = await Promise.all([apiGet("/usuarios"), apiGet("/empresas")]);
+  const filtro = adminEmpresaFiltro ? `?empresa_id=${encodeURIComponent(adminEmpresaFiltro)}` : "";
+  const [usuarios, empresas] = await Promise.all([apiGet(`/usuarios${filtro}`), apiGet("/empresas")]);
   const nomesEmpresas = new Map(empresas.map((empresa) => [empresa.id, empresa.nome]));
   tabela.innerHTML = usuarios.map((usuario) => `
     <tr>
@@ -3690,21 +3718,24 @@ async function renderizarAdminUsuarios() {
       <td>${escapeHtml(nomesEmpresas.get(usuario.empresa_id) || usuario.empresa_id)}</td>
       <td>${escapeHtml(usuario.perfil)}</td>
       <td>${escapeHtml(usuario.status)}</td>
+      <td><span class="status-badge">Protegida</span></td>
       <td>${usuario.ultimo_login ? formatarDataCurta(usuario.ultimo_login) : "-"}</td>
       <td><div class="action-row">
         <button class="small-btn" onclick="acaoUsuario(${usuario.id}, 'aprovar')">Aprovar</button>
         <button class="small-btn delete-btn" onclick="acaoUsuario(${usuario.id}, 'bloquear')">Bloquear</button>
         <button class="small-btn delete-btn" onclick="acaoUsuario(${usuario.id}, 'desativar')">Desativar</button>
-        <button class="small-btn" onclick="acaoUsuario(${usuario.id}, 'forcar-troca-senha')">Trocar senha</button>
+        <button class="small-btn" onclick="resetarSenhaUsuario(${usuario.id})">Definir senha</button>
+        <button class="small-btn delete-btn" onclick="excluirUsuarioAdmin(${usuario.id})">Excluir</button>
       </div></td>
     </tr>
-  `).join("") || `<tr><td colspan="7" class="empty-row">Nenhum usuario cadastrado.</td></tr>`;
+  `).join("") || `<tr><td colspan="8" class="empty-row">Nenhum usuario cadastrado.</td></tr>`;
 }
 
 async function renderizarAdminAuditoria() {
   const tabela = document.getElementById("tabela-admin-auditoria");
   if (!tabela) return;
-  const logs = await apiGet("/audit-logs");
+  const filtro = adminEmpresaFiltro ? `?empresa_id=${encodeURIComponent(adminEmpresaFiltro)}` : "";
+  const logs = await apiGet(`/audit-logs${filtro}`);
   tabela.innerHTML = logs.map((log) => `
     <tr>
       <td>${log.created_at ? formatarDataCurta(log.created_at) : "-"}</td>
@@ -3712,8 +3743,9 @@ async function renderizarAdminAuditoria() {
       <td>${escapeHtml(log.entidade)}</td>
       <td>${escapeHtml(log.entidade_id)}</td>
       <td>${escapeHtml(log.ip || "-")}</td>
+      <td><button class="small-btn delete-btn" onclick="excluirLogAdmin(${log.id})">Excluir</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="5" class="empty-row">Nenhum log encontrado.</td></tr>`;
+  `).join("") || `<tr><td colspan="6" class="empty-row">Nenhum log encontrado.</td></tr>`;
 }
 
 window.acaoEmpresa = async (empresaId, acao) => {
@@ -3727,9 +3759,37 @@ window.excluirEmpresaAdmin = async (empresaId) => {
   await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminAuditoria()]);
 };
 
+window.gerenciarEmpresaAdmin = async (empresaId) => {
+  adminEmpresaFiltro = String(empresaId);
+  const select = document.getElementById("admin-empresa-gerenciada");
+  if (select) select.value = adminEmpresaFiltro;
+  await Promise.all([renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
+};
+
 window.acaoUsuario = async (usuarioId, acao) => {
   await apiSend(`/usuarios/${usuarioId}/${acao}`, "POST", {});
   await Promise.all([renderizarAdminResumo(), renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
+};
+
+window.resetarSenhaUsuario = async (usuarioId) => {
+  const novaSenha = prompt("Digite a nova senha do usuario. Ela deve ter no minimo 8 caracteres.");
+  if (!novaSenha) return;
+  await apiSend(`/usuarios/${usuarioId}/alterar-senha`, "POST", { senha: novaSenha });
+  await apiSend(`/usuarios/${usuarioId}/forcar-troca-senha`, "POST", {});
+  mostrarToast("Senha redefinida. O usuario devera trocar no proximo acesso.", "success");
+  await Promise.all([renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
+};
+
+window.excluirUsuarioAdmin = async (usuarioId) => {
+  if (!confirm("Deseja excluir definitivamente este usuario?")) return;
+  await apiDelete(`/usuarios/${usuarioId}`);
+  await Promise.all([renderizarAdminResumo(), renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
+};
+
+window.excluirLogAdmin = async (logId) => {
+  if (!confirm("Deseja excluir este log de auditoria?")) return;
+  await apiDelete(`/audit-logs/${logId}`);
+  await renderizarAdminAuditoria();
 };
 
 // =========================================================
@@ -4287,7 +4347,12 @@ function iniciarBotoesPopupFiltros() {
 // NAVEGACAO ENTRE ABAS
 // =========================================================
 async function loadPage(pageKey) {
-  if (pageKey === "admin" && obterUsuarioSessao().perfil !== "master") {
+  const usuarioSessao = obterUsuarioSessao();
+  if (usuarioSessao.perfil === "master" && pageKey !== "admin") {
+    pageKey = "admin";
+  }
+
+  if (pageKey === "admin" && usuarioSessao.perfil !== "master") {
     pageKey = "dashboard";
     mostrarToast("Acesso administrativo disponivel apenas para usuario master.", "error");
   }
@@ -4443,5 +4508,5 @@ aplicarEstadoSidebar();
 aplicarIconesNavegacao();
 exigirLogin();
 aplicarPermissoesVisuais();
-loadPage("dashboard");
+loadPage(obterUsuarioSessao().perfil === "master" ? "admin" : "dashboard");
 window.lucide?.createIcons();

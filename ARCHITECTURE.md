@@ -35,7 +35,12 @@ Usuarios com status `inativo`, `bloqueado` ou `pendente` nao conseguem acessar. 
 
 As tabelas novas possuem `empresa_id` quando o dado pertence a uma empresa. O usuario `master` pode consultar o ambiente inteiro. Os demais usuarios ficam limitados a `usuario.empresa_id`.
 
-Rotas legadas que ainda usam JSON estao protegidas por JWT e permissao de perfil. Durante a transicao, usuarios comuns de outra empresa nao acessam os dados JSON globais.
+Rotas legadas que ainda usam JSON estao protegidas por JWT e permissao de perfil. Durante a transicao, os JSON operacionais sao separados fisicamente por empresa:
+
+- empresa 1: `python/data/*.json`;
+- demais empresas: `python/data/empresas/{empresa_id}/*.json`.
+
+O usuario `master` nao acessa rotas operacionais; ele acessa apenas o painel de gerenciamento. Usuarios das empresas usam a aplicacao completa conforme perfil, sem visualizar a aba Master/Admin.
 
 ## Painel Administrativo
 
