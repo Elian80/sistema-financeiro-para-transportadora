@@ -1,14 +1,19 @@
 :root {
-  --bg: #0b1020;
-  --panel: rgba(18, 26, 47, 0.92);
-  --panel-2: rgba(255, 255, 255, 0.04);
-  --line: rgba(255, 255, 255, 0.08);
-  --text: #e8edf8;
-  --muted: #97a3bc;
-  --blue: #4f8cff;
-  --blue-2: #2f6de6;
-  --radius-xl: 28px;
-  --shadow: 0 24px 50px rgba(0, 0, 0, 0.35);
+  --bg: #0B0F1A;
+  --panel: rgba(15, 23, 42, 0.94);
+  --panel-strong: #111827;
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-hover: rgba(34, 211, 238, 0.1);
+  --line: rgba(148, 163, 184, 0.16);
+  --text: #E5E7EB;
+  --muted: #9CA3AF;
+  --blue: #22D3EE;
+  --blue-2: #3B82F6;
+  --green: #22C55E;
+  --red: #EF4444;
+  --radius-xl: 16px;
+  --radius-md: 12px;
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
 }
 
 * {
@@ -19,10 +24,10 @@ body {
   margin: 0;
   font-family: Inter, Segoe UI, Arial, sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(79, 140, 255, 0.18), transparent 25%),
-    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.08), transparent 18%),
-    var(--bg);
+    radial-gradient(circle at top left, rgba(79, 140, 255, 0.16), transparent 32rem),
+    linear-gradient(135deg, #070b16 0%, var(--bg) 48%, #101827 100%);
   color: var(--text);
+  min-height: 100vh;
 }
 
 .login-shell {
@@ -44,14 +49,14 @@ body {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
 }
 
 .login-left {
   padding: 48px;
   background:
-    radial-gradient(circle at top right, rgba(79, 140, 255, 0.16), transparent 24%),
-    linear-gradient(135deg, rgba(79, 140, 255, 0.08), rgba(255, 255, 255, 0.02));
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.14), transparent 24rem),
+    linear-gradient(180deg, rgba(17, 27, 49, 0.96), rgba(11, 16, 32, 0.92));
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -60,8 +65,8 @@ body {
 .brand-badge {
   width: 64px;
   height: 64px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, var(--blue), #79aaff);
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--blue), var(--blue-2));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,7 +74,7 @@ body {
   font-weight: 800;
   color: white;
   margin-bottom: 24px;
-  box-shadow: 0 14px 28px rgba(79, 140, 255, 0.35);
+  box-shadow: 0 0 28px rgba(34, 211, 238, 0.22);
 }
 
 .login-left h1 {
@@ -92,9 +97,9 @@ body {
 }
 
 .info-box {
-  background: var(--panel-2);
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: var(--radius-md);
   padding: 18px;
 }
 
@@ -148,9 +153,9 @@ label {
 input {
   width: 100%;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface);
   color: white;
   outline: none;
   font-size: 14px;
@@ -161,25 +166,28 @@ input::placeholder {
 }
 
 input:focus {
-  border-color: rgba(79, 140, 255, 0.55);
-  box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.12);
+  border-color: rgba(34, 211, 238, 0.55);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
 }
 
 button {
   margin-top: 14px;
   border: none;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   background: linear-gradient(135deg, var(--blue), var(--blue-2));
   color: white;
   font-weight: 700;
   cursor: pointer;
   font-size: 15px;
-  box-shadow: 0 14px 26px rgba(79, 140, 255, 0.28);
+  box-shadow: 0 12px 24px rgba(34, 211, 238, 0.18);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
 }
 
 button:hover {
   filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.12);
 }
 
 button:disabled {
@@ -190,23 +198,23 @@ button:disabled {
 .erro-login {
   min-height: 20px;
   margin: 14px 0 0;
-  color: #ff9a9a;
+  color: #ff9e9e;
   font-size: 13px;
 }
 
 .login-status {
   min-height: 20px;
   margin: 6px 0 0;
-  color: #a7f3d0;
+  color: #7ef0a8;
   font-size: 13px;
 }
 
 .login-demo {
   margin-top: 22px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
 }
 
 .login-demo span {
@@ -225,12 +233,13 @@ button:disabled {
   margin-top: 12px;
   background: transparent;
   border: 1px solid var(--line);
-  color: #d5def3;
+  color: var(--text);
   box-shadow: none;
 }
 
 .access-link:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
+  border-color: rgba(34, 211, 238, 0.28);
 }
 
 @media (max-width: 900px) {
