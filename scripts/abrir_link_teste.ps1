@@ -61,6 +61,44 @@ function Wait-PublicUrl {
   return $null
 }
 
+function Open-TestUrl {
+  param([string]$Url)
+
+  try {
+    Set-Clipboard -Value $Url
+    Write-Host "Link copiado para a area de transferencia." -ForegroundColor DarkGray
+  } catch {
+    Write-Host "Nao consegui copiar o link automaticamente." -ForegroundColor DarkGray
+  }
+
+  $ChromePaths = @(
+    "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+    "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+  )
+
+  foreach ($ChromePath in $ChromePaths) {
+    if ($ChromePath -and (Test-Path $ChromePath)) {
+      Start-Process -FilePath $ChromePath -ArgumentList @("--new-window", $Url)
+      return
+    }
+  }
+
+  $ChromeCommand = Get-Command chrome.exe -ErrorAction SilentlyContinue
+  if ($ChromeCommand) {
+    Start-Process -FilePath $ChromeCommand.Source -ArgumentList @("--new-window", $Url)
+    return
+  }
+
+  $EdgePath = "$env:ProgramFiles (x86)\Microsoft\Edge\Application\msedge.exe"
+  if (Test-Path $EdgePath) {
+    Start-Process -FilePath $EdgePath -ArgumentList @("--new-window", $Url)
+    return
+  }
+
+  Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", "start", '""', $Url) -WindowStyle Hidden
+}
+
 Set-Location $AppDir
 
 Write-Host "============================================================" -ForegroundColor DarkCyan
@@ -162,14 +200,14 @@ if ($PublicUrl) {
   Write-Host " $FinalUrl" -ForegroundColor White
   Write-Host ""
   Write-Host "Se o navegador do computador demorar por DNS local, teste direto no celular em outra rede ou dados moveis." -ForegroundColor Yellow
-  Start-Process $FinalUrl
+  Open-TestUrl -Url $FinalUrl
 } else {
   $FinalUrl = $AppPageUrl
   Write-Host "Nao consegui capturar o link HTTPS automaticamente." -ForegroundColor Yellow
   Write-Host "Abri somente o link local. Confira os arquivos:" -ForegroundColor Yellow
   Write-Host " $TunnelLog" -ForegroundColor Yellow
   Write-Host " $TunnelErrorLog" -ForegroundColor Yellow
-  Start-Process $FinalUrl
+  Open-TestUrl -Url $FinalUrl
 }
 
 Write-Host ""
