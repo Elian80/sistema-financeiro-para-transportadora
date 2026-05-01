@@ -1,4 +1,4 @@
-const CACHE_NAME = "financeiro-pwa-v46";
+const CACHE_NAME = "financeiro-pwa-v47";
 
 const APP_SHELL = [
   "/",
@@ -8,7 +8,7 @@ const APP_SHELL = [
   "/login.css",
   "/style.css",
   "/login.js?v=12",
-  "/app.js?v=25",
+  "/app.js?v=26",
   "/pwa.js?v=11",
   "/manifest.webmanifest",
   "/icons/icon.svg"

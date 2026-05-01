@@ -2501,27 +2501,6 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
         <div class="kpi-card"><div class="kpi-label">Liquido</div><div class="kpi-value positive" id="folha-total-liquido">R$ 0,00</div></div>
       </div>
 
-      <section class="panel-box" style="margin-bottom:18px;">
-        <div class="table-toolbar">
-          <div>
-            <h3 style="margin:0;">Dados exibidos no recibo</h3>
-            <span>Marque o que deve aparecer na impressao da folha</span>
-          </div>
-        </div>
-        <div class="form-grid">
-          <label><input id="folha-mostrar-salario-base" type="checkbox" checked /> Salario base</label>
-          <label><input id="folha-mostrar-horas-extras" type="checkbox" checked /> Horas extras</label>
-          <label><input id="folha-mostrar-adicionais" type="checkbox" checked /> Adicionais</label>
-          <label><input id="folha-mostrar-bonus" type="checkbox" checked /> Bonus</label>
-          <label><input id="folha-mostrar-inss" type="checkbox" checked /> INSS</label>
-          <label><input id="folha-mostrar-irrf" type="checkbox" checked /> IRRF</label>
-          <label><input id="folha-mostrar-vale" type="checkbox" checked /> Vale</label>
-          <label><input id="folha-mostrar-adiantamento" type="checkbox" checked /> Adiantamento</label>
-          <label><input id="folha-mostrar-outros" type="checkbox" checked /> Outros descontos</label>
-          <label><input id="folha-mostrar-bases" type="checkbox" checked /> Bases INSS/FGTS/IRRF</label>
-        </div>
-      </section>
-
       <div class="payroll-driver-list">
         ${motoristas.map((motorista) => {
           const salarioBase = normalizarNumero(motorista.salario_base);
@@ -2570,6 +2549,27 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
           `;
         }).join("")}
       </div>
+
+      <section class="panel-box payroll-receipt-options">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Dados exibidos no recibo</h3>
+            <span>Marque o que deve aparecer na impressao da folha</span>
+          </div>
+        </div>
+        <div class="payroll-options-grid">
+          <label><input id="folha-mostrar-salario-base" type="checkbox" checked /><span>Salario base</span></label>
+          <label><input id="folha-mostrar-horas-extras" type="checkbox" checked /><span>Horas extras</span></label>
+          <label><input id="folha-mostrar-adicionais" type="checkbox" checked /><span>Adicionais</span></label>
+          <label><input id="folha-mostrar-bonus" type="checkbox" checked /><span>Bonus</span></label>
+          <label><input id="folha-mostrar-inss" type="checkbox" checked /><span>INSS</span></label>
+          <label><input id="folha-mostrar-irrf" type="checkbox" checked /><span>IRRF</span></label>
+          <label><input id="folha-mostrar-vale" type="checkbox" checked /><span>Vale</span></label>
+          <label><input id="folha-mostrar-adiantamento" type="checkbox" checked /><span>Adiantamento</span></label>
+          <label><input id="folha-mostrar-outros" type="checkbox" checked /><span>Outros descontos</span></label>
+          <label><input id="folha-mostrar-bases" type="checkbox" checked /><span>Bases INSS/FGTS/IRRF</span></label>
+        </div>
+      </section>
 
       <div class="btn-row" style="margin-top:18px;">
         <button class="primary-btn" id="btn-salvar-folha" type="button">Gerar folha e lancamento</button>
