@@ -7,6 +7,7 @@ $AppPageUrl = "$AppUrl/app"
 $ToolsDir = Join-Path $AppDir "tools"
 $LocalCloudflared = Join-Path $ToolsDir "cloudflared.exe"
 $TunnelLog = Join-Path $AppDir "cloudflare_tunnel.log"
+$TunnelErrorLog = Join-Path $AppDir "cloudflare_tunnel_error.log"
 $PublicUrl = $null
 $TunnelProcess = $null
 
@@ -37,12 +38,18 @@ function Wait-App {
 }
 
 function Wait-PublicUrl {
-  param([string]$LogPath)
+  param([string[]]$LogPaths)
 
   $deadline = (Get-Date).AddSeconds(75)
   do {
-    if (Test-Path $LogPath) {
+    foreach ($LogPath in $LogPaths) {
+      if (-not (Test-Path $LogPath)) {
+        continue
+      }
       $text = Get-Content $LogPath -Raw -ErrorAction SilentlyContinue
+      if ([string]::IsNullOrWhiteSpace($text)) {
+        continue
+      }
       $match = [regex]::Match($text, "https://[a-zA-Z0-9-]+\.trycloudflare\.com")
       if ($match.Success) {
         return $match.Value
@@ -127,10 +134,15 @@ if (Test-App) {
 Write-Step "[6/6] Gerando link HTTPS..."
 Get-Process cloudflared -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Remove-Item $TunnelLog -Force -ErrorAction SilentlyContinue
+Remove-Item $TunnelErrorLog -Force -ErrorAction SilentlyContinue
 
-$TunnelCommand = "`"$CloudflaredPath`" tunnel --no-autoupdate --url $AppUrl > `"$TunnelLog`" 2>&1"
-$TunnelProcess = Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $TunnelCommand) -WindowStyle Hidden -PassThru
-$PublicUrl = Wait-PublicUrl -LogPath $TunnelLog
+$TunnelProcess = Start-Process -FilePath $CloudflaredPath -ArgumentList @(
+  "tunnel",
+  "--no-autoupdate",
+  "--url",
+  $AppUrl
+) -WindowStyle Hidden -RedirectStandardOutput $TunnelLog -RedirectStandardError $TunnelErrorLog -PassThru
+$PublicUrl = Wait-PublicUrl -LogPaths @($TunnelLog, $TunnelErrorLog)
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
@@ -142,7 +154,9 @@ if ($PublicUrl) {
 } else {
   $FinalUrl = $AppPageUrl
   Write-Host "Nao consegui capturar o link HTTPS automaticamente." -ForegroundColor Yellow
-  Write-Host "Abri somente o link local. Confira o arquivo cloudflare_tunnel.log." -ForegroundColor Yellow
+  Write-Host "Abri somente o link local. Confira os arquivos:" -ForegroundColor Yellow
+  Write-Host " $TunnelLog" -ForegroundColor Yellow
+  Write-Host " $TunnelErrorLog" -ForegroundColor Yellow
   Start-Process $FinalUrl
 }
 
