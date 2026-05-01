@@ -284,9 +284,12 @@ $PublicUrl = Wait-PublicUrl -LogPaths @($TunnelLog, $TunnelErrorLog)
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
 if ($PublicUrl) {
-  $FinalUrl = "$PublicUrl/app"
+  $FinalUrl = $PublicUrl
+  $AppFinalUrl = "$PublicUrl/app"
   Write-Host " LINK PUBLICO HTTPS:" -ForegroundColor Green
   Write-Host " $FinalUrl" -ForegroundColor White
+  Write-Host " Apos fazer login, o sistema abre a aplicacao em:" -ForegroundColor Green
+  Write-Host " $AppFinalUrl" -ForegroundColor White
   Write-Host ""
   Write-Host "Tambem salvei o link nestes arquivos:" -ForegroundColor Green
   Write-Host " $PublicLinkFile" -ForegroundColor White
