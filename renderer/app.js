@@ -2187,12 +2187,13 @@ function gerarDadosItemFolha(row) {
     desconto_vale: normalizarNumero(row.querySelector(".folha-desconto-vale").value),
     desconto_adiantamento: normalizarNumero(row.querySelector(".folha-desconto-adiantamento").value),
     outros_descontos: normalizarNumero(row.querySelector(".folha-outros-descontos").value),
+    outros_descontos_descricao: row.querySelector(".folha-outros-descricao")?.value.trim() || "",
     salario_contratual: normalizarNumero(row.dataset.salarioContratual),
     base_inss: calculo.salarioBruto,
     base_fgts: calculo.salarioBruto,
     fgts: calculo.fgts,
     base_irrf: Math.max(calculo.salarioBruto - calculo.descontoInss, 0),
-    observacao: row.querySelector(".folha-outros-descricao")?.value.trim() || ""
+    observacao: row.querySelector(".folha-observacao")?.value.trim() || ""
   };
 }
 
@@ -2244,7 +2245,7 @@ function renderizarReciboPagamento(folha, item, motorista) {
     opcoes.irrf ? { codigo: "311", descricao: "IRRF", referencia: `${motorista.irrf_percentual || 0}%`, valor: item.desconto_irrf || 0 } : null,
     opcoes.vale ? { codigo: "914", descricao: "Vale Refeicao", referencia: "", valor: item.desconto_vale || 0 } : null,
     opcoes.adiantamento ? { codigo: "915", descricao: "Adiantamento", referencia: "", valor: item.desconto_adiantamento || 0 } : null,
-    opcoes.outros ? { codigo: "924", descricao: item.observacao || "Convenio medico / outros", referencia: "", valor: item.outros_descontos || 0 } : null,
+    opcoes.outros ? { codigo: "924", descricao: item.outros_descontos_descricao || "Convenio medico / outros", referencia: "", valor: item.outros_descontos || 0 } : null,
   ].filter((linha) => linha && linha.valor > 0);
 
   const linhas = [...proventos.map((linha) => ({ ...linha, tipo: "provento" })), ...descontos.map((linha) => ({ ...linha, tipo: "desconto" }))];
@@ -2533,6 +2534,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
                 <label>Adiantamento<input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></label>
                 <label>Outros descontos<input class="folha-outros-descontos" type="number" min="0" step="0.01" value="${outros.toFixed(2)}" /></label>
                 <label class="payroll-description-field">Descricao outros descontos<input class="folha-outros-descricao" value="" placeholder="Descricao dos outros descontos" /></label>
+                <label class="payroll-description-field">Observacoes<input class="folha-observacao" value="" placeholder="Observacoes da folha" /></label>
               </div>
 
               <div class="payroll-result-grid">

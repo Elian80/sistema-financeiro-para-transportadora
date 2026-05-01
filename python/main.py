@@ -448,6 +448,7 @@ class FolhaPagamentoItemIn(BaseModel):
     desconto_vale: float = 0
     desconto_adiantamento: float = 0
     outros_descontos: float = 0
+    outros_descontos_descricao: str = ""
     salario_contratual: float = 0
     base_inss: float = 0
     base_fgts: float = 0
@@ -481,7 +482,7 @@ class FolhaPagamentoItemIn(BaseModel):
             raise ValueError("Valores da folha nao podem ser negativos.")
         return valor
 
-    @field_validator("adicional_descricao", "bonus_descricao", "observacao")
+    @field_validator("adicional_descricao", "bonus_descricao", "outros_descontos_descricao", "observacao")
     @classmethod
     def limpar_observacao(cls, value: str) -> str:
         return value.strip()
@@ -838,6 +839,7 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
         "desconto_vale": item.desconto_vale,
         "desconto_adiantamento": item.desconto_adiantamento,
         "outros_descontos": item.outros_descontos,
+        "outros_descontos_descricao": item.outros_descontos_descricao,
         "observacao": item.observacao,
         "salario_base": arredondar_moeda(salario_base),
         "valor_extras": arredondar_moeda(valor_extras),
