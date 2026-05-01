@@ -194,7 +194,7 @@ const pages = {
           <div class="field"><label>Veiculo</label><select id="dash-horas-veiculo"><option value="">Todas as maquinas</option></select></div>
           <div class="field"><label>Data inicial</label><input type="date" id="dash-horas-data-inicial" /></div>
           <div class="field"><label>Data final</label><input type="date" id="dash-horas-data-final" /></div>
-          <div class="field"><label>&nbsp;</label><button type="button" class="primary-btn" id="btn-dashboard-horas">Atualizar horas</button></div>
+          <div class="field dash-hours-action"><label>&nbsp;</label><button type="button" class="icon-btn subtle-icon-btn" id="btn-dashboard-horas" aria-label="Atualizar horas" title="Atualizar horas"><span data-lucide="refresh-cw" aria-hidden="true"></span></button></div>
         </div>
         <div class="kpi-grid" style="margin-top:14px;">
           <div class="kpi-card"><div class="kpi-label">Total de horas</div><div class="kpi-value" id="dash-horas-total">0h</div></div>
@@ -4550,6 +4550,7 @@ async function loadPage(pageKey) {
   pageTitle.textContent = page.title;
   pageSubtitle.textContent = page.subtitle;
   pageContent.innerHTML = page.render();
+  window.lucide?.createIcons();
   iniciarBotoesPopupFiltros();
 
   try {
