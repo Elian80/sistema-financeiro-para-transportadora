@@ -1112,19 +1112,24 @@ const pages = {
 
   relatorios: {
     title: "Relatorios",
-    subtitle: "Indicadores financeiros, graficos e exportacoes",
+    subtitle: "Analise executiva, DRE, graficos e demonstrativos",
     render: () => `
-      <section class="panel-box filter-launcher">
+      <section class="panel-box report-hero no-print">
         <div class="table-toolbar">
           <div>
-            <h3 style="margin:0;">Relatorios financeiros</h3>
-            <span>Use os filtros para tela, PDF e Excel.</span>
+            <h3 style="margin:0;">Central de relatorios</h3>
+            <span id="rel-filtros-resumo">Visao consolidada da operacao.</span>
+          </div>
+          <div class="report-actions">
+            ${botaoFiltros("painel-filtros-relatorios")}
+            <button type="button" class="ghost-btn" id="btn-imprimir-relatorio">Imprimir</button>
+            <button type="button" class="ghost-btn" id="btn-exportar-pdf">PDF</button>
+            <button type="button" class="ghost-btn" id="btn-exportar-excel">Excel</button>
           </div>
         </div>
-        ${botaoFiltros("painel-filtros-relatorios")}
       </section>
 
-      ${popupFiltros("painel-filtros-relatorios", "Filtros do relatorio", "Use os mesmos filtros para tela, PDF e Excel.", `
+      ${popupFiltros("painel-filtros-relatorios", "Filtros do relatorio", "Use os mesmos filtros para tela, impressao, PDF e Excel.", `
         <div class="form-grid">
           <div class="field">
             <label for="rel-data-inicial">Data inicial</label>
@@ -1162,55 +1167,100 @@ const pages = {
 
           <div class="field full btn-row">
             <button type="button" class="primary-btn" id="btn-gerar-relatorio">Gerar relatorio</button>
-            <button type="button" class="ghost-btn" id="btn-exportar-pdf">Exportar PDF</button>
-            <button type="button" class="ghost-btn" id="btn-exportar-excel">Exportar Excel</button>
+            <button type="button" class="ghost-btn" id="btn-limpar-relatorio">Limpar filtros</button>
           </div>
         </div>
       `)}
 
       <section id="relatorio-feedback"></section>
 
-      <div class="kpi-grid report-kpis">
-        <div class="kpi-card"><div class="kpi-label">Faturamento</div><div class="kpi-value positive" id="rel-fat">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Custos</div><div class="kpi-value negative" id="rel-custos">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Despesas</div><div class="kpi-value negative" id="rel-despesas">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="rel-invest">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="rel-lucro-bruto">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Lucro liquido</div><div class="kpi-value" id="rel-lucro-liquido">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Saldo do periodo</div><div class="kpi-value" id="rel-saldo">R$ 0,00</div></div>
-        <div class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value" id="rel-pendente">R$ 0,00</div></div>
-      </div>
+      <section id="relatorio-print-area" class="print-area report-print-area">
+        <div class="report-print-header">
+          <div>
+            <span class="report-eyebrow">Relatorio gerencial</span>
+            <h2>Demonstrativo financeiro e operacional</h2>
+            <p id="rel-periodo-print">Todos os registros disponiveis</p>
+          </div>
+          <div class="report-generated">
+            <span>Emitido em</span>
+            <strong id="rel-data-emissao">-</strong>
+          </div>
+        </div>
 
-      <section class="report-charts">
-        <div class="panel-box"><h3>Receitas x custos x despesas</h3><canvas id="chart-periodo" height="150"></canvas></div>
-        <div class="panel-box"><h3>Distribuicao por classificacao</h3><canvas id="chart-classificacao" height="150"></canvas></div>
-        <div class="panel-box"><h3>Resultado por veiculo</h3><canvas id="chart-veiculo" height="150"></canvas></div>
-        <div class="panel-box"><h3>Contas a receber</h3><canvas id="chart-contas" height="150"></canvas></div>
-      </section>
+        <div class="kpi-grid report-kpis">
+          <div class="kpi-card report-kpi-card"><div class="kpi-label">Faturamento</div><div class="kpi-value positive" id="rel-fat">R$ 0,00</div><small id="rel-fat-sub">Receitas do periodo</small></div>
+          <div class="kpi-card report-kpi-card"><div class="kpi-label">Custos operacionais</div><div class="kpi-value negative" id="rel-custos">R$ 0,00</div><small id="rel-custos-sub">Custos ligados a operacao</small></div>
+          <div class="kpi-card report-kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="rel-lucro-bruto">R$ 0,00</div><small id="rel-margem-bruta">Margem bruta 0%</small></div>
+          <div class="kpi-card report-kpi-card"><div class="kpi-label">Lucro liquido</div><div class="kpi-value" id="rel-lucro-liquido">R$ 0,00</div><small id="rel-margem-liquida">Margem liquida 0%</small></div>
+          <div class="kpi-card report-kpi-card"><div class="kpi-label">Saldo final</div><div class="kpi-value" id="rel-saldo">R$ 0,00</div><small>Depois de investimentos</small></div>
+          <div class="kpi-card report-kpi-card"><div class="kpi-label">A receber pendente</div><div class="kpi-value warning" id="rel-pendente">R$ 0,00</div><small id="rel-pendente-sub">Carteira em aberto</small></div>
+        </div>
 
-      <section class="panel-box">
-        <h3>Por classificacao</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Classificacao</th><th>Grupo</th><th>Quantidade</th><th>Total</th></tr></thead><tbody id="rel-tabela-classificacao"></tbody></table></div>
-      </section>
+        <section class="report-executive-grid">
+          <div class="panel-box report-dre-card">
+            <div class="report-section-head">
+              <div>
+                <h3>Demonstrativo de resultado</h3>
+                <span>Modelo gerencial do periodo selecionado</span>
+              </div>
+            </div>
+            <div class="dre-list">
+              <div class="dre-row positive"><span>Receita operacional bruta</span><strong id="dre-receita">R$ 0,00</strong></div>
+              <div class="dre-row negative"><span>(-) Custos operacionais</span><strong id="dre-custos">R$ 0,00</strong></div>
+              <div class="dre-row subtotal"><span>Lucro bruto</span><strong id="dre-lucro-bruto">R$ 0,00</strong></div>
+              <div class="dre-row negative"><span>(-) Despesas administrativas</span><strong id="dre-despesas">R$ 0,00</strong></div>
+              <div class="dre-row subtotal"><span>Resultado operacional</span><strong id="dre-lucro-liquido">R$ 0,00</strong></div>
+              <div class="dre-row negative"><span>(-) Investimentos</span><strong id="dre-investimentos">R$ 0,00</strong></div>
+              <div class="dre-row total"><span>Saldo do periodo</span><strong id="dre-saldo">R$ 0,00</strong></div>
+            </div>
+          </div>
 
-      <section class="panel-box">
-        <h3>Por veiculo</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Veiculo</th><th>Placa</th><th>Receitas</th><th>Custos</th><th>Despesas</th><th>Investimentos</th><th>Resultado</th><th>Custo/KM</th><th>Consumo medio</th></tr></thead><tbody id="rel-tabela-veiculo"></tbody></table></div>
-      </section>
+          <div class="panel-box report-insights-card">
+            <div class="report-section-head">
+              <div>
+                <h3>Leitura rapida</h3>
+                <span>Indicadores para decisao</span>
+              </div>
+            </div>
+            <div id="rel-insights" class="report-insights"></div>
+          </div>
+        </section>
 
-      <section class="panel-box">
-        <h3>Por periodo</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Periodo</th><th>Receitas</th><th>Custos</th><th>Despesas</th><th>Investimentos</th><th>Resultado</th></tr></thead><tbody id="rel-tabela-periodo"></tbody></table></div>
-      </section>
+        <section class="report-charts premium-report-charts">
+          <div class="panel-box chart-card chart-card-wide"><h3>Evolucao mensal</h3><canvas id="chart-periodo"></canvas></div>
+          <div class="panel-box chart-card"><h3>Distribuicao por classificacao</h3><canvas id="chart-classificacao"></canvas></div>
+          <div class="panel-box chart-card"><h3>Resultado por veiculo</h3><canvas id="chart-veiculo"></canvas></div>
+          <div class="panel-box chart-card"><h3>Contas a receber</h3><canvas id="chart-contas"></canvas></div>
+        </section>
 
-      <section class="panel-box">
-        <h3>Contas a receber</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Contrato</th><th>Tomador</th><th>Total</th><th>Status</th></tr></thead><tbody id="rel-tabela-contas-receber"></tbody></table></div>
-      </section>
+        <section class="report-detail-grid">
+          <div class="panel-box">
+            <div class="report-section-head"><h3>Por classificacao</h3><span>Maiores grupos de movimentacao</span></div>
+            <div class="table-wrap"><table class="data-table premium-table"><thead><tr><th>Classificacao</th><th>Grupo</th><th>Qtd.</th><th>Total</th><th>Participacao</th></tr></thead><tbody id="rel-tabela-classificacao"></tbody></table></div>
+          </div>
 
-      <section class="panel-box">
-        <h3>Contas a pagar</h3>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Descricao</th><th>Valor</th><th>Status</th></tr></thead><tbody id="rel-tabela-contas-pagar"></tbody></table></div>
+          <div class="panel-box">
+            <div class="report-section-head"><h3>Por periodo</h3><span>Evolucao mensal do resultado</span></div>
+            <div class="table-wrap"><table class="data-table premium-table"><thead><tr><th>Periodo</th><th>Receitas</th><th>Custos</th><th>Despesas</th><th>Investimentos</th><th>Resultado</th><th>Margem</th></tr></thead><tbody id="rel-tabela-periodo"></tbody></table></div>
+          </div>
+        </section>
+
+        <section class="panel-box">
+          <div class="report-section-head"><h3>Resultado por veiculo</h3><span>Receitas, custos, despesas e eficiencia operacional</span></div>
+          <div class="table-wrap"><table class="data-table premium-table"><thead><tr><th>Veiculo</th><th>Placa</th><th>Receitas</th><th>Custos</th><th>Despesas</th><th>Investimentos</th><th>Resultado</th><th>Custo/KM</th><th>Consumo medio</th></tr></thead><tbody id="rel-tabela-veiculo"></tbody></table></div>
+        </section>
+
+        <section class="report-detail-grid">
+          <div class="panel-box">
+            <div class="report-section-head"><h3>Contas a receber</h3><span>Contratos e recebimentos do periodo</span></div>
+            <div class="table-wrap"><table class="data-table premium-table"><thead><tr><th>Data</th><th>Contrato</th><th>Tomador</th><th>Total</th><th>Status</th></tr></thead><tbody id="rel-tabela-contas-receber"></tbody></table></div>
+          </div>
+
+          <div class="panel-box">
+            <div class="report-section-head"><h3>Contas a pagar</h3><span>Compromissos financeiros registrados</span></div>
+            <div class="table-wrap"><table class="data-table premium-table"><thead><tr><th>Descricao</th><th>Valor</th><th>Status</th></tr></thead><tbody id="rel-tabela-contas-pagar"></tbody></table></div>
+          </div>
+        </section>
       </section>
     `
   },
@@ -4053,6 +4103,75 @@ function atualizarCardRelatorio(id, valor) {
   if (el) el.textContent = formatarValor(valor);
 }
 
+function formatarPercentual(valor) {
+  const numero = Number.isFinite(valor) ? valor : 0;
+  return `${numero.toFixed(1).replace(".", ",")}%`;
+}
+
+function atualizarTextoRelatorio(id, texto) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = texto;
+}
+
+function atualizarResumoFiltrosRelatorio() {
+  const dataInicial = document.getElementById("rel-data-inicial")?.value || "";
+  const dataFinal = document.getElementById("rel-data-final")?.value || "";
+  const veiculo = document.getElementById("rel-veiculo-id");
+  const classificacao = document.getElementById("rel-classificacao")?.value || "";
+  const obra = document.getElementById("rel-obra-servico")?.value.trim() || "";
+  const partes = [];
+
+  if (dataInicial || dataFinal) {
+    partes.push(`${dataInicial ? formatarDataCurta(dataInicial) : "inicio"} a ${dataFinal ? formatarDataCurta(dataFinal) : "hoje"}`);
+  }
+  if (veiculo?.value) partes.push(veiculo.options[veiculo.selectedIndex]?.text || "veiculo selecionado");
+  if (classificacao) partes.push(classificacao);
+  if (obra) partes.push(`Obra: ${obra}`);
+
+  const texto = partes.length ? partes.join(" | ") : "Todos os registros disponiveis";
+  atualizarTextoRelatorio("rel-filtros-resumo", texto);
+  atualizarTextoRelatorio("rel-periodo-print", texto);
+  atualizarTextoRelatorio("rel-data-emissao", new Date().toLocaleString("pt-BR"));
+}
+
+function atualizarDreRelatorio(resumo) {
+  atualizarCardRelatorio("dre-receita", resumo.total_faturamento);
+  atualizarCardRelatorio("dre-custos", resumo.total_custos);
+  atualizarCardRelatorio("dre-lucro-bruto", resumo.lucro_bruto);
+  atualizarCardRelatorio("dre-despesas", resumo.total_despesas);
+  atualizarCardRelatorio("dre-lucro-liquido", resumo.lucro_liquido);
+  atualizarCardRelatorio("dre-investimentos", resumo.total_investimentos);
+  atualizarCardRelatorio("dre-saldo", resumo.saldo_periodo);
+}
+
+function renderizarInsightsRelatorio(resumo, porVeiculo, contasReceber) {
+  const faturamento = normalizarNumero(resumo.total_faturamento);
+  const margemBruta = faturamento ? (normalizarNumero(resumo.lucro_bruto) / faturamento) * 100 : 0;
+  const margemLiquida = faturamento ? (normalizarNumero(resumo.lucro_liquido) / faturamento) * 100 : 0;
+  const pendente = normalizarNumero(resumo.contas_a_receber_pendente);
+  const melhorVeiculo = porVeiculo.find((item) => normalizarNumero(item.resultado) > 0);
+  const totalContas = normalizarNumero(resumo.contas_a_receber_total);
+  const percentualPendente = totalContas ? (pendente / totalContas) * 100 : 0;
+  const container = document.getElementById("rel-insights");
+  if (!container) return;
+
+  const itens = [
+    ["Margem bruta", formatarPercentual(margemBruta), margemBruta >= 25 ? "positive" : margemBruta >= 10 ? "warning" : "negative"],
+    ["Margem liquida", formatarPercentual(margemLiquida), margemLiquida >= 15 ? "positive" : margemLiquida >= 5 ? "warning" : "negative"],
+    ["Recebiveis em aberto", `${formatarPercentual(percentualPendente)} da carteira`, percentualPendente <= 20 ? "positive" : percentualPendente <= 45 ? "warning" : "negative"],
+    ["Melhor resultado", melhorVeiculo ? `${melhorVeiculo.nome_veiculo} (${formatarValor(melhorVeiculo.resultado)})` : "Sem veiculo positivo", melhorVeiculo ? "positive" : "warning"],
+    ["Lancamentos analisados", `${resumo.quantidade_lancamentos || 0} registro(s)`, "neutral"],
+    ["Contratos a receber", `${contasReceber.length || 0} contrato(s)`, "neutral"]
+  ];
+
+  container.innerHTML = itens.map(([label, value, status]) => `
+    <div class="insight-item ${status}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `).join("");
+}
+
 function preencherTabela(id, linhas, colunas, vazio = "Nenhum dado encontrado.") {
   const tbody = document.getElementById(id);
   if (!tbody) return;
@@ -4101,10 +4220,41 @@ function criarGrafico(canvasId, tipo, labels, datasets) {
     data: { labels, datasets },
     options: {
       responsive: true,
-      plugins: { legend: { labels: { color: "#e8edf8" } } },
+      maintainAspectRatio: false,
+      layout: { padding: 12 },
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            color: "#d9e2f3",
+            boxWidth: 10,
+            boxHeight: 10,
+            usePointStyle: true,
+            padding: 16,
+            font: { size: 11, family: "Inter, Segoe UI, Arial" }
+          }
+        },
+        tooltip: {
+          backgroundColor: "rgba(15, 23, 42, 0.96)",
+          borderColor: "rgba(148, 163, 184, 0.22)",
+          borderWidth: 1,
+          titleColor: "#f8fafc",
+          bodyColor: "#dbeafe",
+          padding: 12,
+          callbacks: {
+            label: (context) => `${context.dataset.label || "Total"}: ${formatarValor(context.parsed?.y ?? context.parsed ?? 0)}`
+          }
+        }
+      },
       scales: tipo === "pie" || tipo === "doughnut" ? {} : {
-        x: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.06)" } },
-        y: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.06)" } }
+        x: {
+          ticks: { color: "#94a3b8", maxRotation: 0, autoSkip: true, font: { size: 11 } },
+          grid: { color: "rgba(148,163,184,0.08)" }
+        },
+        y: {
+          ticks: { color: "#94a3b8", font: { size: 11 }, callback: (value) => formatarValor(value).replace("R$", "R$ ") },
+          grid: { color: "rgba(148,163,184,0.08)" }
+        }
       }
     }
   });
@@ -4116,21 +4266,22 @@ function renderizarGraficosRelatorio(dados) {
   destruirGraficosRelatorio();
 
   criarGrafico("chart-periodo", "bar", dados.por_periodo.map(i => i.periodo), [
-    { label: "Receitas", data: dados.por_periodo.map(i => i.total_receitas), backgroundColor: "#7ef0a8" },
-    { label: "Custos", data: dados.por_periodo.map(i => i.total_custos), backgroundColor: "#ff9e9e" },
-    { label: "Despesas", data: dados.por_periodo.map(i => i.total_despesas), backgroundColor: "#fbbf24" }
+    { label: "Receitas", data: dados.por_periodo.map(i => i.total_receitas), backgroundColor: "#22C55E", borderRadius: 8 },
+    { label: "Custos", data: dados.por_periodo.map(i => i.total_custos), backgroundColor: "#EF4444", borderRadius: 8 },
+    { label: "Despesas", data: dados.por_periodo.map(i => i.total_despesas), backgroundColor: "#F59E0B", borderRadius: 8 },
+    { label: "Resultado", data: dados.por_periodo.map(i => i.resultado), type: "line", borderColor: "#22D3EE", backgroundColor: "rgba(34, 211, 238, 0.12)", tension: 0.35, fill: false, pointRadius: 3 }
   ]);
 
   criarGrafico("chart-classificacao", "doughnut", dados.por_classificacao.slice(0, 8).map(i => i.classificacao), [
-    { label: "Total", data: dados.por_classificacao.slice(0, 8).map(i => Math.abs(i.total)), backgroundColor: ["#4f8cff", "#7ef0a8", "#fbbf24", "#ff9e9e", "#a78bfa", "#22d3ee", "#fb7185", "#c0cae0"] }
+    { label: "Total", data: dados.por_classificacao.slice(0, 8).map(i => Math.abs(i.total)), backgroundColor: ["#22D3EE", "#3B82F6", "#22C55E", "#F59E0B", "#EF4444", "#06B6D4", "#64748B", "#A78BFA"], borderWidth: 0 }
   ]);
 
   criarGrafico("chart-veiculo", "bar", dados.por_veiculo.slice(0, 8).map(i => i.nome_veiculo), [
-    { label: "Resultado", data: dados.por_veiculo.slice(0, 8).map(i => i.resultado), backgroundColor: "#4f8cff" }
+    { label: "Resultado", data: dados.por_veiculo.slice(0, 8).map(i => i.resultado), backgroundColor: "#3B82F6", borderRadius: 8 }
   ]);
 
   criarGrafico("chart-contas", "pie", ["Pendente", "Recebido"], [
-    { label: "Contas a receber", data: [dados.resumo.contas_a_receber_pendente, dados.resumo.contas_a_receber_recebido], backgroundColor: ["#fbbf24", "#7ef0a8"] }
+    { label: "Contas a receber", data: [dados.resumo.contas_a_receber_pendente, dados.resumo.contas_a_receber_recebido], backgroundColor: ["#F59E0B", "#22C55E"], borderWidth: 0 }
   ]);
 }
 
@@ -4167,17 +4318,28 @@ async function gerarRelatorio() {
     atualizarCardRelatorio("rel-lucro-liquido", resumo.lucro_liquido);
     atualizarCardRelatorio("rel-saldo", resumo.saldo_periodo);
     atualizarCardRelatorio("rel-pendente", resumo.contas_a_receber_pendente);
+    const faturamento = normalizarNumero(resumo.total_faturamento);
+    const margemBruta = faturamento ? (normalizarNumero(resumo.lucro_bruto) / faturamento) * 100 : 0;
+    const margemLiquida = faturamento ? (normalizarNumero(resumo.lucro_liquido) / faturamento) * 100 : 0;
+    atualizarTextoRelatorio("rel-margem-bruta", `Margem bruta ${formatarPercentual(margemBruta)}`);
+    atualizarTextoRelatorio("rel-margem-liquida", `Margem liquida ${formatarPercentual(margemLiquida)}`);
+    atualizarTextoRelatorio("rel-pendente-sub", `${contasReceber.itens?.length || 0} conta(s) no periodo`);
+    atualizarDreRelatorio(resumo);
+    renderizarInsightsRelatorio(resumo, porVeiculo, contasReceber.itens || []);
+    atualizarResumoFiltrosRelatorio();
 
+    const totalClassificacoes = porClassificacao.reduce((acc, item) => acc + Math.abs(normalizarNumero(item.total)), 0);
     preencherTabela("rel-tabela-classificacao", porClassificacao, [
-      i => i.classificacao,
-      i => i.grupo_financeiro,
+      i => escapeHtml(i.classificacao),
+      i => escapeHtml(i.grupo_financeiro),
       i => i.quantidade,
-      i => formatarValor(i.total)
+      i => formatarValor(i.total),
+      i => formatarPercentual(totalClassificacoes ? (Math.abs(normalizarNumero(i.total)) / totalClassificacoes) * 100 : 0)
     ]);
 
     preencherTabela("rel-tabela-veiculo", porVeiculo, [
-      i => i.nome_veiculo,
-      i => i.placa,
+      i => escapeHtml(i.nome_veiculo),
+      i => escapeHtml(i.placa),
       i => formatarValor(i.total_receitas),
       i => formatarValor(i.total_custos),
       i => formatarValor(i.total_despesas),
@@ -4193,21 +4355,22 @@ async function gerarRelatorio() {
       i => formatarValor(i.total_custos),
       i => formatarValor(i.total_despesas),
       i => formatarValor(i.total_investimentos),
-      i => formatarValor(i.resultado)
+      i => formatarValor(i.resultado),
+      i => formatarPercentual(normalizarNumero(i.total_receitas) ? (normalizarNumero(i.resultado) / normalizarNumero(i.total_receitas)) * 100 : 0)
     ]);
 
     preencherTabela("rel-tabela-contas-receber", contasReceber.itens || [], [
       i => formatarDataCurta(i.data_inicio),
-      i => i.contrato || "",
-      i => i.tomador || "",
+      i => escapeHtml(i.contrato || ""),
+      i => escapeHtml(i.tomador || ""),
       i => formatarValor(i.valor_total_receber),
-      i => i.status_pagamento || "pendente"
+      i => `<span class="status-pill ${escapeHtml(i.status_pagamento || "pendente")}">${escapeHtml(i.status_pagamento || "pendente")}</span>`
     ]);
 
     preencherTabela("rel-tabela-contas-pagar", contasPagar.itens || [], [
-      i => i.descricao || "",
+      i => escapeHtml(i.descricao || ""),
       i => formatarValor(i.valor || 0),
-      i => i.status_pagamento || "pendente"
+      i => `<span class="status-pill ${escapeHtml(i.status_pagamento || "pendente")}">${escapeHtml(i.status_pagamento || "pendente")}</span>`
     ]);
 
     renderizarGraficosRelatorio(dados);
@@ -4225,6 +4388,18 @@ async function iniciarRelatorios() {
   document.getElementById("btn-gerar-relatorio").addEventListener("click", async () => {
     await gerarRelatorio();
     fecharPopupFiltros("painel-filtros-relatorios");
+  });
+  document.getElementById("btn-limpar-relatorio")?.addEventListener("click", async () => {
+    ["rel-data-inicial", "rel-data-final", "rel-veiculo-id", "rel-classificacao", "rel-empresa-id", "rel-obra-servico"].forEach((id) => {
+      const campo = document.getElementById(id);
+      if (campo) campo.value = "";
+    });
+    await gerarRelatorio();
+    fecharPopupFiltros("painel-filtros-relatorios");
+  });
+  document.getElementById("btn-imprimir-relatorio")?.addEventListener("click", async () => {
+    await gerarRelatorio();
+    window.print();
   });
   document.getElementById("btn-exportar-pdf").addEventListener("click", () => {
     const params = parametrosRelatorio();
