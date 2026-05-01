@@ -180,10 +180,28 @@ const pages = {
         <section class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="dashboard-lucro-bruto">R$ 0,00</div>${kpiTrend("+6.7%", "positive")}${sparklineSvg("4,32 18,24 32,26 46,18 60,12 74,14 88,8")}</section>
         <section class="kpi-card"><div class="kpi-label">Lucro liquido</div><div class="kpi-value" id="dashboard-lucro-liquido">R$ 0,00</div>${kpiTrend("+5.3%", "positive")}${sparklineSvg("4,30 18,28 32,20 46,22 60,16 74,10 88,12")}</section>
         <section class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value warning" id="dashboard-contas-pendentes">R$ 0,00</div>${kpiTrend("alerta", "warning")}${sparklineSvg("4,18 18,14 32,22 46,18 60,26 74,22 88,30")}</section>
-        <section class="kpi-card"><div class="kpi-label">Total de ativos</div><div class="kpi-value positive" id="dashboard-total-ativos">R$ 0,00</div>${kpiTrend("+9.0%", "positive")}${sparklineSvg("4,32 18,26 32,24 46,18 60,16 74,12 88,8")}</section>
-        <section class="kpi-card"><div class="kpi-label">Total de passivos</div><div class="kpi-value negative" id="dashboard-total-passivos">R$ 0,00</div>${kpiTrend("-2.4%", "negative")}${sparklineSvg("4,14 18,18 32,22 46,20 60,25 74,28 88,30")}</section>
         <section class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="dashboard-patrimonio">R$ 0,00</div>${kpiTrend("+7.2%", "positive")}${sparklineSvg("4,32 18,24 32,27 46,18 60,20 74,12 88,10")}</section>
       </div>
+
+      <section class="panel-box" style="margin-bottom:18px;">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Horas trabalhadas por maquina</h3>
+            <span>Selecione veiculo e periodo para conferir horas e dias trabalhados</span>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field"><label>Veiculo</label><select id="dash-horas-veiculo"><option value="">Todas as maquinas</option></select></div>
+          <div class="field"><label>Data inicial</label><input type="date" id="dash-horas-data-inicial" /></div>
+          <div class="field"><label>Data final</label><input type="date" id="dash-horas-data-final" /></div>
+          <div class="field"><label>&nbsp;</label><button type="button" class="primary-btn" id="btn-dashboard-horas">Atualizar horas</button></div>
+        </div>
+        <div class="kpi-grid" style="margin-top:14px;">
+          <div class="kpi-card"><div class="kpi-label">Total de horas</div><div class="kpi-value" id="dash-horas-total">0h</div></div>
+          <div class="kpi-card"><div class="kpi-label">Dias trabalhados</div><div class="kpi-value" id="dash-dias-total">0</div></div>
+          <div class="kpi-card"><div class="kpi-label">Valor gerado</div><div class="kpi-value positive" id="dash-horas-valor">R$ 0,00</div></div>
+        </div>
+      </section>
 
       <section class="report-charts">
         <div class="panel-box chart-card chart-card-wide"><h3>Evolucao financeira</h3><canvas id="dash-chart-receitas-despesas" height="150"></canvas></div>
@@ -658,6 +676,16 @@ const pages = {
               <input type="number" id="cr-valor" step="0.01" placeholder="0.00" />
             </div>
 
+            <div class="field cr-maquina-field" style="display:none;">
+              <label for="cr-valor-hora-unitario">Valor unitario da hora</label>
+              <input type="number" id="cr-valor-hora-unitario" step="0.01" placeholder="0.00" />
+            </div>
+
+            <div class="field cr-maquina-field" style="display:none;">
+              <label for="cr-quantidade-horas">Quantidade total de horas</label>
+              <input type="number" id="cr-quantidade-horas" step="0.01" placeholder="0.00" />
+            </div>
+
             <div class="field">
               <label for="cr-carga">Carga</label>
               <input id="cr-carga" placeholder="Carga" />
@@ -812,6 +840,7 @@ const pages = {
                 <th>Contrato</th>
                 <th>No CTE / Ticket</th>
                 <th>Valor</th>
+                <th>Horas</th>
                 <th>Carga</th>
                 <th>Ton/Qnt</th>
                 <th>Tomador</th>
@@ -825,7 +854,7 @@ const pages = {
             </thead>
             <tbody id="tabela-contas-receber">
               <tr>
-                <td colspan="13" class="empty-row">Nenhuma conta a receber encontrada.</td>
+                <td colspan="14" class="empty-row">Nenhuma conta a receber encontrada.</td>
               </tr>
             </tbody>
           </table>
@@ -1920,8 +1949,8 @@ function calcularLinhaFolha(row) {
   const salarioContratual = normalizarNumero(row.dataset.salarioContratual);
   const salarioBase = horasNormais > 0 ? salarioContratual : 0;
   const valorExtras = horasExtras * valorHoraExtra;
-  const totalAdicionais = adicionalNoturno + bonus;
-  const salarioBruto = salarioBase + valorExtras + totalAdicionais;
+  const totalAdicionais = Math.max(adicionalNoturno, 0) + Math.max(bonus, 0);
+  const salarioBruto = Math.max(salarioBase + valorExtras + totalAdicionais, 0);
   const descontoInss = calcularInssAutomatico(salarioBruto);
   const fgts = Math.round(salarioBruto * 0.08 * 100) / 100;
   const totalDescontos = descontoInss + descontoIrrf + descontoVale + descontoAdiantamento + outrosDescontos;
@@ -1941,7 +1970,7 @@ function calcularLinhaFolha(row) {
   row.querySelector(".folha-total-descontos").textContent = formatarValor(totalDescontos);
   row.querySelector(".folha-salario-liquido").textContent = formatarValor(salarioLiquido);
 
-  return { salarioBase, valorExtras, totalAdicionais, salarioBruto, descontoInss, fgts, totalDescontos, salarioLiquido };
+  return { salarioBase, valorExtras, adicionalNoturno, bonus, totalAdicionais, salarioBruto, descontoInss, fgts, totalDescontos, salarioLiquido };
 }
 
 function atualizarTotaisFolha() {
@@ -2080,7 +2109,35 @@ function gerarDadosItemFolha(row) {
   };
 }
 
+function obterOpcoesReciboFolha() {
+  return {
+    salario_base: document.getElementById("folha-mostrar-salario-base")?.checked !== false,
+    horas_extras: document.getElementById("folha-mostrar-horas-extras")?.checked !== false,
+    adicionais: document.getElementById("folha-mostrar-adicionais")?.checked !== false,
+    bonus: document.getElementById("folha-mostrar-bonus")?.checked !== false,
+    inss: document.getElementById("folha-mostrar-inss")?.checked !== false,
+    irrf: document.getElementById("folha-mostrar-irrf")?.checked !== false,
+    vale: document.getElementById("folha-mostrar-vale")?.checked !== false,
+    adiantamento: document.getElementById("folha-mostrar-adiantamento")?.checked !== false,
+    outros: document.getElementById("folha-mostrar-outros")?.checked !== false,
+    bases: document.getElementById("folha-mostrar-bases")?.checked !== false
+  };
+}
+
 function renderizarReciboPagamento(folha, item, motorista) {
+  const opcoes = {
+    salario_base: true,
+    horas_extras: true,
+    adicionais: true,
+    bonus: true,
+    inss: true,
+    irrf: true,
+    vale: true,
+    adiantamento: true,
+    outros: true,
+    bases: true,
+    ...(folha.opcoes_recibo || {})
+  };
   const percentualEfetivoInss = item.base_inss > 0 ? ((item.desconto_inss || 0) / item.base_inss) * 100 : 0;
   const competencia = folha.periodo ? folha.periodo.split("-").reverse().join("/") : "";
   const codigoFuncionario = String(item.motorista_id || motorista.id || "").padStart(5, "0");
@@ -2089,18 +2146,19 @@ function renderizarReciboPagamento(folha, item, motorista) {
     maximumFractionDigits: 2
   });
   const proventos = [
-    { codigo: "011", descricao: "Salario-Base", referencia: `${item.horas_normais || 0} h`, valor: item.salario_base || 0 },
-    { codigo: "012", descricao: "Horas extras", referencia: `${item.horas_extras || 0} h`, valor: item.valor_extras || 0 },
-    { codigo: "013", descricao: "Adicionais/Bonus", referencia: "", valor: item.total_adicionais || 0 },
-  ].filter((linha) => linha.valor > 0);
+    opcoes.salario_base ? { codigo: "011", descricao: "Salario-Base", referencia: `${item.horas_normais || 0} h`, valor: item.salario_base || 0 } : null,
+    opcoes.horas_extras ? { codigo: "012", descricao: "Horas extras", referencia: `${item.horas_extras || 0} h`, valor: item.valor_extras || 0 } : null,
+    opcoes.adicionais ? { codigo: "013", descricao: "Adicionais", referencia: "", valor: item.adicional_noturno || 0 } : null,
+    opcoes.bonus ? { codigo: "014", descricao: "Bonus", referencia: "", valor: item.bonus || 0 } : null,
+  ].filter((linha) => linha && linha.valor > 0);
 
   const descontos = [
-    { codigo: "310", descricao: "INSS", referencia: percentualEfetivoInss ? `${percentualEfetivoInss.toFixed(2)}% efetivo` : "Automatico", valor: item.desconto_inss || 0 },
-    { codigo: "311", descricao: "IRRF", referencia: `${motorista.irrf_percentual || 0}%`, valor: item.desconto_irrf || 0 },
-    { codigo: "914", descricao: "Vale Refeicao", referencia: "", valor: item.desconto_vale || 0 },
-    { codigo: "915", descricao: "Adiantamento", referencia: "", valor: item.desconto_adiantamento || 0 },
-    { codigo: "924", descricao: item.observacao || "Convenio medico / outros", referencia: "", valor: item.outros_descontos || 0 },
-  ].filter((linha) => linha.valor > 0);
+    opcoes.inss ? { codigo: "310", descricao: "INSS", referencia: percentualEfetivoInss ? `${percentualEfetivoInss.toFixed(2)}% efetivo` : "Automatico", valor: item.desconto_inss || 0 } : null,
+    opcoes.irrf ? { codigo: "311", descricao: "IRRF", referencia: `${motorista.irrf_percentual || 0}%`, valor: item.desconto_irrf || 0 } : null,
+    opcoes.vale ? { codigo: "914", descricao: "Vale Refeicao", referencia: "", valor: item.desconto_vale || 0 } : null,
+    opcoes.adiantamento ? { codigo: "915", descricao: "Adiantamento", referencia: "", valor: item.desconto_adiantamento || 0 } : null,
+    opcoes.outros ? { codigo: "924", descricao: item.observacao || "Convenio medico / outros", referencia: "", valor: item.outros_descontos || 0 } : null,
+  ].filter((linha) => linha && linha.valor > 0);
 
   const linhas = [...proventos.map((linha) => ({ ...linha, tipo: "provento" })), ...descontos.map((linha) => ({ ...linha, tipo: "desconto" }))];
   const linhasRecibo = [...linhas, ...Array.from({ length: Math.max(0, 8 - linhas.length) }).map(() => null)];
@@ -2229,7 +2287,7 @@ function renderizarReciboPagamento(folha, item, motorista) {
             <td></td>
           </tr>
           <tr class="slip-spacer"><td class="slip-gap" colspan="11"></td><td colspan="3"></td></tr>
-          <tr class="slip-bases-head">
+          ${opcoes.bases ? `<tr class="slip-bases-head">
             <td class="slip-gap"></td>
             <td colspan="2">Salário Base</td>
             <td>Base Cálc. INSS</td>
@@ -2250,7 +2308,7 @@ function renderizarReciboPagamento(folha, item, motorista) {
             <td>${motorista.irrf_percentual || 0}%</td>
             <td class="slip-gap"></td>
             <td colspan="3"></td>
-          </tr>
+          </tr>` : ""}
           <tr class="slip-copy-label">
             <td class="slip-gap"></td>
             <td colspan="13">${via}</td>
@@ -2352,6 +2410,27 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
         <div class="kpi-card"><div class="kpi-label">Liquido</div><div class="kpi-value positive" id="folha-total-liquido">R$ 0,00</div></div>
       </div>
 
+      <section class="panel-box" style="margin-bottom:18px;">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Dados exibidos no recibo</h3>
+            <span>Marque o que deve aparecer na impressao da folha</span>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label><input id="folha-mostrar-salario-base" type="checkbox" checked /> Salario base</label>
+          <label><input id="folha-mostrar-horas-extras" type="checkbox" checked /> Horas extras</label>
+          <label><input id="folha-mostrar-adicionais" type="checkbox" checked /> Adicionais</label>
+          <label><input id="folha-mostrar-bonus" type="checkbox" checked /> Bonus</label>
+          <label><input id="folha-mostrar-inss" type="checkbox" checked /> INSS</label>
+          <label><input id="folha-mostrar-irrf" type="checkbox" checked /> IRRF</label>
+          <label><input id="folha-mostrar-vale" type="checkbox" checked /> Vale</label>
+          <label><input id="folha-mostrar-adiantamento" type="checkbox" checked /> Adiantamento</label>
+          <label><input id="folha-mostrar-outros" type="checkbox" checked /> Outros descontos</label>
+          <label><input id="folha-mostrar-bases" type="checkbox" checked /> Bases INSS/FGTS/IRRF</label>
+        </div>
+      </section>
+
       <div class="payroll-driver-list">
         ${motoristas.map((motorista) => {
           const salarioBase = normalizarNumero(motorista.salario_base);
@@ -2448,6 +2527,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
         data_pagamento: document.getElementById("folha-data-pagamento").value,
         descricao: document.getElementById("folha-descricao").value,
         gerar_lancamento: true,
+        opcoes_recibo: obterOpcoesReciboFolha(),
         itens
       });
       mensagem.textContent = `Folha gerada com liquido de ${formatarValor(folha.totais.salario_liquido)}.`;
@@ -2981,7 +3061,10 @@ async function carregarOpcoesContasReceber() {
 }
 
 function calcularTotalReceberFormulario() {
-  const valor = normalizarNumero(document.getElementById("cr-valor")?.value);
+  const valorHoraUnitario = normalizarNumero(document.getElementById("cr-valor-hora-unitario")?.value);
+  const quantidadeHoras = normalizarNumero(document.getElementById("cr-quantidade-horas")?.value);
+  const valorCalculadoHoras = valorHoraUnitario > 0 && quantidadeHoras > 0 ? valorHoraUnitario * quantidadeHoras : 0;
+  const valor = valorCalculadoHoras || normalizarNumero(document.getElementById("cr-valor")?.value);
   const bonificacao = normalizarNumero(document.getElementById("cr-bonificacao")?.value);
   const descontos = normalizarNumero(document.getElementById("cr-descontos")?.value);
   return valor + bonificacao - descontos;
@@ -2990,15 +3073,43 @@ function calcularTotalReceberFormulario() {
 function atualizarTotalReceberPreview() {
   const preview = document.getElementById("cr-total-preview");
   if (!preview) return;
+  const valor = normalizarNumero(document.getElementById("cr-valor-hora-unitario")?.value) * normalizarNumero(document.getElementById("cr-quantidade-horas")?.value);
+  const campoValor = document.getElementById("cr-valor");
+  if (campoValor && valor > 0) campoValor.value = valor.toFixed(2);
   preview.textContent = formatarValor(calcularTotalReceberFormulario());
 }
 
+function veiculoContaReceberEhMaquina() {
+  const veiculoId = Number(document.getElementById("cr-veiculo-id")?.value || 0);
+  const veiculo = cacheVeiculos.find((item) => item.id === veiculoId);
+  return Boolean(veiculo && normalizarTexto(veiculo.tipo).includes("maquina"));
+}
+
+function atualizarCamposMaquinaContaReceber() {
+  const ehMaquina = veiculoContaReceberEhMaquina();
+  document.querySelectorAll(".cr-maquina-field").forEach((campo) => {
+    campo.style.display = ehMaquina ? "" : "none";
+  });
+  if (!ehMaquina) {
+    const valorHora = document.getElementById("cr-valor-hora-unitario");
+    const horas = document.getElementById("cr-quantidade-horas");
+    if (valorHora) valorHora.value = "";
+    if (horas) horas.value = "";
+  }
+  atualizarTotalReceberPreview();
+}
+
 function montarPayloadContaReceber() {
+  const valorHoraUnitario = normalizarNumero(document.getElementById("cr-valor-hora-unitario")?.value);
+  const quantidadeHoras = normalizarNumero(document.getElementById("cr-quantidade-horas")?.value);
+  const valorCalculadoHoras = valorHoraUnitario > 0 && quantidadeHoras > 0 ? valorHoraUnitario * quantidadeHoras : 0;
   return {
     data_inicio: document.getElementById("cr-data-inicio").value,
     contrato: document.getElementById("cr-contrato").value.trim(),
     cte_ticket: document.getElementById("cr-cte-ticket").value.trim(),
-    valor: normalizarNumero(document.getElementById("cr-valor").value),
+    valor: valorCalculadoHoras || normalizarNumero(document.getElementById("cr-valor").value),
+    valor_hora_unitario: valorHoraUnitario,
+    quantidade_horas: quantidadeHoras,
     carga: document.getElementById("cr-carga").value.trim(),
     ton_qnt: document.getElementById("cr-ton-qnt").value.trim(),
     tomador: document.getElementById("cr-tomador").value.trim(),
@@ -3019,6 +3130,8 @@ function preencherFormContaReceber(item) {
   document.getElementById("cr-contrato").value = item.contrato || "";
   document.getElementById("cr-cte-ticket").value = item.cte_ticket || "";
   document.getElementById("cr-valor").value = normalizarNumero(item.valor);
+  document.getElementById("cr-valor-hora-unitario").value = normalizarNumero(item.valor_hora_unitario);
+  document.getElementById("cr-quantidade-horas").value = normalizarNumero(item.quantidade_horas);
   document.getElementById("cr-carga").value = item.carga || "";
   document.getElementById("cr-ton-qnt").value = item.ton_qnt || "";
   document.getElementById("cr-tomador").value = item.tomador || "";
@@ -3033,6 +3146,7 @@ function preencherFormContaReceber(item) {
   document.getElementById("titulo-form-conta-receber").textContent = "Alterar conta a receber";
   document.getElementById("btn-salvar-conta-receber").textContent = "Salvar alteracao";
   document.getElementById("btn-cancelar-conta-receber").style.display = "inline-block";
+  atualizarCamposMaquinaContaReceber();
   atualizarTotalReceberPreview();
 }
 
@@ -3042,6 +3156,7 @@ function resetFormContaReceber() {
   document.getElementById("titulo-form-conta-receber").textContent = "Nova conta a receber";
   document.getElementById("btn-salvar-conta-receber").textContent = "Salvar conta";
   document.getElementById("btn-cancelar-conta-receber").style.display = "none";
+  atualizarCamposMaquinaContaReceber();
   atualizarTotalReceberPreview();
 }
 
@@ -3071,7 +3186,7 @@ function renderizarTabelaContasReceber(contas) {
   atualizarKpisContasReceber(contas);
 
   if (!contas.length) {
-    tabela.innerHTML = `<tr><td colspan="13" class="empty-row">Nenhuma conta a receber encontrada.</td></tr>`;
+    tabela.innerHTML = `<tr><td colspan="14" class="empty-row">Nenhuma conta a receber encontrada.</td></tr>`;
     total.textContent = "0 registros";
     return;
   }
@@ -3087,6 +3202,7 @@ function renderizarTabelaContasReceber(contas) {
         <td>${item.contrato || ""}</td>
         <td>${item.cte_ticket || ""}</td>
         <td>${formatarValor(item.valor)}</td>
+        <td>${normalizarNumero(item.quantidade_horas) > 0 ? `${normalizarNumero(item.quantidade_horas).toLocaleString("pt-BR")}h x ${formatarValor(item.valor_hora_unitario)}` : "-"}</td>
         <td>${item.carga || ""}</td>
         <td>${item.ton_qnt || ""}</td>
         <td>${item.tomador || ""}</td>
@@ -3154,9 +3270,11 @@ async function iniciarContasReceber() {
   const btnLimpar = document.getElementById("btn-limpar-contas-receber");
   const btnImprimir = document.getElementById("btn-imprimir-contas-receber");
 
-  ["cr-valor", "cr-bonificacao", "cr-descontos"].forEach((id) => {
+  ["cr-valor", "cr-valor-hora-unitario", "cr-quantidade-horas", "cr-bonificacao", "cr-descontos"].forEach((id) => {
     document.getElementById(id)?.addEventListener("input", atualizarTotalReceberPreview);
   });
+  document.getElementById("cr-veiculo-id")?.addEventListener("change", atualizarCamposMaquinaContaReceber);
+  atualizarCamposMaquinaContaReceber();
   atualizarTotalReceberPreview();
 
   form.addEventListener("submit", async (event) => {
@@ -4137,6 +4255,31 @@ function renderizarGraficoContasReceber(dados) {
   ]);
 }
 
+async function carregarFiltroHorasMaquinas(veiculos) {
+  const select = document.getElementById("dash-horas-veiculo");
+  if (!select) return;
+  const maquinas = veiculos.filter((veiculo) => normalizarTexto(veiculo.tipo).includes("maquina"));
+  select.innerHTML = `<option value="">Todas as maquinas</option>` + maquinas.map((veiculo) => {
+    const texto = `${veiculo.nome || veiculo.modelo || "Maquina"}${veiculo.placa ? ` - ${veiculo.placa}` : ""}`;
+    return `<option value="${veiculo.id}">${escapeHtml(texto)}</option>`;
+  }).join("");
+}
+
+async function atualizarHorasMaquinasDashboard() {
+  const params = new URLSearchParams();
+  const veiculoId = document.getElementById("dash-horas-veiculo")?.value || "";
+  const dataInicial = document.getElementById("dash-horas-data-inicial")?.value || "";
+  const dataFinal = document.getElementById("dash-horas-data-final")?.value || "";
+  if (veiculoId) params.append("veiculo_id", veiculoId);
+  if (dataInicial) params.append("data_inicial", dataInicial);
+  if (dataFinal) params.append("data_final", dataFinal);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const dados = await apiGet(`/contas-receber/horas-maquinas${query}`);
+  document.getElementById("dash-horas-total").textContent = `${normalizarNumero(dados.total_horas).toLocaleString("pt-BR")}h`;
+  document.getElementById("dash-dias-total").textContent = dados.dias_trabalhados || 0;
+  document.getElementById("dash-horas-valor").textContent = formatarValor(dados.valor_total || 0);
+}
+
 async function iniciarDashboard() {
   await carregarSelectVeiculosGenerico("dash-veiculo-id", "Todos");
   const [lancamentos, veiculos, motoristas, dadosDashboard] = await Promise.all([
@@ -4146,6 +4289,7 @@ async function iniciarDashboard() {
     carregarResumoDashboard()
   ]);
   cacheVeiculos = veiculos;
+  await carregarFiltroHorasMaquinas(veiculos);
 
   const receitas = lancamentos.filter(lancamentoEhReceita);
   const despesas = lancamentos.filter(item => !lancamentoEhReceita(item));
@@ -4172,8 +4316,6 @@ async function iniciarDashboard() {
   document.getElementById("dashboard-lucro-bruto").textContent = formatarValor(dadosDashboard.resumo.lucro_bruto);
   document.getElementById("dashboard-lucro-liquido").textContent = formatarValor(dadosDashboard.resumo.lucro_liquido);
   document.getElementById("dashboard-contas-pendentes").textContent = formatarValor(dadosDashboard.resumo.valores_pendentes_a_receber);
-  document.getElementById("dashboard-total-ativos").textContent = formatarValor(dadosDashboard.patrimonio.total_ativos);
-  document.getElementById("dashboard-total-passivos").textContent = formatarValor(dadosDashboard.patrimonio.total_passivos);
   document.getElementById("dashboard-patrimonio").textContent = formatarValor(dadosDashboard.patrimonio.patrimonio_liquido);
   document.getElementById("dashboard-frota-ativa").textContent = ativos;
   document.getElementById("dashboard-frota-total").textContent = `${veiculos.length} veiculo(s) cadastrados`;
@@ -4191,6 +4333,8 @@ async function iniciarDashboard() {
   renderizarGraficoFaturamentoMensal(dadosDashboard);
   renderizarGraficoSaldoAcumulado(dadosDashboard);
   renderizarGraficoContasReceber(dadosDashboard);
+  await atualizarHorasMaquinasDashboard();
+  document.getElementById("btn-dashboard-horas")?.addEventListener("click", atualizarHorasMaquinasDashboard);
   document.getElementById("btn-dashboard-filtrar")?.addEventListener("click", async () => {
     await iniciarDashboard();
     fecharPopupFiltros("painel-filtros-dashboard");

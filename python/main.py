@@ -298,6 +298,8 @@ class ContaReceberIn(BaseModel):
     contrato: str = ""
     cte_ticket: str = ""
     valor: float = 0
+    valor_hora_unitario: float = 0
+    quantidade_horas: float = 0
     carga: str = ""
     ton_qnt: str = ""
     tomador: str = ""
@@ -330,6 +332,14 @@ class ContaReceberIn(BaseModel):
         if status not in {"pendente", "recebido", "cancelado"}:
             raise ValueError("Status de pagamento invalido.")
         return status
+
+    @field_validator("valor", "valor_hora_unitario", "quantidade_horas", "bonificacao", "descontos")
+    @classmethod
+    def validar_valores_conta_receber(cls, value: float) -> float:
+        valor = float(value or 0)
+        if valor < 0:
+            raise ValueError("Valores nao podem ser negativos.")
+        return valor
 
 
 class VeiculoIn(BaseModel):
@@ -479,6 +489,7 @@ class FolhaPagamentoIn(BaseModel):
     data_pagamento: date
     descricao: str = "Folha de pagamento"
     gerar_lancamento: bool = True
+    opcoes_recibo: dict = Field(default_factory=dict)
     itens: list[FolhaPagamentoItemIn]
 
     @field_validator("periodo", "descricao")
@@ -827,6 +838,8 @@ def normalizar_conta_receber_antiga(item: dict) -> dict:
         "contrato": item.get("contrato", ""),
         "cte_ticket": item.get("cte_ticket", ""),
         "valor": float(item.get("valor") or 0),
+        "valor_hora_unitario": float(item.get("valor_hora_unitario") or 0),
+        "quantidade_horas": float(item.get("quantidade_horas") or 0),
         "carga": item.get("carga", ""),
         "ton_qnt": item.get("ton_qnt", ""),
         "tomador": item.get("tomador", ""),
@@ -1174,10 +1187,18 @@ def excluir_lancamento(lancamento_id: int):
 # =========================================================
 
 def calcular_total_conta_receber(item: dict) -> float:
-    valor = float(item.get("valor") or 0)
+    valor_hora_unitario = float(item.get("valor_hora_unitario") or 0)
+    quantidade_horas = float(item.get("quantidade_horas") or 0)
+    valor = valor_hora_unitario * quantidade_horas if valor_hora_unitario > 0 and quantidade_horas > 0 else float(item.get("valor") or 0)
     bonificacao = float(item.get("bonificacao") or 0)
     descontos = float(item.get("descontos") or 0)
     return valor + bonificacao - descontos
+
+
+def calcular_valor_base_conta_receber(dados: ContaReceberIn) -> float:
+    if dados.valor_hora_unitario > 0 and dados.quantidade_horas > 0:
+        return arredondar_moeda(dados.valor_hora_unitario * dados.quantidade_horas)
+    return float(dados.valor or 0)
 
 
 @app.get("/contas-receber")
@@ -1216,6 +1237,26 @@ def listar_contas_receber(
     return contas
 
 
+@app.get("/contas-receber/horas-maquinas")
+def listar_horas_maquinas(
+    data_inicial: Optional[date] = None,
+    data_final: Optional[date] = None,
+    veiculo_id: Optional[int] = None,
+):
+    contas = listar_contas_receber(data_inicial=data_inicial, data_final=data_final, veiculo_id=veiculo_id)
+    contas_com_horas = [item for item in contas if float(item.get("quantidade_horas") or 0) > 0]
+    dias = {item.get("data_inicio") for item in contas_com_horas if item.get("data_inicio")}
+    total_horas = sum(float(item.get("quantidade_horas") or 0) for item in contas_com_horas)
+    valor_total = sum(float(item.get("valor_total_receber") or 0) for item in contas_com_horas)
+    return {
+        "total_horas": arredondar_moeda(total_horas),
+        "dias_trabalhados": len(dias),
+        "valor_total": arredondar_moeda(valor_total),
+        "registros": len(contas_com_horas),
+        "itens": contas_com_horas,
+    }
+
+
 @app.post("/contas-receber")
 def criar_conta_receber(dados: ContaReceberIn):
     """
@@ -1234,7 +1275,9 @@ def criar_conta_receber(dados: ContaReceberIn):
         "data_inicio": str(dados.data_inicio),
         "contrato": dados.contrato,
         "cte_ticket": dados.cte_ticket,
-        "valor": float(dados.valor or 0),
+        "valor": calcular_valor_base_conta_receber(dados),
+        "valor_hora_unitario": float(dados.valor_hora_unitario or 0),
+        "quantidade_horas": float(dados.quantidade_horas or 0),
         "carga": dados.carga,
         "ton_qnt": dados.ton_qnt,
         "tomador": dados.tomador,
@@ -1273,7 +1316,9 @@ def atualizar_conta_receber(conta_id: int, dados: ContaReceberIn):
     conta["data_inicio"] = str(dados.data_inicio)
     conta["contrato"] = dados.contrato
     conta["cte_ticket"] = dados.cte_ticket
-    conta["valor"] = float(dados.valor or 0)
+    conta["valor"] = calcular_valor_base_conta_receber(dados)
+    conta["valor_hora_unitario"] = float(dados.valor_hora_unitario or 0)
+    conta["quantidade_horas"] = float(dados.quantidade_horas or 0)
     conta["carga"] = dados.carga
     conta["ton_qnt"] = dados.ton_qnt
     conta["tomador"] = dados.tomador
@@ -2200,6 +2245,7 @@ def criar_folha_pagamento(dados: FolhaPagamentoIn):
         "periodo": dados.periodo,
         "data_pagamento": str(dados.data_pagamento),
         "descricao": dados.descricao or "Folha de pagamento",
+        "opcoes_recibo": dados.opcoes_recibo or {},
         "itens": itens_calculados,
         "totais": totais,
         "lancamento_id": None,
