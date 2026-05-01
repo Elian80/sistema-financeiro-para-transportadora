@@ -36,14 +36,14 @@ body[data-theme="light"] {
 }
 
 *::-webkit-scrollbar {
-  width: 2px;
-  height: 2px;
+  width: 1px;
+  height: 1px;
 }
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
-  width: 2px !important;
-  height: 2px !important;
+  width: 1px !important;
+  height: 1px !important;
 }
 
 *::-webkit-scrollbar-track {
