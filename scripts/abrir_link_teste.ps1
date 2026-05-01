@@ -27,7 +27,7 @@ function Test-App {
 }
 
 function Wait-App {
-  $deadline = (Get-Date).AddSeconds(35)
+  $deadline = (Get-Date).AddSeconds(20)
   do {
     if (Test-App) {
       return $true
@@ -40,7 +40,7 @@ function Wait-App {
 function Wait-PublicUrl {
   param([string[]]$LogPaths)
 
-  $deadline = (Get-Date).AddSeconds(75)
+  $deadline = (Get-Date).AddSeconds(35)
   do {
     foreach ($LogPath in $LogPaths) {
       if (-not (Test-Path $LogPath)) {
@@ -61,38 +61,6 @@ function Wait-PublicUrl {
   return $null
 }
 
-function Wait-PublicPage {
-  param([string]$Url)
-
-  $deadline = (Get-Date).AddSeconds(45)
-  do {
-    try {
-      $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 8
-      if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
-        return $true
-      }
-    } catch {
-      Start-Sleep -Seconds 2
-      continue
-    }
-    Start-Sleep -Seconds 2
-  } while ((Get-Date) -lt $deadline)
-
-  return $false
-}
-
-function Test-PublicDns {
-  param([string]$Url)
-
-  try {
-    $hostName = ([System.Uri]$Url).Host
-    $result = Resolve-DnsName $hostName -Server 1.1.1.1 -ErrorAction Stop
-    return [bool]$result
-  } catch {
-    return $false
-  }
-}
-
 Set-Location $AppDir
 
 Write-Host "============================================================" -ForegroundColor DarkCyan
@@ -104,27 +72,35 @@ if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
   exit 1
 }
 
-Write-Step "[1/6] Verificando dependencias Python..."
-$env:PIP_DISABLE_PIP_VERSION_CHECK = "1"
-python -m pip install -q -r requirements.txt
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "Falha ao instalar dependencias Python." -ForegroundColor Red
-  exit 1
-}
-
-Write-Step "[2/6] Aplicando migrations do banco, se disponivel..."
-python -m alembic upgrade head
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "Aviso: nao consegui aplicar migrations agora. Vou continuar para abrir o link de teste." -ForegroundColor Yellow
-}
-
-Write-Step "[3/6] Preparando dados iniciais, se necessario..."
-$MigrationScript = Join-Path $AppDir "scripts\migrar_json_para_postgres.py"
-if (Test-Path $MigrationScript) {
-  python $MigrationScript
+if ($env:FINANCEIRO_SETUP -eq "1") {
+  Write-Step "[1/6] Verificando dependencias Python..."
+  $env:PIP_DISABLE_PIP_VERSION_CHECK = "1"
+  python -m pip install -q -r requirements.txt
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "Aviso: nao consegui preparar os dados iniciais agora. Vou continuar para abrir o link de teste." -ForegroundColor Yellow
+    Write-Host "Falha ao instalar dependencias Python." -ForegroundColor Red
+    exit 1
   }
+
+  Write-Step "[2/6] Aplicando migrations do banco, se disponivel..."
+  python -m alembic upgrade head
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "Aviso: nao consegui aplicar migrations agora. Vou continuar para abrir o link de teste." -ForegroundColor Yellow
+  }
+
+  Write-Step "[3/6] Preparando dados iniciais, se necessario..."
+  $MigrationScript = Join-Path $AppDir "scripts\migrar_json_para_postgres.py"
+  if (Test-Path $MigrationScript) {
+    python $MigrationScript
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "Aviso: nao consegui preparar os dados iniciais agora. Vou continuar para abrir o link de teste." -ForegroundColor Yellow
+    }
+  }
+} else {
+  Write-Step "[1/6] Modo rapido ativado..."
+  Write-Host "Pulando instalacao, migrations e migracao inicial para abrir o link mais rapido." -ForegroundColor DarkGray
+  Write-Host "Se precisar rodar o setup completo, abra o CMD e execute:" -ForegroundColor DarkGray
+  Write-Host "set FINANCEIRO_SETUP=1" -ForegroundColor DarkGray
+  Write-Host "abrir_link_teste.bat" -ForegroundColor DarkGray
 }
 
 Write-Step "[4/6] Verificando Cloudflare Tunnel..."
@@ -182,25 +158,11 @@ Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
 if ($PublicUrl) {
   $FinalUrl = "$PublicUrl/app"
-  Write-Host "Link gerado. Validando acesso HTTPS..." -ForegroundColor Cyan
-  if (Wait-PublicPage -Url $FinalUrl) {
-    Write-Host " LINK PUBLICO HTTPS:" -ForegroundColor Green
-    Write-Host " $FinalUrl" -ForegroundColor White
-    Start-Process $FinalUrl
-  } elseif (Test-PublicDns -Url $FinalUrl) {
-    Write-Host " LINK PUBLICO HTTPS:" -ForegroundColor Green
-    Write-Host " $FinalUrl" -ForegroundColor White
-    Write-Host ""
-    Write-Host "Aviso: o DNS deste computador/rede nao conseguiu abrir o link agora," -ForegroundColor Yellow
-    Write-Host "mas o DNS publico da Cloudflare encontrou o endereco." -ForegroundColor Yellow
-    Write-Host "Teste este link no celular usando outra rede ou dados moveis." -ForegroundColor Yellow
-    Start-Process $AppPageUrl
-  } else {
-    Write-Host " LINK PUBLICO HTTPS GERADO, mas ainda nao respondeu no teste automatico:" -ForegroundColor Yellow
-    Write-Host " $FinalUrl" -ForegroundColor White
-    Write-Host "Tente abrir no celular em alguns segundos. Se nao abrir, rode o BAT novamente." -ForegroundColor Yellow
-    Start-Process $FinalUrl
-  }
+  Write-Host " LINK PUBLICO HTTPS:" -ForegroundColor Green
+  Write-Host " $FinalUrl" -ForegroundColor White
+  Write-Host ""
+  Write-Host "Se o navegador do computador demorar por DNS local, teste direto no celular em outra rede ou dados moveis." -ForegroundColor Yellow
+  Start-Process $FinalUrl
 } else {
   $FinalUrl = $AppPageUrl
   Write-Host "Nao consegui capturar o link HTTPS automaticamente." -ForegroundColor Yellow
