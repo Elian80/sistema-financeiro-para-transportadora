@@ -1955,18 +1955,29 @@ function calcularLinhaFolha(row) {
   const valorExtras = horasExtras * valorHoraExtra;
   const totalAdicionais = Math.max(adicionalNoturno, 0) + Math.max(bonus, 0);
   const salarioBruto = Math.max(salarioBase + valorExtras + totalAdicionais, 0);
-  const descontoInss = calcularInssAutomatico(salarioBruto);
+  const campoInss = row.querySelector(".folha-desconto-inss");
+  const inssAutomatico = calcularInssAutomatico(salarioBruto);
+  const descontoInss = campoInss?.dataset.manual === "true"
+    ? normalizarNumero(campoInss.value)
+    : inssAutomatico;
   const fgts = Math.round(salarioBruto * 0.08 * 100) / 100;
   const totalDescontos = descontoInss + descontoIrrf + descontoVale + descontoAdiantamento + outrosDescontos;
   const salarioLiquido = Math.max(salarioBruto - totalDescontos, 0);
-  const campoInss = row.querySelector(".folha-desconto-inss");
   const campoDescricaoOutros = row.querySelector(".folha-outros-descricao");
+  const campoDescricaoAdicional = row.querySelector(".folha-adicional-descricao");
+  const campoDescricaoBonus = row.querySelector(".folha-bonus-descricao");
 
-  if (campoInss) {
+  if (campoInss && campoInss.dataset.manual !== "true") {
     campoInss.value = descontoInss.toFixed(2);
   }
   if (campoDescricaoOutros) {
     campoDescricaoOutros.style.display = outrosDescontos > 0 ? "block" : "none";
+  }
+  if (campoDescricaoAdicional) {
+    campoDescricaoAdicional.style.display = adicionalNoturno > 0 ? "block" : "none";
+  }
+  if (campoDescricaoBonus) {
+    campoDescricaoBonus.style.display = bonus > 0 ? "block" : "none";
   }
 
   row.querySelector(".folha-salario-base").textContent = formatarValor(salarioBase);
@@ -2098,7 +2109,9 @@ function gerarDadosItemFolha(row) {
     horas_extras: normalizarNumero(row.querySelector(".folha-horas-extras").value),
     valor_hora_extra: normalizarNumero(row.querySelector(".folha-valor-hora-extra").value),
     adicional_noturno: normalizarNumero(row.querySelector(".folha-adicional-noturno").value),
+    adicional_descricao: row.querySelector(".folha-adicional-descricao")?.value.trim() || "",
     bonus: normalizarNumero(row.querySelector(".folha-bonus").value),
+    bonus_descricao: row.querySelector(".folha-bonus-descricao")?.value.trim() || "",
     desconto_inss: calculo.descontoInss,
     desconto_irrf: normalizarNumero(row.querySelector(".folha-desconto-irrf")?.value),
     desconto_vale: normalizarNumero(row.querySelector(".folha-desconto-vale").value),
@@ -2152,8 +2165,8 @@ function renderizarReciboPagamento(folha, item, motorista) {
   const proventos = [
     opcoes.salario_base ? { codigo: "011", descricao: "Salario-Base", referencia: `${item.horas_normais || 0} h`, valor: item.salario_base || 0 } : null,
     opcoes.horas_extras ? { codigo: "012", descricao: "Horas extras", referencia: `${item.horas_extras || 0} h`, valor: item.valor_extras || 0 } : null,
-    opcoes.adicionais ? { codigo: "013", descricao: "Adicionais", referencia: "", valor: item.adicional_noturno || 0 } : null,
-    opcoes.bonus ? { codigo: "014", descricao: "Bonus", referencia: "", valor: item.bonus || 0 } : null,
+    opcoes.adicionais ? { codigo: "013", descricao: item.adicional_descricao || "Adicionais", referencia: "", valor: item.adicional_noturno || 0 } : null,
+    opcoes.bonus ? { codigo: "014", descricao: item.bonus_descricao || "Bonus", referencia: "", valor: item.bonus || 0 } : null,
   ].filter((linha) => linha && linha.valor > 0);
 
   const descontos = [
@@ -2461,8 +2474,10 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
                 <label>Horas extras<input class="folha-horas-extras" type="number" min="0" step="0.01" value="0" /></label>
                 <label>Valor hora extra<input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="${valorHoraExtra.toFixed(2)}" /></label>
                 <label>Adicional<input class="folha-adicional-noturno" type="number" min="0" step="0.01" value="0" /></label>
+                <label class="payroll-description-field">Descricao adicional<input class="folha-adicional-descricao" value="" placeholder="Descricao do adicional" style="display:none;" /></label>
                 <label>Bonus<input class="folha-bonus" type="number" min="0" step="0.01" value="0" /></label>
-                <label>INSS<input class="folha-desconto-inss" type="number" min="0" step="0.01" value="${descontoInss.toFixed(2)}" readonly /></label>
+                <label class="payroll-description-field">Descricao bonus<input class="folha-bonus-descricao" value="" placeholder="Descricao do bonus" style="display:none;" /></label>
+                <label>INSS<input class="folha-desconto-inss" type="number" min="0" step="0.01" value="${descontoInss.toFixed(2)}" data-manual="false" /></label>
                 <label>IRRF<input class="folha-desconto-irrf" type="number" min="0" step="0.01" value="${descontoIrrf.toFixed(2)}" /></label>
                 <label>Vale<input class="folha-desconto-vale" type="number" min="0" step="0.01" value="${vale.toFixed(2)}" /></label>
                 <label>Adiantamento<input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></label>
@@ -2492,6 +2507,12 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
 
   container.querySelectorAll("input").forEach((input) => {
     input.addEventListener("input", atualizarTotaisFolha);
+  });
+  container.querySelectorAll(".folha-desconto-inss").forEach((input) => {
+    input.addEventListener("input", () => {
+      input.dataset.manual = "true";
+      atualizarTotaisFolha();
+    });
   });
 
   document.getElementById("btn-fechar-folha").onclick = () => {

@@ -438,7 +438,9 @@ class FolhaPagamentoItemIn(BaseModel):
     horas_extras: float = 0
     valor_hora_extra: float = 0
     adicional_noturno: float = 0
+    adicional_descricao: str = ""
     bonus: float = 0
+    bonus_descricao: str = ""
     desconto_inss: float = 0
     desconto_irrf: float = 0
     desconto_vale: float = 0
@@ -477,7 +479,7 @@ class FolhaPagamentoItemIn(BaseModel):
             raise ValueError("Valores da folha nao podem ser negativos.")
         return valor
 
-    @field_validator("observacao")
+    @field_validator("adicional_descricao", "bonus_descricao", "observacao")
     @classmethod
     def limpar_observacao(cls, value: str) -> str:
         return value.strip()
@@ -798,7 +800,7 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
     total_adicionais = item.adicional_noturno + item.bonus
     salario_bruto = salario_base + valor_extras + total_adicionais
     base_inss = salario_bruto
-    desconto_inss = calcular_inss(base_inss)
+    desconto_inss = item.desconto_inss if item.desconto_inss > 0 else calcular_inss(base_inss)
     base_fgts = salario_bruto
     fgts = base_fgts * 0.08
     base_irrf = max(salario_bruto - desconto_inss, 0)
@@ -819,7 +821,9 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
         "horas_extras": item.horas_extras,
         "valor_hora_extra": item.valor_hora_extra,
         "adicional_noturno": item.adicional_noturno,
+        "adicional_descricao": item.adicional_descricao,
         "bonus": item.bonus,
+        "bonus_descricao": item.bonus_descricao,
         "desconto_inss": desconto_inss,
         "desconto_irrf": item.desconto_irrf,
         "desconto_vale": item.desconto_vale,
