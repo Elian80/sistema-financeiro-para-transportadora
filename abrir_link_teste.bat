@@ -8,6 +8,7 @@ set "TOOLS_DIR=%APP_DIR%tools"
 set "LOCAL_CLOUDFLARED=%TOOLS_DIR%\cloudflared.exe"
 set "TUNNEL_LOG=%APP_DIR%cloudflare_tunnel.log"
 set "CLOUDFLARED_CMD="
+set "PUBLIC_URL="
 
 cd /d "%APP_DIR%"
 
@@ -41,17 +42,14 @@ if errorlevel 1 (
 echo [2/6] Aplicando migrations do banco...
 alembic upgrade head
 if errorlevel 1 (
-  echo Falha ao aplicar migrations. Confira o .env e o PostgreSQL.
-  pause
-  exit /b 1
+  echo Aviso: nao consegui aplicar migrations agora. Vou continuar para abrir o link de teste.
+  echo Confira o .env e o PostgreSQL depois, se estiver usando banco PostgreSQL.
 )
 
 echo [3/6] Garantindo empresa padrao, usuario master e admin inicial...
 python scripts\migrar_json_para_postgres.py
 if errorlevel 1 (
-  echo Falha ao preparar dados iniciais.
-  pause
-  exit /b 1
+  echo Aviso: nao consegui preparar os dados iniciais agora. Vou continuar para abrir o link de teste.
 )
 
 where cloudflared.exe >nul 2>nul
@@ -88,16 +86,31 @@ timeout /t 6 /nobreak >nul
 
 echo [6/6] Abrindo tunel publico de teste...
 if exist "%TUNNEL_LOG%" del "%TUNNEL_LOG%"
-start "Financeiro - Link Publico HTTPS" powershell -NoExit -ExecutionPolicy Bypass -Command "& '%CLOUDFLARED_CMD%' tunnel --url %APP_URL% 2>&1 | Tee-Object -FilePath '%TUNNEL_LOG%'"
+start "Financeiro - Link Publico HTTPS" powershell -NoExit -ExecutionPolicy Bypass -Command "& '%CLOUDFLARED_CMD%' tunnel --no-autoupdate --url %APP_URL% 2>&1 | Tee-Object -FilePath '%TUNNEL_LOG%'"
+
+echo Aguardando o Cloudflare gerar o link HTTPS...
+for /f "usebackq delims=" %%L in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$log='%TUNNEL_LOG%'; $deadline=(Get-Date).AddSeconds(60); do { if (Test-Path $log) { $text=Get-Content $log -Raw; $match=[regex]::Match($text, 'https://[a-zA-Z0-9-]+\.trycloudflare\.com'); if ($match.Success) { $match.Value; exit 0 } }; Start-Sleep -Seconds 1 } while ((Get-Date) -lt $deadline); exit 1"`) do set "PUBLIC_URL=%%L"
 
 echo.
 echo Abrindo navegador local...
 start "" "%APP_URL%"
+if defined PUBLIC_URL (
+  echo Abrindo navegador com link publico HTTPS...
+  start "" "%PUBLIC_URL%/app"
+) else (
+  echo Nao consegui capturar o link HTTPS automaticamente em 60 segundos.
+  echo Verifique a janela "Financeiro - Link Publico HTTPS" ou o arquivo cloudflare_tunnel.log.
+)
 echo.
 echo ============================================================
-echo  COPIE O LINK https://...trycloudflare.com
-echo  Ele aparecera na janela "Financeiro - Link Publico HTTPS"
-echo  e tambem no arquivo cloudflare_tunnel.log.
+if defined PUBLIC_URL (
+  echo  LINK PUBLICO HTTPS:
+  echo  %PUBLIC_URL%/app
+) else (
+  echo  COPIE O LINK https://...trycloudflare.com
+  echo  Ele aparecera na janela "Financeiro - Link Publico HTTPS"
+  echo  e tambem no arquivo cloudflare_tunnel.log.
+)
 echo.
 echo  Login master:
 echo  Email: master@sistema.local
