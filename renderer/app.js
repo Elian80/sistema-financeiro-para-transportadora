@@ -2040,16 +2040,12 @@ function calcularLinhaFolha(row) {
   const fgts = Math.round(salarioBruto * 0.08 * 100) / 100;
   const totalDescontos = descontoInss + descontoIrrf + descontoVale + descontoAdiantamento + outrosDescontos;
   const salarioLiquido = Math.max(salarioBruto - totalDescontos, 0);
-  const campoDescricaoOutros = row.querySelector(".folha-outros-descricao");
 
   if (campoInss && campoInss.dataset.manual !== "true") {
     campoInss.value = descontoInss.toFixed(2);
   }
   if (campoInss) {
     campoInss.disabled = !aplicarInss;
-  }
-  if (campoDescricaoOutros) {
-    campoDescricaoOutros.style.display = outrosDescontos > 0 ? "block" : "none";
   }
 
   row.querySelector(".folha-salario-base").textContent = formatarValor(salarioBase);
@@ -2536,7 +2532,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
                 <label>Vale<input class="folha-desconto-vale" type="number" min="0" step="0.01" value="${vale.toFixed(2)}" /></label>
                 <label>Adiantamento<input class="folha-desconto-adiantamento" type="number" min="0" step="0.01" value="0" /></label>
                 <label>Outros descontos<input class="folha-outros-descontos" type="number" min="0" step="0.01" value="${outros.toFixed(2)}" /></label>
-                <label class="payroll-description-field">Descricao outros<input class="folha-outros-descricao" value="" placeholder="Descricao" style="${outros > 0 ? "" : "display:none;"}" /></label>
+                <label class="payroll-description-field">Descricao outros descontos<input class="folha-outros-descricao" value="" placeholder="Descricao dos outros descontos" /></label>
               </div>
 
               <div class="payroll-result-grid">

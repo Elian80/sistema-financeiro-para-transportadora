@@ -1441,21 +1441,19 @@ body.sidebar-collapsed .nav-btn.active {
 }
 
 .payroll-options-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(185px, max-content));
-  justify-content: start;
-  align-items: start;
-  gap: 8px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
 }
 
 .payroll-options-grid label {
   min-height: 22px;
-  width: max-content;
-  display: grid !important;
-  grid-template-columns: 14px auto;
+  width: 180px;
+  display: inline-flex !important;
   align-items: center;
-  justify-content: start;
-  column-gap: 8px;
+  justify-content: flex-start;
+  gap: 8px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -1473,16 +1471,17 @@ body.sidebar-collapsed .nav-btn.active {
   min-height: 14px !important;
   margin: 0 !important;
   padding: 0 !important;
-  justify-self: start;
   flex: 0 0 14px;
   accent-color: var(--blue-2);
+  vertical-align: middle;
 }
 
 .payroll-options-grid span {
   line-height: 1.25;
   display: block;
+  flex: 1 1 auto;
   padding: 0;
-  white-space: nowrap;
+  text-align: left;
 }
 
 @media (max-width: 760px) {
