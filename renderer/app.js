@@ -1951,33 +1951,31 @@ function calcularLinhaFolha(row) {
   const descontoAdiantamento = normalizarNumero(row.querySelector(".folha-desconto-adiantamento")?.value);
   const outrosDescontos = normalizarNumero(row.querySelector(".folha-outros-descontos")?.value);
   const salarioContratual = normalizarNumero(row.dataset.salarioContratual);
+  const aplicarInss = row.querySelector(".folha-aplicar-inss")?.value !== "nao";
   const salarioBase = horasNormais > 0 ? salarioContratual : 0;
   const valorExtras = horasExtras * valorHoraExtra;
   const totalAdicionais = Math.max(adicionalNoturno, 0) + Math.max(bonus, 0);
   const salarioBruto = Math.max(salarioBase + valorExtras + totalAdicionais, 0);
   const campoInss = row.querySelector(".folha-desconto-inss");
   const inssAutomatico = calcularInssAutomatico(salarioBruto);
-  const descontoInss = campoInss?.dataset.manual === "true"
+  const descontoInss = !aplicarInss
+    ? 0
+    : campoInss?.dataset.manual === "true"
     ? normalizarNumero(campoInss.value)
     : inssAutomatico;
   const fgts = Math.round(salarioBruto * 0.08 * 100) / 100;
   const totalDescontos = descontoInss + descontoIrrf + descontoVale + descontoAdiantamento + outrosDescontos;
   const salarioLiquido = Math.max(salarioBruto - totalDescontos, 0);
   const campoDescricaoOutros = row.querySelector(".folha-outros-descricao");
-  const campoDescricaoAdicional = row.querySelector(".folha-adicional-descricao");
-  const campoDescricaoBonus = row.querySelector(".folha-bonus-descricao");
 
   if (campoInss && campoInss.dataset.manual !== "true") {
     campoInss.value = descontoInss.toFixed(2);
   }
+  if (campoInss) {
+    campoInss.disabled = !aplicarInss;
+  }
   if (campoDescricaoOutros) {
     campoDescricaoOutros.style.display = outrosDescontos > 0 ? "block" : "none";
-  }
-  if (campoDescricaoAdicional) {
-    campoDescricaoAdicional.style.display = adicionalNoturno > 0 ? "block" : "none";
-  }
-  if (campoDescricaoBonus) {
-    campoDescricaoBonus.style.display = bonus > 0 ? "block" : "none";
   }
 
   row.querySelector(".folha-salario-base").textContent = formatarValor(salarioBase);
@@ -1985,7 +1983,7 @@ function calcularLinhaFolha(row) {
   row.querySelector(".folha-total-descontos").textContent = formatarValor(totalDescontos);
   row.querySelector(".folha-salario-liquido").textContent = formatarValor(salarioLiquido);
 
-  return { salarioBase, valorExtras, adicionalNoturno, bonus, totalAdicionais, salarioBruto, descontoInss, fgts, totalDescontos, salarioLiquido };
+  return { salarioBase, valorExtras, adicionalNoturno, bonus, totalAdicionais, salarioBruto, descontoInss, fgts, totalDescontos, salarioLiquido, aplicarInss };
 }
 
 function atualizarTotaisFolha() {
@@ -2112,6 +2110,8 @@ function gerarDadosItemFolha(row) {
     adicional_descricao: row.querySelector(".folha-adicional-descricao")?.value.trim() || "",
     bonus: normalizarNumero(row.querySelector(".folha-bonus").value),
     bonus_descricao: row.querySelector(".folha-bonus-descricao")?.value.trim() || "",
+    aplicar_inss: row.querySelector(".folha-aplicar-inss")?.value !== "nao",
+    desconto_inss_manual: row.querySelector(".folha-desconto-inss")?.dataset.manual === "true",
     desconto_inss: calculo.descontoInss,
     desconto_irrf: normalizarNumero(row.querySelector(".folha-desconto-irrf")?.value),
     desconto_vale: normalizarNumero(row.querySelector(".folha-desconto-vale").value),
@@ -2474,9 +2474,10 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
                 <label>Horas extras<input class="folha-horas-extras" type="number" min="0" step="0.01" value="0" /></label>
                 <label>Valor hora extra<input class="folha-valor-hora-extra" type="number" min="0" step="0.01" value="${valorHoraExtra.toFixed(2)}" /></label>
                 <label>Adicional<input class="folha-adicional-noturno" type="number" min="0" step="0.01" value="0" /></label>
-                <label class="payroll-description-field">Descricao adicional<input class="folha-adicional-descricao" value="" placeholder="Descricao do adicional" style="display:none;" /></label>
+                <label class="payroll-description-field">Descricao adicional<input class="folha-adicional-descricao" value="" placeholder="Descricao do adicional" /></label>
                 <label>Bonus<input class="folha-bonus" type="number" min="0" step="0.01" value="0" /></label>
-                <label class="payroll-description-field">Descricao bonus<input class="folha-bonus-descricao" value="" placeholder="Descricao do bonus" style="display:none;" /></label>
+                <label class="payroll-description-field">Descricao bonus<input class="folha-bonus-descricao" value="" placeholder="Descricao do bonus" /></label>
+                <label>Descontar INSS<select class="folha-aplicar-inss"><option value="sim" selected>Sim</option><option value="nao">Nao</option></select></label>
                 <label>INSS<input class="folha-desconto-inss" type="number" min="0" step="0.01" value="${descontoInss.toFixed(2)}" data-manual="false" /></label>
                 <label>IRRF<input class="folha-desconto-irrf" type="number" min="0" step="0.01" value="${descontoIrrf.toFixed(2)}" /></label>
                 <label>Vale<input class="folha-desconto-vale" type="number" min="0" step="0.01" value="${vale.toFixed(2)}" /></label>
@@ -2511,6 +2512,15 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
   container.querySelectorAll(".folha-desconto-inss").forEach((input) => {
     input.addEventListener("input", () => {
       input.dataset.manual = "true";
+      atualizarTotaisFolha();
+    });
+  });
+  container.querySelectorAll(".folha-aplicar-inss").forEach((select) => {
+    select.addEventListener("change", () => {
+      const input = select.closest("[data-folha-motorista-id]")?.querySelector(".folha-desconto-inss");
+      if (input && select.value === "sim") {
+        input.dataset.manual = "false";
+      }
       atualizarTotaisFolha();
     });
   });
@@ -3677,13 +3687,19 @@ function obterUsuarioSessao() {
 
 function aplicarPermissoesVisuais() {
   const usuario = obterUsuarioSessao();
-  const adminButton = document.querySelector('[data-page="admin"]');
   navButtons.forEach((button) => {
+    const isAdmin = button.dataset.page === "admin";
     if (usuario.perfil === "master") {
-      button.hidden = button.dataset.page !== "admin";
-      button.classList.toggle("active", button.dataset.page === "admin");
-    } else if (button.dataset.page === "admin") {
-      button.hidden = true;
+      button.hidden = !isAdmin;
+      button.style.display = isAdmin ? "" : "none";
+      button.classList.toggle("active", isAdmin);
+      return;
+    }
+
+    button.hidden = isAdmin;
+    button.style.display = isAdmin ? "none" : "";
+    if (isAdmin) {
+      button.classList.remove("active");
     }
   });
 }

@@ -31,6 +31,26 @@ body[data-theme="light"] {
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.34) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.46);
 }
 
 html,
@@ -158,6 +178,10 @@ body[data-theme="light"] .sidebar {
   font-weight: 750;
   letter-spacing: 0;
   min-height: 46px;
+}
+
+.nav-btn[hidden] {
+  display: none !important;
 }
 
 .nav-btn:hover {
@@ -1133,12 +1157,13 @@ body.sidebar-collapsed .nav-btn.active {
   gap: 8px;
 }
 
-.payroll-field-grid input {
+.payroll-field-grid input,
+.payroll-field-grid select {
   min-height: 46px;
 }
 
 .payroll-description-field {
-  grid-column: span 2;
+  grid-column: auto;
 }
 
 .payroll-result-grid {
