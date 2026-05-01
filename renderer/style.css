@@ -32,12 +32,12 @@ body[data-theme="light"] {
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.34) transparent;
+  scrollbar-color: rgba(15, 40, 80, 0.72) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 3px;
+  height: 3px;
 }
 
 *::-webkit-scrollbar-track {
@@ -45,12 +45,12 @@ body[data-theme="light"] {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 40, 80, 0.72);
   border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.46);
+  background: rgba(20, 56, 112, 0.92);
 }
 
 html,
