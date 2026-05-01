@@ -61,6 +61,38 @@ function Wait-PublicUrl {
   return $null
 }
 
+function Wait-PublicPage {
+  param([string]$Url)
+
+  $deadline = (Get-Date).AddSeconds(45)
+  do {
+    try {
+      $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 8
+      if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+        return $true
+      }
+    } catch {
+      Start-Sleep -Seconds 2
+      continue
+    }
+    Start-Sleep -Seconds 2
+  } while ((Get-Date) -lt $deadline)
+
+  return $false
+}
+
+function Test-PublicDns {
+  param([string]$Url)
+
+  try {
+    $hostName = ([System.Uri]$Url).Host
+    $result = Resolve-DnsName $hostName -Server 1.1.1.1 -ErrorAction Stop
+    return [bool]$result
+  } catch {
+    return $false
+  }
+}
+
 Set-Location $AppDir
 
 Write-Host "============================================================" -ForegroundColor DarkCyan
@@ -139,6 +171,8 @@ Remove-Item $TunnelErrorLog -Force -ErrorAction SilentlyContinue
 $TunnelProcess = Start-Process -FilePath $CloudflaredPath -ArgumentList @(
   "tunnel",
   "--no-autoupdate",
+  "--protocol",
+  "http2",
   "--url",
   $AppUrl
 ) -WindowStyle Hidden -RedirectStandardOutput $TunnelLog -RedirectStandardError $TunnelErrorLog -PassThru
@@ -148,9 +182,25 @@ Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
 if ($PublicUrl) {
   $FinalUrl = "$PublicUrl/app"
-  Write-Host " LINK PUBLICO HTTPS:" -ForegroundColor Green
-  Write-Host " $FinalUrl" -ForegroundColor White
-  Start-Process $FinalUrl
+  Write-Host "Link gerado. Validando acesso HTTPS..." -ForegroundColor Cyan
+  if (Wait-PublicPage -Url $FinalUrl) {
+    Write-Host " LINK PUBLICO HTTPS:" -ForegroundColor Green
+    Write-Host " $FinalUrl" -ForegroundColor White
+    Start-Process $FinalUrl
+  } elseif (Test-PublicDns -Url $FinalUrl) {
+    Write-Host " LINK PUBLICO HTTPS:" -ForegroundColor Green
+    Write-Host " $FinalUrl" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Aviso: o DNS deste computador/rede nao conseguiu abrir o link agora," -ForegroundColor Yellow
+    Write-Host "mas o DNS publico da Cloudflare encontrou o endereco." -ForegroundColor Yellow
+    Write-Host "Teste este link no celular usando outra rede ou dados moveis." -ForegroundColor Yellow
+    Start-Process $AppPageUrl
+  } else {
+    Write-Host " LINK PUBLICO HTTPS GERADO, mas ainda nao respondeu no teste automatico:" -ForegroundColor Yellow
+    Write-Host " $FinalUrl" -ForegroundColor White
+    Write-Host "Tente abrir no celular em alguns segundos. Se nao abrir, rode o BAT novamente." -ForegroundColor Yellow
+    Start-Process $FinalUrl
+  }
 } else {
   $FinalUrl = $AppPageUrl
   Write-Host "Nao consegui capturar o link HTTPS automaticamente." -ForegroundColor Yellow
@@ -166,8 +216,9 @@ Write-Host " Email: master@sistema.local"
 Write-Host " Senha: Master123"
 Write-Host ""
 Write-Host " Apenas uma aba do navegador foi aberta." -ForegroundColor Green
-Write-Host " Mantenha esta janela aberta para manter o link HTTPS ativo." -ForegroundColor Green
-Write-Host " Pressione ENTER aqui quando quiser encerrar o tunel." -ForegroundColor Green
+Write-Host " MANTENHA ESTA JANELA ABERTA para o celular conseguir acessar." -ForegroundColor Green
+Write-Host " Se fechar esta janela ou apertar ENTER, o link HTTPS para de funcionar." -ForegroundColor Yellow
+Write-Host " Pressione ENTER somente quando quiser encerrar o acesso externo." -ForegroundColor Yellow
 Write-Host "============================================================" -ForegroundColor Green
 
 [void][Console]::ReadLine()
