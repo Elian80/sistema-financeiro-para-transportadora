@@ -6,6 +6,7 @@ set "APP_PORT=8001"
 set "APP_URL=http://127.0.0.1:%APP_PORT%"
 set "TOOLS_DIR=%APP_DIR%tools"
 set "LOCAL_CLOUDFLARED=%TOOLS_DIR%\cloudflared.exe"
+set "TUNNEL_LOG=%APP_DIR%cloudflare_tunnel.log"
 set "CLOUDFLARED_CMD="
 
 cd /d "%APP_DIR%"
@@ -86,7 +87,8 @@ echo Aguardando o servidor responder...
 timeout /t 6 /nobreak >nul
 
 echo [6/6] Abrindo tunel publico de teste...
-start "Financeiro - Link Publico" powershell -NoExit -ExecutionPolicy Bypass -Command "& '%CLOUDFLARED_CMD%' tunnel --url %APP_URL%"
+if exist "%TUNNEL_LOG%" del "%TUNNEL_LOG%"
+start "Financeiro - Link Publico HTTPS" powershell -NoExit -ExecutionPolicy Bypass -Command "& '%CLOUDFLARED_CMD%' tunnel --url %APP_URL% 2>&1 | Tee-Object -FilePath '%TUNNEL_LOG%'"
 
 echo.
 echo Abrindo navegador local...
@@ -94,7 +96,8 @@ start "" "%APP_URL%"
 echo.
 echo ============================================================
 echo  COPIE O LINK https://...trycloudflare.com
-echo  Ele aparecera na janela "Financeiro - Link Publico".
+echo  Ele aparecera na janela "Financeiro - Link Publico HTTPS"
+echo  e tambem no arquivo cloudflare_tunnel.log.
 echo.
 echo  Login master:
 echo  Email: master@sistema.local

@@ -672,18 +672,25 @@ const pages = {
             </div>
 
             <div class="field">
-              <label for="cr-valor">Valor</label>
-              <input type="number" id="cr-valor" step="0.01" placeholder="0.00" />
+              <label for="cr-veiculo-id">Veiculo</label>
+              <select id="cr-veiculo-id">
+                <option value="">Sem vinculo</option>
+              </select>
             </div>
 
             <div class="field cr-maquina-field" style="display:none;">
               <label for="cr-valor-hora-unitario">Valor unitario da hora</label>
-              <input type="number" id="cr-valor-hora-unitario" step="0.01" placeholder="0.00" />
+              <input type="text" inputmode="decimal" id="cr-valor-hora-unitario" placeholder="0,00" />
             </div>
 
             <div class="field cr-maquina-field" style="display:none;">
               <label for="cr-quantidade-horas">Quantidade total de horas</label>
-              <input type="number" id="cr-quantidade-horas" step="0.01" placeholder="0.00" />
+              <input type="text" inputmode="decimal" id="cr-quantidade-horas" placeholder="Ex: 8,9" />
+            </div>
+
+            <div class="field">
+              <label for="cr-valor">Valor</label>
+              <input type="text" inputmode="decimal" id="cr-valor" placeholder="0,00" />
             </div>
 
             <div class="field">
@@ -708,19 +715,12 @@ const pages = {
 
             <div class="field">
               <label for="cr-bonificacao">Bonificacao</label>
-              <input type="number" id="cr-bonificacao" step="0.01" placeholder="0.00" />
-            </div>
-
-            <div class="field">
-              <label for="cr-veiculo-id">Veiculo</label>
-              <select id="cr-veiculo-id">
-                <option value="">Sem vinculo</option>
-              </select>
+              <input type="text" inputmode="decimal" id="cr-bonificacao" placeholder="0,00" />
             </div>
 
             <div class="field">
               <label for="cr-descontos">Descontos</label>
-              <input type="number" id="cr-descontos" step="0.01" placeholder="0.00" />
+              <input type="text" inputmode="decimal" id="cr-descontos" placeholder="0,00" />
             </div>
 
             <div class="field">
@@ -1215,11 +1215,15 @@ function normalizarNumero(valor) {
 
   const texto = String(valor)
     .replace("R$", "")
-    .replace(/\./g, "")
-    .replace(",", ".")
+    .replace(/\s/g, "")
     .trim();
+  const temVirgula = texto.includes(",");
+  const temPonto = texto.includes(".");
+  const decimal = temVirgula
+    ? texto.replace(/\./g, "").replace(",", ".")
+    : (temPonto && (texto.match(/\./g) || []).length > 1 ? texto.replace(/\./g, "") : texto);
 
-  const numero = parseFloat(texto);
+  const numero = parseFloat(decimal);
   return isNaN(numero) ? 0 : numero;
 }
 
@@ -3075,7 +3079,9 @@ function atualizarTotalReceberPreview() {
   if (!preview) return;
   const valor = normalizarNumero(document.getElementById("cr-valor-hora-unitario")?.value) * normalizarNumero(document.getElementById("cr-quantidade-horas")?.value);
   const campoValor = document.getElementById("cr-valor");
-  if (campoValor && valor > 0) campoValor.value = valor.toFixed(2);
+  if (campoValor && valor > 0 && veiculoContaReceberEhMaquina()) {
+    campoValor.value = valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
   preview.textContent = formatarValor(calcularTotalReceberFormulario());
 }
 

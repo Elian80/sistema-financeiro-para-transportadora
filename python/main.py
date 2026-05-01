@@ -275,13 +275,10 @@ class LancamentoIn(BaseModel):
     def limpar_texto(cls, value: str) -> str:
         return value.strip()
 
-    @field_validator("valor")
+    @field_validator("valor", "kilometragem", "litros", mode="before")
     @classmethod
     def validar_valor(cls, value: float) -> float:
-        # Impede valor invalido.
-        if value is None:
-            raise ValueError("Valor obrigatorio.")
-        return float(value)
+        return normalizar_numero_decimal(value)
 
 
 class PlanoContaIn(BaseModel):
@@ -333,10 +330,10 @@ class ContaReceberIn(BaseModel):
             raise ValueError("Status de pagamento invalido.")
         return status
 
-    @field_validator("valor", "valor_hora_unitario", "quantidade_horas", "bonificacao", "descontos")
+    @field_validator("valor", "valor_hora_unitario", "quantidade_horas", "bonificacao", "descontos", mode="before")
     @classmethod
     def validar_valores_conta_receber(cls, value: float) -> float:
-        valor = float(value or 0)
+        valor = normalizar_numero_decimal(value)
         if valor < 0:
             raise ValueError("Valores nao podem ser negativos.")
         return valor
@@ -424,10 +421,11 @@ class MotoristaIn(BaseModel):
         "vale_refeicao",
         "convenio_medico",
         "outros_descontos_padrao",
+        mode="before",
     )
     @classmethod
     def validar_numero_motorista(cls, value: float) -> float:
-        valor = float(value or 0)
+        valor = normalizar_numero_decimal(value)
         if valor < 0:
             raise ValueError("Valores do motorista nao podem ser negativos.")
         return valor
@@ -470,10 +468,11 @@ class FolhaPagamentoItemIn(BaseModel):
         "base_fgts",
         "fgts",
         "base_irrf",
+        mode="before",
     )
     @classmethod
     def validar_numero_nao_negativo(cls, value: float) -> float:
-        valor = float(value or 0)
+        valor = normalizar_numero_decimal(value)
         if valor < 0:
             raise ValueError("Valores da folha nao podem ser negativos.")
         return valor
@@ -520,6 +519,14 @@ class AtivoIn(BaseModel):
             raise ValueError("Tipo de ativo invalido.")
         return value
 
+    @field_validator("valor", mode="before")
+    @classmethod
+    def validar_valor_ativo(cls, value: float) -> float:
+        valor = normalizar_numero_decimal(value)
+        if valor < 0:
+            raise ValueError("Valor do ativo nao pode ser negativo.")
+        return valor
+
 
 class PassivoIn(BaseModel):
     nome: str = Field(..., min_length=1)
@@ -544,6 +551,14 @@ class PassivoIn(BaseModel):
             raise ValueError("Tipo de passivo invalido.")
         return value
 
+    @field_validator("valor_total", "valor_pago", mode="before")
+    @classmethod
+    def validar_valor_passivo(cls, value: float) -> float:
+        valor = normalizar_numero_decimal(value)
+        if valor < 0:
+            raise ValueError("Valores do passivo nao podem ser negativos.")
+        return valor
+
 
 class ProdutoEstoqueIn(BaseModel):
     nome: str = Field(..., min_length=1)
@@ -558,6 +573,14 @@ class ProdutoEstoqueIn(BaseModel):
     @classmethod
     def limpar_campos_produto(cls, value: str) -> str:
         return value.strip()
+
+    @field_validator("quantidade_atual", "valor_custo", "estoque_minimo", mode="before")
+    @classmethod
+    def validar_numero_produto(cls, value: float) -> float:
+        valor = normalizar_numero_decimal(value)
+        if valor < 0:
+            raise ValueError("Valores do produto nao podem ser negativos.")
+        return valor
 
 
 class MovimentacaoEstoqueIn(BaseModel):
@@ -579,6 +602,14 @@ class MovimentacaoEstoqueIn(BaseModel):
         if value not in {"Entrada", "Saida", "Saida", "Ajuste"}:
             raise ValueError("Tipo de movimentacao invalido.")
         return "Saida" if value == "Saida" else value
+
+    @field_validator("quantidade", "valor_unitario", mode="before")
+    @classmethod
+    def validar_numero_movimentacao(cls, value: float) -> float:
+        valor = normalizar_numero_decimal(value)
+        if valor < 0:
+            raise ValueError("Valores da movimentacao nao podem ser negativos.")
+        return valor
 
 
 # =========================================================
@@ -662,6 +693,22 @@ def buscar_por_id(lista, item_id: int):
 
 def agora_iso() -> str:
     return datetime.now().replace(microsecond=0).isoformat()
+
+
+def normalizar_numero_decimal(valor) -> float:
+    if valor is None or valor == "":
+        return 0.0
+    if isinstance(valor, (int, float)):
+        return float(valor)
+    texto = str(valor).strip().replace("R$", "").replace(" ", "")
+    if "," in texto:
+        texto = texto.replace(".", "").replace(",", ".")
+    elif texto.count(".") > 1:
+        texto = texto.replace(".", "")
+    try:
+        return float(texto)
+    except ValueError as erro:
+        raise ValueError("Numero invalido. Use formato 8,9 ou 8.9.") from erro
 
 
 def obter_grupo_financeiro(classificacao: str) -> str:
@@ -837,16 +884,16 @@ def normalizar_conta_receber_antiga(item: dict) -> dict:
         "data_inicio": str(item.get("data_inicio", "")),
         "contrato": item.get("contrato", ""),
         "cte_ticket": item.get("cte_ticket", ""),
-        "valor": float(item.get("valor") or 0),
-        "valor_hora_unitario": float(item.get("valor_hora_unitario") or 0),
-        "quantidade_horas": float(item.get("quantidade_horas") or 0),
+        "valor": normalizar_numero_decimal(item.get("valor")),
+        "valor_hora_unitario": normalizar_numero_decimal(item.get("valor_hora_unitario")),
+        "quantidade_horas": normalizar_numero_decimal(item.get("quantidade_horas")),
         "carga": item.get("carga", ""),
         "ton_qnt": item.get("ton_qnt", ""),
         "tomador": item.get("tomador", ""),
         "origem_destino": item.get("origem_destino", ""),
-        "bonificacao": float(item.get("bonificacao") or 0),
+        "bonificacao": normalizar_numero_decimal(item.get("bonificacao")),
         "veiculo_id": item.get("veiculo_id"),
-        "descontos": float(item.get("descontos") or 0),
+        "descontos": normalizar_numero_decimal(item.get("descontos")),
         "desconto_classificacao": item.get("desconto_classificacao", ""),
         "status_pagamento": (item.get("status_pagamento") or "pendente").lower(),
         "data_recebimento": str(item.get("data_recebimento", "")) if item.get("data_recebimento") else "",
@@ -1187,12 +1234,12 @@ def excluir_lancamento(lancamento_id: int):
 # =========================================================
 
 def calcular_total_conta_receber(item: dict) -> float:
-    valor_hora_unitario = float(item.get("valor_hora_unitario") or 0)
-    quantidade_horas = float(item.get("quantidade_horas") or 0)
-    valor = valor_hora_unitario * quantidade_horas if valor_hora_unitario > 0 and quantidade_horas > 0 else float(item.get("valor") or 0)
-    bonificacao = float(item.get("bonificacao") or 0)
-    descontos = float(item.get("descontos") or 0)
-    return valor + bonificacao - descontos
+    valor_hora_unitario = normalizar_numero_decimal(item.get("valor_hora_unitario"))
+    quantidade_horas = normalizar_numero_decimal(item.get("quantidade_horas"))
+    valor = valor_hora_unitario * quantidade_horas if valor_hora_unitario > 0 and quantidade_horas > 0 else normalizar_numero_decimal(item.get("valor"))
+    bonificacao = normalizar_numero_decimal(item.get("bonificacao"))
+    descontos = normalizar_numero_decimal(item.get("descontos"))
+    return arredondar_moeda(valor + bonificacao - descontos)
 
 
 def calcular_valor_base_conta_receber(dados: ContaReceberIn) -> float:
