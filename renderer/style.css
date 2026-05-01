@@ -337,6 +337,26 @@ body[data-theme="light"] .sidebar {
   justify-content: flex-end;
 }
 
+.admin-quick-actions {
+  margin-bottom: 18px;
+}
+
+.admin-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-modal-overlay {
+  align-items: flex-start;
+  overflow: auto;
+}
+
+.admin-modal-content {
+  margin: 24px 0;
+  max-width: min(1040px, calc(100vw - 24px));
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

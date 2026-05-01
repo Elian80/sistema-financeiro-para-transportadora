@@ -1036,26 +1036,41 @@ const pages = {
         </div>
       </section>
 
-      <section class="panel-box">
-        <div class="table-toolbar"><div><h3 style="margin:0;">Cadastro de empresa</h3><span>Somente master gerencia todas as empresas</span></div></div>
-        <form id="form-admin-empresa" class="form-grid">
-          <div class="field"><label>Nome da empresa</label><input id="empresa-nome" required /></div>
-          <div class="field"><label>Nome fantasia</label><input id="empresa-nome-fantasia" /></div>
-          <div class="field"><label>CNPJ</label><input id="empresa-cnpj" /></div>
-          <div class="field"><label>Inscricao estadual</label><input id="empresa-ie" /></div>
-          <div class="field"><label>Telefone</label><input id="empresa-telefone" /></div>
-          <div class="field"><label>Email</label><input id="empresa-email" type="email" /></div>
-          <div class="field full"><label>Endereco completo</label><input id="empresa-endereco" /></div>
-          <div class="field"><label>Cidade</label><input id="empresa-cidade" /></div>
-          <div class="field"><label>Estado</label><input id="empresa-estado" maxlength="2" /></div>
-          <div class="field"><label>CEP</label><input id="empresa-cep" /></div>
-          <div class="field"><label>Status</label><select id="empresa-status"><option value="ativo">Ativa</option><option value="pendente">Pendente</option><option value="bloqueado">Bloqueada</option><option value="inativo">Inativa</option></select></div>
-          <div class="field full"><label>Logo</label><input id="empresa-logo-arquivo" type="file" accept="image/*" /><input id="empresa-logo" type="hidden" /></div>
-          <div class="field full"><label>Observacoes</label><input id="empresa-observacoes" /></div>
-          <div class="field full"><button class="primary-btn" type="submit">Salvar empresa</button></div>
-        </form>
-        <p id="mensagem-admin-empresa" class="mensagem"></p>
+      <section class="panel-box admin-quick-actions">
+        <div class="table-toolbar">
+          <div><h3 style="margin:0;">Cadastros administrativos</h3><span>Abra uma tela separada para criar empresas e usuarios</span></div>
+        </div>
+        <div class="admin-action-buttons">
+          <button class="primary-btn" id="btn-abrir-admin-empresa" type="button">Cadastrar empresa</button>
+          <button class="ghost-btn" id="btn-abrir-admin-usuario" type="button">Cadastrar usuario</button>
+        </div>
       </section>
+
+      <div class="modal-overlay admin-modal-overlay" id="modal-admin-empresa" style="display:none;">
+        <section class="modal-content modal-xl admin-modal-content">
+          <div class="table-toolbar">
+            <div><h3 style="margin:0;">Cadastro de empresa</h3><span>Somente master gerencia todas as empresas</span></div>
+            <button class="ghost-btn" id="btn-fechar-admin-empresa" type="button">Fechar</button>
+          </div>
+          <form id="form-admin-empresa" class="form-grid">
+            <div class="field"><label>Nome da empresa</label><input id="empresa-nome" required /></div>
+            <div class="field"><label>Nome fantasia</label><input id="empresa-nome-fantasia" /></div>
+            <div class="field"><label>CNPJ</label><input id="empresa-cnpj" /></div>
+            <div class="field"><label>Inscricao estadual</label><input id="empresa-ie" /></div>
+            <div class="field"><label>Telefone</label><input id="empresa-telefone" /></div>
+            <div class="field"><label>Email</label><input id="empresa-email" type="email" /></div>
+            <div class="field full"><label>Endereco completo</label><input id="empresa-endereco" /></div>
+            <div class="field"><label>Cidade</label><input id="empresa-cidade" /></div>
+            <div class="field"><label>Estado</label><input id="empresa-estado" maxlength="2" /></div>
+            <div class="field"><label>CEP</label><input id="empresa-cep" /></div>
+            <div class="field"><label>Status</label><select id="empresa-status"><option value="ativo">Ativa</option><option value="pendente">Pendente</option><option value="bloqueado">Bloqueada</option><option value="inativo">Inativa</option></select></div>
+            <div class="field full"><label>Logo</label><input id="empresa-logo-arquivo" type="file" accept="image/*" /><input id="empresa-logo" type="hidden" /></div>
+            <div class="field full"><label>Observacoes</label><input id="empresa-observacoes" /></div>
+            <div class="field full"><button class="primary-btn" type="submit">Salvar empresa</button></div>
+          </form>
+          <p id="mensagem-admin-empresa" class="mensagem"></p>
+        </section>
+      </div>
 
       <section class="panel-box">
         <div class="table-toolbar"><div><h3 style="margin:0;">Empresas cadastradas</h3><span>Bloqueie, aprove ou desative empresas</span></div></div>
@@ -1063,21 +1078,30 @@ const pages = {
       </section>
 
       <section class="panel-box">
-        <div class="table-toolbar"><div><h3 style="margin:0;">Cadastro de usuario</h3><span>Vincule usuarios a empresas e perfis</span></div></div>
-        <form id="form-admin-usuario" class="form-grid">
-          <div class="field"><label>Nome</label><input id="admin-usuario-nome" required /></div>
-          <div class="field"><label>Email</label><input id="admin-usuario-email" type="email" required /></div>
-          <div class="field"><label>Senha inicial</label><input id="admin-usuario-senha" type="password" required /></div>
-          <div class="field"><label>Empresa</label><select id="admin-usuario-empresa"></select></div>
-          <div class="field"><label>Perfil</label><select id="admin-usuario-perfil"><option value="visualizador">Visualizador</option><option value="operador">Operador</option><option value="financeiro">Financeiro</option><option value="gestor">Gestor</option><option value="admin">Admin</option><option value="master">Master</option></select></div>
-          <div class="field"><label>Status</label><select id="admin-usuario-status"><option value="ativo">Ativo</option><option value="pendente">Pendente</option><option value="bloqueado">Bloqueado</option><option value="inativo">Inativo</option></select></div>
-          <div class="field"><label>Telefone</label><input id="admin-usuario-telefone" /></div>
-          <div class="field"><label>Cargo/Função</label><input id="admin-usuario-cargo" /></div>
-          <div class="field full"><button class="primary-btn" type="submit">Salvar usuario</button></div>
-        </form>
-        <p id="mensagem-admin-usuario" class="mensagem"></p>
+        <div class="table-toolbar"><div><h3 style="margin:0;">Usuarios cadastrados</h3><span>Gerencie acessos, bloqueios e senhas</span></div></div>
         <div class="table-wrap" style="margin-top:16px;"><table class="data-table"><thead><tr><th>Nome</th><th>Email</th><th>Empresa</th><th>Perfil</th><th>Status</th><th>Senha</th><th>Ultimo login</th><th>Acoes</th></tr></thead><tbody id="tabela-admin-usuarios"></tbody></table></div>
       </section>
+
+      <div class="modal-overlay admin-modal-overlay" id="modal-admin-usuario" style="display:none;">
+        <section class="modal-content modal-xl admin-modal-content">
+          <div class="table-toolbar">
+            <div><h3 style="margin:0;">Cadastro de usuario</h3><span>Vincule usuarios a empresas e perfis</span></div>
+            <button class="ghost-btn" id="btn-fechar-admin-usuario" type="button">Fechar</button>
+          </div>
+          <form id="form-admin-usuario" class="form-grid">
+            <div class="field"><label>Nome</label><input id="admin-usuario-nome" required /></div>
+            <div class="field"><label>Email</label><input id="admin-usuario-email" type="email" required /></div>
+            <div class="field"><label>Senha inicial</label><input id="admin-usuario-senha" type="password" required /></div>
+            <div class="field"><label>Empresa</label><select id="admin-usuario-empresa"></select></div>
+            <div class="field"><label>Perfil</label><select id="admin-usuario-perfil"><option value="visualizador">Visualizador</option><option value="operador">Operador</option><option value="financeiro">Financeiro</option><option value="gestor">Gestor</option><option value="admin">Admin</option><option value="master">Master</option></select></div>
+            <div class="field"><label>Status</label><select id="admin-usuario-status"><option value="ativo">Ativo</option><option value="pendente">Pendente</option><option value="bloqueado">Bloqueado</option><option value="inativo">Inativo</option></select></div>
+            <div class="field"><label>Telefone</label><input id="admin-usuario-telefone" /></div>
+            <div class="field"><label>Cargo/Função</label><input id="admin-usuario-cargo" /></div>
+            <div class="field full"><button class="primary-btn" type="submit">Salvar usuario</button></div>
+          </form>
+          <p id="mensagem-admin-usuario" class="mensagem"></p>
+        </section>
+      </div>
 
       <section class="panel-box">
         <div class="table-toolbar"><div><h3 style="margin:0;">Auditoria</h3><span>Ultimas acoes administrativas</span></div></div>
@@ -3756,6 +3780,25 @@ window.desativarUsuario = async (usuarioId) => {
 async function iniciarAdminMaster() {
   await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
 
+  const modalEmpresa = document.getElementById("modal-admin-empresa");
+  const modalUsuario = document.getElementById("modal-admin-usuario");
+  const abrirModalAdmin = (modal) => {
+    if (modal) modal.style.display = "flex";
+  };
+  const fecharModalAdmin = (modal) => {
+    if (modal) modal.style.display = "none";
+  };
+
+  document.getElementById("btn-abrir-admin-empresa")?.addEventListener("click", () => abrirModalAdmin(modalEmpresa));
+  document.getElementById("btn-fechar-admin-empresa")?.addEventListener("click", () => fecharModalAdmin(modalEmpresa));
+  document.getElementById("btn-abrir-admin-usuario")?.addEventListener("click", () => abrirModalAdmin(modalUsuario));
+  document.getElementById("btn-fechar-admin-usuario")?.addEventListener("click", () => fecharModalAdmin(modalUsuario));
+  [modalEmpresa, modalUsuario].forEach((modal) => {
+    modal?.addEventListener("click", (event) => {
+      if (event.target === modal) fecharModalAdmin(modal);
+    });
+  });
+
   document.getElementById("admin-empresa-gerenciada")?.addEventListener("change", async (event) => {
     adminEmpresaFiltro = event.target.value;
     await Promise.all([renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
@@ -3795,6 +3838,7 @@ async function iniciarAdminMaster() {
       event.target.reset();
       document.getElementById("empresa-logo").value = "";
       mensagem.textContent = "Empresa salva com sucesso.";
+      fecharModalAdmin(modalEmpresa);
       await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), preencherSelectEmpresasAdmin()]);
     } catch (erro) {
       mensagem.textContent = erro.message;
@@ -3817,6 +3861,7 @@ async function iniciarAdminMaster() {
       });
       event.target.reset();
       mensagem.textContent = "Usuario salvo com sucesso.";
+      fecharModalAdmin(modalUsuario);
       await Promise.all([renderizarAdminResumo(), renderizarAdminUsuarios()]);
     } catch (erro) {
       mensagem.textContent = erro.message;
