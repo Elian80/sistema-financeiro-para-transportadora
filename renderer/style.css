@@ -1442,28 +1442,38 @@ body.sidebar-collapsed .nav-btn.active {
 
 .payroll-options-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 6px 10px;
+  grid-template-columns: repeat(auto-fit, minmax(185px, max-content));
+  justify-content: start;
+  align-items: start;
+  gap: 8px 24px;
 }
 
 .payroll-options-grid label {
-  min-height: 30px;
-  display: flex;
+  min-height: 22px;
+  width: max-content;
+  display: grid !important;
+  grid-template-columns: 14px auto;
   align-items: center;
-  gap: 7px;
-  padding: 4px 6px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.035);
+  justify-content: start;
+  column-gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
   font-size: 13px;
   font-weight: 600;
 }
 
 .payroll-options-grid input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  margin: 0;
+  width: 14px !important;
+  min-width: 14px !important;
+  max-width: 14px !important;
+  height: 14px !important;
+  min-height: 14px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  justify-self: start;
   flex: 0 0 14px;
   accent-color: var(--blue-2);
 }
@@ -1471,7 +1481,8 @@ body.sidebar-collapsed .nav-btn.active {
 .payroll-options-grid span {
   line-height: 1.25;
   display: block;
-  padding-top: 1px;
+  padding: 0;
+  white-space: nowrap;
 }
 
 @media (max-width: 760px) {
