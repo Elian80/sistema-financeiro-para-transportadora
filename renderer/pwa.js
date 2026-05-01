@@ -5,10 +5,15 @@
 
   let installPromptEvent = null;
   const installBtn = document.getElementById("install-pwa-btn");
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone;
 
   function mostrarBotaoInstalar() {
     if (!installBtn) return;
     installBtn.hidden = false;
+    if (isIos && !installPromptEvent) {
+      installBtn.textContent = "Adicionar a tela inicial";
+    }
   }
 
   function ocultarBotaoInstalar() {
@@ -29,7 +34,7 @@
 
   installBtn?.addEventListener("click", async () => {
     if (!installPromptEvent) {
-      alert("Se o botao de instalacao do navegador nao aparecer, use o menu do navegador e escolha 'Adicionar a tela inicial'. Para instalacao completa, acesse o sistema por HTTPS.");
+      alert("No Android/Chrome, use o menu do navegador e escolha 'Instalar app' ou 'Adicionar a tela inicial'. No iPhone/Safari, toque em Compartilhar e depois em 'Adicionar a Tela de Inicio'. Acesse sempre pelo link HTTPS.");
       return;
     }
 
@@ -40,6 +45,9 @@
   });
 
   window.addEventListener("load", () => {
+    if (isIos && !isStandalone) {
+      mostrarBotaoInstalar();
+    }
     navigator.serviceWorker.register("/sw.js").then((registration) => {
       registration.update();
     }).catch(() => {
