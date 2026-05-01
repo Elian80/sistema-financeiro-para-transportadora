@@ -10,7 +10,7 @@ $TunnelLog = Join-Path $AppDir "cloudflare_tunnel.log"
 $TunnelErrorLog = Join-Path $AppDir "cloudflare_tunnel_error.log"
 $PublicLinkFile = Join-Path $AppDir "LINK_PUBLICO_CELULAR.txt"
 $PublicShortcutFile = Join-Path $AppDir "ABRIR_LINK_PUBLICO.url"
-$PublicLauncherFile = Join-Path $AppDir "ABRIR_LINK_PUBLICO.html"
+$LegacyPublicLauncherFile = Join-Path $AppDir "ABRIR_LINK_PUBLICO.html"
 $PublicUrl = $null
 $TunnelProcess = $null
 
@@ -64,6 +64,26 @@ function Wait-PublicUrl {
   return $null
 }
 
+function Wait-UrlReady {
+  param([string]$Url)
+
+  $deadline = (Get-Date).AddSeconds(18)
+  do {
+    try {
+      $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
+      if ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500) {
+        return $true
+      }
+    } catch {
+      Start-Sleep -Seconds 1
+      continue
+    }
+    Start-Sleep -Seconds 1
+  } while ((Get-Date) -lt $deadline)
+
+  return $false
+}
+
 function Save-TestUrl {
   param([string]$Url)
 
@@ -73,79 +93,6 @@ URL=$Url
 "@
   Set-Content -Path $PublicShortcutFile -Value $shortcutContent -Encoding ASCII
   Set-Content -Path $PublicLinkFile -Value $Url -Encoding UTF8
-
-  $encodedUrl = [System.Net.WebUtility]::HtmlEncode($Url)
-  $launcherContent = @"
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Abrir sistema financeiro</title>
-  <meta http-equiv="refresh" content="2;url=$encodedUrl">
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #071527;
-      --panel: #0d2036;
-      --line: #1f5d7a;
-      --text: #f6fbff;
-      --muted: #b8c8d8;
-      --accent: #0f6f95;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 28px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Arial, sans-serif;
-    }
-    main {
-      width: min(760px, 100%);
-      padding: 28px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--panel);
-      box-shadow: 0 20px 50px rgba(0,0,0,.28);
-    }
-    h1 { margin: 0 0 12px; font-size: 24px; }
-    p { color: var(--muted); line-height: 1.5; }
-    a.button {
-      display: inline-block;
-      margin: 12px 0 18px;
-      padding: 12px 18px;
-      border-radius: 8px;
-      color: white;
-      background: var(--accent);
-      text-decoration: none;
-      font-weight: 700;
-    }
-    code {
-      display: block;
-      padding: 12px;
-      border-radius: 8px;
-      overflow-wrap: anywhere;
-      background: #06101d;
-      color: #d9f7ff;
-      border: 1px solid rgba(255,255,255,.08);
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Link publico do sistema</h1>
-    <p>O navegador vai tentar abrir automaticamente. Se nao abrir, clique no botao abaixo ou copie o link para o celular.</p>
-    <a class="button" href="$encodedUrl">Abrir sistema</a>
-    <code>$encodedUrl</code>
-  </main>
-</body>
-</html>
-"@
-  Set-Content -Path $PublicLauncherFile -Value $launcherContent -Encoding UTF8
 }
 
 function Open-TestUrl {
@@ -168,24 +115,24 @@ function Open-TestUrl {
 
   foreach ($ChromePath in $ChromePaths) {
     if ($ChromePath -and (Test-Path $ChromePath)) {
-      Start-Process -FilePath $ChromePath -ArgumentList @("--new-window", $PublicLauncherFile)
+      Start-Process -FilePath $ChromePath -ArgumentList @("--new-window", $Url)
       return
     }
   }
 
   $ChromeCommand = Get-Command chrome.exe -ErrorAction SilentlyContinue
   if ($ChromeCommand) {
-    Start-Process -FilePath $ChromeCommand.Source -ArgumentList @("--new-window", $PublicLauncherFile)
+    Start-Process -FilePath $ChromeCommand.Source -ArgumentList @("--new-window", $Url)
     return
   }
 
-  $EdgePath = "$env:ProgramFiles (x86)\Microsoft\Edge\Application\msedge.exe"
+  $EdgePath = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
   if (Test-Path $EdgePath) {
-    Start-Process -FilePath $EdgePath -ArgumentList @("--new-window", $PublicLauncherFile)
+    Start-Process -FilePath $EdgePath -ArgumentList @("--new-window", $Url)
     return
   }
 
-  Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", "start", '""', $PublicLauncherFile) -WindowStyle Hidden
+  Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", "start", '""', $Url) -WindowStyle Hidden
 }
 
 Set-Location $AppDir
@@ -270,6 +217,7 @@ Write-Step "[6/6] Gerando link HTTPS..."
 Get-Process cloudflared -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Remove-Item $TunnelLog -Force -ErrorAction SilentlyContinue
 Remove-Item $TunnelErrorLog -Force -ErrorAction SilentlyContinue
+Remove-Item $LegacyPublicLauncherFile -Force -ErrorAction SilentlyContinue
 
 $TunnelProcess = Start-Process -FilePath $CloudflaredPath -ArgumentList @(
   "tunnel",
@@ -294,9 +242,11 @@ if ($PublicUrl) {
   Write-Host "Tambem salvei o link nestes arquivos:" -ForegroundColor Green
   Write-Host " $PublicLinkFile" -ForegroundColor White
   Write-Host " $PublicShortcutFile" -ForegroundColor White
-  Write-Host " $PublicLauncherFile" -ForegroundColor White
   Write-Host ""
-  Write-Host "Se o navegador do computador demorar por DNS local, teste direto no celular em outra rede ou dados moveis." -ForegroundColor Yellow
+  Write-Host "Aguardando o link publico responder antes de abrir..." -ForegroundColor DarkGray
+  if (-not (Wait-UrlReady -Url $FinalUrl)) {
+    Write-Host "O link foi gerado, mas ainda pode levar alguns segundos para responder." -ForegroundColor Yellow
+  }
   Open-TestUrl -Url $FinalUrl
 } else {
   $FinalUrl = $AppPageUrl
