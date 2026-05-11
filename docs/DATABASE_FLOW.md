@@ -12,7 +12,7 @@ O projeto suporta duas formas de banco:
 Exemplo PostgreSQL:
 
 ```env
-DATABASE_URL=postgresql+psycopg://financeiro_user:SENHA_FORTE@localhost:5432/financeiro
+DATABASE_URL=postgresql+psycopg://admim:1234@localhost:5432/financeiro
 ```
 
 ## Tabelas Preparadas

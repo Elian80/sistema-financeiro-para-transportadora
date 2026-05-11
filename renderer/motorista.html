@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0B0F1A" />
+  <title>Motorista - Rastreamento</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="motorista.css" />
+</head>
+<body>
+  <main class="driver-shell">
+    <section class="driver-card">
+      <div class="brand-row">
+        <div class="brand-mark">F</div>
+        <div>
+          <h1>Motorista</h1>
+          <p>Compartilhamento de localizacao</p>
+        </div>
+      </div>
+
+      <form id="driver-login-form" class="driver-form">
+        <label for="driver-user">Usuario</label>
+        <input id="driver-user" autocomplete="username" value="teste" required />
+
+        <label for="driver-password">Senha</label>
+        <input id="driver-password" type="password" autocomplete="current-password" value="teste" required />
+
+        <button type="submit" id="driver-login-btn">Entrar</button>
+      </form>
+
+      <section id="driver-tracking" class="tracking-panel" hidden>
+        <div class="driver-status-card">
+          <span>Motorista conectado</span>
+          <strong id="driver-name">-</strong>
+        </div>
+
+        <button type="button" id="driver-start-btn">Iniciar localizacao</button>
+        <button type="button" id="driver-stop-btn" class="secondary" hidden>Parar compartilhamento</button>
+
+        <div class="signal-grid">
+          <div>
+            <span>Latitude</span>
+            <strong id="driver-lat">-</strong>
+          </div>
+          <div>
+            <span>Longitude</span>
+            <strong id="driver-lng">-</strong>
+          </div>
+          <div>
+            <span>Velocidade</span>
+            <strong id="driver-speed">0 km/h</strong>
+          </div>
+          <div>
+            <span>Precisao</span>
+            <strong id="driver-accuracy">-</strong>
+          </div>
+        </div>
+      </section>
+
+      <p id="driver-message" class="driver-message"></p>
+    </section>
+  </main>
+
+  <script src="motorista.js?v=2"></script>
+</body>
+</html>

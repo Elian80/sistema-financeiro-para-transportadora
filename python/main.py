@@ -4,6 +4,7 @@ from datetime import date, datetime
 from contextvars import ContextVar
 import io
 import json
+import math
 import unicodedata
 import zipfile
 from xml.sax.saxutils import escape
@@ -17,7 +18,19 @@ from backend.admin_routes import router as admin_router
 from backend.auth import router as auth_router
 from backend.database import Base, SessionLocal, engine, garantir_colunas_runtime
 from backend.dependencies import usuario_pode_escrever
-from backend.models import Usuario
+from backend.models import (
+    Ativo,
+    ContaReceber,
+    EstoqueMovimentacao,
+    EstoqueProduto,
+    Lancamento,
+    Motorista,
+    Passivo,
+    PlanoConta,
+    Usuario,
+    Veiculo,
+)
+from contextlib import contextmanager
 from backend.security import decodificar_token
 from backend.settings import settings
 
@@ -56,6 +69,7 @@ ROTAS_PROTEGIDAS = (
     "/relatorios",
     "/veiculos",
     "/motoristas",
+    "/localizacoes-motoristas",
     "/folha-pagamento",
 )
 
@@ -110,8 +124,8 @@ async def aplicar_seguranca(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com"
+    response.headers["Permissions-Policy"] = "geolocation=(self), microphone=(), camera=()"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; style-src 'self' 'unsafe-inline' https://unpkg.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com"
     return response
 
 
@@ -129,36 +143,78 @@ EMPRESA_ATUAL_ID: ContextVar[int | None] = ContextVar("empresa_atual_id", defaul
 # =========================================================
 # CAMINHOS DOS ARQUIVOS
 # =========================================================
-# Define a pasta "data" e garante que ela exista.
 DATA_DIR = Path(__file__).parent / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 FRONTEND_DIR = Path(__file__).parent.parent / "renderer"
 
-# Arquivos JSON usados como armazenamento local.
-ARQUIVO_LANCAMENTOS = DATA_DIR / "lancamentos.json"
-ARQUIVO_VEICULOS = DATA_DIR / "veiculos.json"
-ARQUIVO_MOTORISTAS = DATA_DIR / "motoristas.json"
-ARQUIVO_PLANO_CONTAS = DATA_DIR / "plano_contas.json"
-ARQUIVO_CONTAS_RECEBER = DATA_DIR / "contas_receber.json"
-ARQUIVO_CONTAS_PAGAR = DATA_DIR / "contas_pagar.json"
-ARQUIVO_ATIVOS = DATA_DIR / "ativos.json"
-ARQUIVO_PASSIVOS = DATA_DIR / "passivos.json"
-ARQUIVO_ESTOQUE_PRODUTOS = DATA_DIR / "estoque_produtos.json"
-ARQUIVO_ESTOQUE_MOVIMENTACOES = DATA_DIR / "estoque_movimentacoes.json"
+# Apenas localizacoes e folha permanecem em JSON.
 ARQUIVO_FOLHA_PAGAMENTO = DATA_DIR / "folha_pagamento.json"
-ARQUIVOS_MULTIEMPRESA = {
-    ARQUIVO_LANCAMENTOS.name,
-    ARQUIVO_VEICULOS.name,
-    ARQUIVO_MOTORISTAS.name,
-    ARQUIVO_PLANO_CONTAS.name,
-    ARQUIVO_CONTAS_RECEBER.name,
-    ARQUIVO_CONTAS_PAGAR.name,
-    ARQUIVO_ATIVOS.name,
-    ARQUIVO_PASSIVOS.name,
-    ARQUIVO_ESTOQUE_PRODUTOS.name,
-    ARQUIVO_ESTOQUE_MOVIMENTACOES.name,
-    ARQUIVO_FOLHA_PAGAMENTO.name,
-}
+ARQUIVO_LOCALIZACOES_MOTORISTAS = DATA_DIR / "localizacoes_motoristas.json"
+
+
+# =========================================================
+# HELPERS SQLALCHEMY
+# =========================================================
+
+@contextmanager
+def sessao_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def obter_empresa() -> int:
+    return EMPRESA_ATUAL_ID.get()
+
+
+# =========================================================
+# HELPERS JSON (apenas para localizacoes e folha)
+# =========================================================
+
+def _caminho_empresa(caminho: Path) -> Path:
+    empresa_id = EMPRESA_ATUAL_ID.get()
+    if not empresa_id or empresa_id == 1:
+        return caminho
+    pasta = DATA_DIR / "empresas" / str(empresa_id)
+    pasta.mkdir(parents=True, exist_ok=True)
+    return pasta / caminho.name
+
+
+def ler_json_loc(caminho: Path) -> list:
+    caminho = _caminho_empresa(caminho)
+    if not caminho.exists():
+        return []
+    try:
+        dados = json.loads(caminho.read_text(encoding="utf-8"))
+        return dados if isinstance(dados, list) else []
+    except Exception:
+        return []
+
+
+def salvar_json_loc(caminho: Path, dados: list) -> None:
+    caminho = _caminho_empresa(caminho)
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def ler_json_folha() -> list:
+    return ler_json_loc(ARQUIVO_FOLHA_PAGAMENTO)
+
+
+def salvar_json_folha(dados: list) -> None:
+    salvar_json_loc(ARQUIVO_FOLHA_PAGAMENTO, dados)
+
+
+def proximo_id_lista(lista: list) -> int:
+    if not lista:
+        return 1
+    return max(item.get("id", 0) for item in lista) + 1
+
+
+def buscar_id_lista(lista: list, item_id: int):
+    return next((x for x in lista if x.get("id") == item_id), None)
 
 # =========================================================
 # CLASSIFICACOES
@@ -339,6 +395,18 @@ class ContaReceberIn(BaseModel):
         return valor
 
 
+class ContaReceberStatusIn(BaseModel):
+    status_pagamento: str
+
+    @field_validator("status_pagamento")
+    @classmethod
+    def validar_status_pagamento(cls, value: str) -> str:
+        status = value.strip().lower() or "pendente"
+        if status not in {"pendente", "recebido"}:
+            raise ValueError("Status de pagamento invalido.")
+        return status
+
+
 class VeiculoIn(BaseModel):
     nome: str = Field(..., min_length=1)
     marca: str = ""
@@ -429,6 +497,34 @@ class MotoristaIn(BaseModel):
         if valor < 0:
             raise ValueError("Valores do motorista nao podem ser negativos.")
         return valor
+
+
+class LocalizacaoMotoristaIn(BaseModel):
+    motorista_id: int
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+    velocidade: float = 0
+    direcao: float = 0
+    precisao: float = 0
+    bateria: Optional[float] = None
+
+    @field_validator("velocidade", "direcao", "precisao", "bateria", mode="before")
+    @classmethod
+    def validar_numero_localizacao(cls, value: float) -> float:
+        valor = normalizar_numero_decimal(value)
+        return max(valor, 0)
+
+
+class MotoristaMobileLoginIn(BaseModel):
+    usuario: str
+    senha: str
+    empresa_id: Optional[int] = None
+    motorista_id: Optional[int] = None
+
+
+class LocalizacaoMotoristaMobileIn(LocalizacaoMotoristaIn):
+    token: str
+    empresa_id: Optional[int] = None
 
 
 class FolhaPagamentoItemIn(BaseModel):
@@ -618,86 +714,186 @@ class MovimentacaoEstoqueIn(BaseModel):
 
 
 # =========================================================
-# FUNCOES AUXILIARES DE ARQUIVO
+# CONVERSORES: modelo SQLAlchemy -> dict (formato frontend)
 # =========================================================
 
-def garantir_arquivo_json(caminho: Path) -> None:
-    """
-    Garante que o arquivo exista.
-    Se nao existir, cria com lista vazia.
-    """
-    if not caminho.exists():
-        with open(caminho, "w", encoding="utf-8") as arquivo:
-            json.dump([], arquivo, ensure_ascii=False, indent=2)
+def veiculo_para_dict(v: Veiculo) -> dict:
+    return {
+        "id": v.id,
+        "nome": v.nome,
+        "marca": v.marca,
+        "modelo": v.modelo,
+        "ano": v.ano,
+        "placa": v.placa,
+        "tipo": v.tipo,
+        "status": v.status,
+        "observacao": v.observacao,
+        "foto": v.foto,
+    }
 
 
-def caminho_json_empresa(caminho: Path) -> Path:
-    empresa_id = EMPRESA_ATUAL_ID.get()
-    if not empresa_id or empresa_id == 1 or caminho.name not in ARQUIVOS_MULTIEMPRESA:
-        return caminho
-    pasta_empresa = DATA_DIR / "empresas" / str(empresa_id)
-    pasta_empresa.mkdir(parents=True, exist_ok=True)
-    return pasta_empresa / caminho.name
+def motorista_para_dict(m: Motorista) -> dict:
+    ex = json.loads(m.dados or "{}")
+    return {
+        "id": m.id,
+        "nome": m.nome,
+        "telefone": m.telefone,
+        "cnh": m.cnh,
+        "cargo": m.cargo,
+        "admissao": str(m.admissao) if m.admissao else "",
+        "lotacao": ex.get("lotacao", ""),
+        "pis": ex.get("pis", ""),
+        "banco": ex.get("banco", ""),
+        "agencia": ex.get("agencia", ""),
+        "conta": ex.get("conta", ""),
+        "tipo_conta": ex.get("tipo_conta", ""),
+        "empregador": ex.get("empregador", ""),
+        "empregador_cnpj": ex.get("empregador_cnpj", ""),
+        "salario_base": float(ex.get("salario_base", 0)),
+        "carga_horaria_mensal": float(ex.get("carga_horaria_mensal", 220)),
+        "valor_hora_extra": float(ex.get("valor_hora_extra", 0)),
+        "inss_percentual": float(ex.get("inss_percentual", 0)),
+        "irrf_percentual": float(ex.get("irrf_percentual", 0)),
+        "vale_refeicao": float(ex.get("vale_refeicao", 0)),
+        "convenio_medico": float(ex.get("convenio_medico", 0)),
+        "outros_descontos_padrao": float(ex.get("outros_descontos_padrao", 0)),
+    }
 
 
-def ler_json(caminho: Path):
-    """
-    Le um JSON com seguranca.
-    Se o arquivo estiver corrompido, mostra erro claro em vez de ocultar os dados.
-    """
-    caminho = caminho_json_empresa(caminho)
-    garantir_arquivo_json(caminho)
-
-    try:
-        with open(caminho, "r", encoding="utf-8") as arquivo:
-            dados = json.load(arquivo)
-
-        # Garante que sempre seja uma lista.
-        if not isinstance(dados, list):
-            raise HTTPException(status_code=500, detail=f"Arquivo de dados invalido: {caminho.name}")
-
-        return dados
-
-    except json.JSONDecodeError as erro:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Arquivo de dados corrompido: {caminho.name}. Corrija o JSON antes de continuar."
-        ) from erro
-    except OSError as erro:
-        raise HTTPException(status_code=500, detail=f"Nao foi possivel ler {caminho.name}.") from erro
+def lancamento_para_dict(l: Lancamento) -> dict:
+    ex = json.loads(l.dados or "{}")
+    criado = str(l.created_at) if l.created_at else agora_iso()
+    classificacao = l.classificacao or ""
+    return {
+        "id": l.id,
+        "data": str(l.data) if l.data else "",
+        "classificacao": classificacao,
+        "descricao": l.descricao,
+        "valor": float(l.valor or 0),
+        "veiculo_id": ex.get("veiculo_id"),
+        "empresa_id": ex.get("empresa_id"),
+        "obra_servico": ex.get("obra_servico", ""),
+        "tipo_financeiro": l.tipo_financeiro or inferir_tipo_financeiro(classificacao),
+        "created_at": criado,
+        "updated_at": str(l.updated_at) if l.updated_at else criado,
+        "kilometragem": ex.get("kilometragem"),
+        "litros": ex.get("litros"),
+        "numero_nf": ex.get("numero_nf", ""),
+        "data_nf": ex.get("data_nf", ""),
+    }
 
 
-def salvar_json(caminho: Path, dados) -> None:
-    """
-    Salva lista no arquivo JSON.
-    """
-    caminho = caminho_json_empresa(caminho)
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    with open(caminho, "w", encoding="utf-8") as arquivo:
-        json.dump(dados, arquivo, ensure_ascii=False, indent=2)
+def conta_receber_para_dict(c: ContaReceber) -> dict:
+    ex = json.loads(c.dados or "{}")
+    conta = {
+        "id": c.id,
+        "data_inicio": str(c.data_inicio) if c.data_inicio else "",
+        "contrato": c.contrato,
+        "cte_ticket": ex.get("cte_ticket", ""),
+        "valor": float(c.valor or 0),
+        "valor_hora_unitario": float(ex.get("valor_hora_unitario", 0)),
+        "quantidade_horas": float(ex.get("quantidade_horas", 0)),
+        "carga": ex.get("carga", ""),
+        "ton_qnt": ex.get("ton_qnt", ""),
+        "tomador": ex.get("tomador", ""),
+        "origem_destino": ex.get("origem_destino", ""),
+        "bonificacao": float(ex.get("bonificacao", 0)),
+        "veiculo_id": ex.get("veiculo_id"),
+        "descontos": float(ex.get("descontos", 0)),
+        "desconto_classificacao": ex.get("desconto_classificacao", ""),
+        "status_pagamento": (c.status_pagamento or "pendente").lower(),
+        "data_recebimento": ex.get("data_recebimento", ""),
+    }
+    conta["valor_total_receber"] = calcular_total_conta_receber(conta)
+    return conta
 
 
-def proximo_id(lista) -> int:
-    """
-    Gera o proximo ID baseado no maior ID atual.
-    """
-    if not lista:
-        return 1
-    return max(item.get("id", 0) for item in lista) + 1
+def ativo_para_dict(a: Ativo) -> dict:
+    ex = json.loads(a.dados or "{}")
+    criado = str(a.created_at) if a.created_at else agora_iso()
+    return {
+        "id": a.id,
+        "nome": a.nome,
+        "tipo": ex.get("tipo", "Outro"),
+        "valor": float(a.valor or 0),
+        "data_aquisicao": ex.get("data_aquisicao", ""),
+        "veiculo_id": ex.get("veiculo_id"),
+        "observacao": ex.get("observacao", ""),
+        "status": ex.get("status", "Ativo"),
+        "created_at": criado,
+        "updated_at": str(a.updated_at) if a.updated_at else criado,
+    }
 
 
-def buscar_por_id(lista, item_id: int):
-    """
-    Procura um item pelo ID.
-    """
-    for item in lista:
-        if item.get("id") == item_id:
-            return item
-    return None
+def passivo_para_dict(p: Passivo) -> dict:
+    ex = json.loads(p.dados or "{}")
+    criado = str(p.created_at) if p.created_at else agora_iso()
+    valor_total = float(ex.get("valor_total", p.valor or 0))
+    valor_pago = float(ex.get("valor_pago", 0))
+    return {
+        "id": p.id,
+        "nome": p.nome,
+        "tipo": ex.get("tipo", "Outro"),
+        "valor_total": valor_total,
+        "valor_pago": valor_pago,
+        "saldo_devedor": max(valor_total - valor_pago, 0),
+        "data_inicio": ex.get("data_inicio", ""),
+        "data_vencimento": ex.get("data_vencimento", ""),
+        "observacao": ex.get("observacao", ""),
+        "status": ex.get("status", "Pendente"),
+        "created_at": criado,
+        "updated_at": str(p.updated_at) if p.updated_at else criado,
+    }
+
+
+def produto_estoque_para_dict(ep: EstoqueProduto) -> dict:
+    ex = json.loads(ep.dados or "{}")
+    criado = str(ep.created_at) if ep.created_at else agora_iso()
+    quantidade = float(ep.quantidade or 0)
+    valor_custo = float(ex.get("valor_custo", 0))
+    estoque_minimo = float(ex.get("estoque_minimo", 0))
+    return {
+        "id": ep.id,
+        "nome": ep.nome,
+        "categoria": ep.categoria,
+        "unidade_medida": ex.get("unidade_medida", "un"),
+        "quantidade_atual": quantidade,
+        "valor_custo": valor_custo,
+        "estoque_minimo": estoque_minimo,
+        "observacao": ex.get("observacao", ""),
+        "valor_total_estoque": quantidade * valor_custo,
+        "estoque_baixo": quantidade <= estoque_minimo,
+        "created_at": criado,
+        "updated_at": str(ep.updated_at) if ep.updated_at else criado,
+    }
+
+
+def movimentacao_para_dict(em: EstoqueMovimentacao) -> dict:
+    ex = json.loads(em.dados or "{}")
+    return {
+        "id": em.id,
+        "produto_id": em.produto_id,
+        "tipo_movimentacao": em.tipo,
+        "quantidade": float(em.quantidade or 0),
+        "valor_unitario": float(ex.get("valor_unitario", 0)),
+        "data": ex.get("data", ""),
+        "observacao": ex.get("observacao", ""),
+        "created_at": str(em.created_at) if em.created_at else agora_iso(),
+    }
 
 
 def agora_iso() -> str:
     return datetime.now().replace(microsecond=0).isoformat()
+
+
+def minutos_desde_iso(valor: str) -> float:
+    if not valor:
+        return 999999
+    try:
+        data = datetime.fromisoformat(str(valor))
+        return max((datetime.now() - data).total_seconds() / 60, 0)
+    except ValueError:
+        return 999999
 
 
 def normalizar_numero_decimal(valor) -> float:
@@ -856,14 +1052,13 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
 
 
 def listar_classificacoes_ativas():
-    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
+    empresa_id = EMPRESA_ATUAL_ID.get()
     nomes = list(CLASSIFICACOES)
-
-    for item in plano_contas:
-        nome = item.get("nome", "").strip()
-        if nome and nome not in nomes:
-            nomes.append(nome)
-
+    with sessao_db() as db:
+        registros = db.query(PlanoConta).filter(PlanoConta.empresa_id == empresa_id).all()
+        for r in registros:
+            if r.nome and r.nome not in nomes:
+                nomes.append(r.nome)
     return nomes
 
 
@@ -1006,81 +1201,73 @@ def listar_classificacoes():
 
 @app.get("/plano-contas")
 def listar_plano_contas():
-    """
-    Lista classificacoes cadastradas no plano de contas.
-    """
-    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
-    plano_contas.sort(key=lambda x: x.get("nome", "").lower())
-    return plano_contas
+    empresa_id = obter_empresa()
+    with sessao_db() as db:
+        registros = db.query(PlanoConta).filter(PlanoConta.empresa_id == empresa_id).order_by(PlanoConta.nome).all()
+        return [{"id": r.id, "nome": r.nome} for r in registros]
 
 
 @app.get("/plano-contas/estrutura")
 def listar_estrutura_plano_contas():
-    """
-    Retorna o plano base agrupado e as classificacoes personalizadas.
-    """
-    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
-    plano_contas.sort(key=lambda x: x.get("nome", "").lower())
     return {
         "grupos": PLANO_CONTAS_BASE,
-        "personalizadas": plano_contas,
+        "personalizadas": listar_plano_contas(),
     }
 
 
 @app.post("/plano-contas")
 def criar_plano_conta(dados: PlanoContaIn):
-    """
-    Cria uma nova classificacao no plano de contas.
-    """
-    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
-
-    if any(item.get("nome", "").lower() == dados.nome.lower() for item in plano_contas):
-        raise HTTPException(status_code=400, detail="Classificacao ja cadastrada.")
-
-    if any(item.lower() == dados.nome.lower() for item in CLASSIFICACOES):
+    empresa_id = obter_empresa()
+    if any(n.lower() == dados.nome.lower() for n in CLASSIFICACOES):
         raise HTTPException(status_code=400, detail="Esta classificacao ja existe na lista base.")
-
-    novo_item = {"id": proximo_id(plano_contas), "nome": dados.nome}
-    plano_contas.append(novo_item)
-    salvar_json(ARQUIVO_PLANO_CONTAS, plano_contas)
-    return novo_item
+    with sessao_db() as db:
+        existente = db.query(PlanoConta).filter(
+            PlanoConta.empresa_id == empresa_id,
+            PlanoConta.nome.ilike(dados.nome),
+        ).first()
+        if existente:
+            raise HTTPException(status_code=400, detail="Classificacao ja cadastrada.")
+        novo = PlanoConta(empresa_id=empresa_id, nome=dados.nome)
+        db.add(novo)
+        db.commit()
+        db.refresh(novo)
+        return {"id": novo.id, "nome": novo.nome}
 
 
 @app.put("/plano-contas/{plano_conta_id}")
 def atualizar_plano_conta(plano_conta_id: int, dados: PlanoContaIn):
-    """
-    Atualiza uma classificacao do plano de contas.
-    """
-    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
-    item = buscar_por_id(plano_contas, plano_conta_id)
-
-    if not item:
-        raise HTTPException(status_code=404, detail="Classificacao nao encontrada.")
-
-    if any(registro.get("id") != plano_conta_id and registro.get("nome", "").lower() == dados.nome.lower() for registro in plano_contas):
-        raise HTTPException(status_code=400, detail="Classificacao ja cadastrada.")
-
-    if any(nome.lower() == dados.nome.lower() for nome in CLASSIFICACOES):
+    empresa_id = obter_empresa()
+    if any(n.lower() == dados.nome.lower() for n in CLASSIFICACOES):
         raise HTTPException(status_code=400, detail="Esta classificacao ja existe na lista base.")
-
-    item["nome"] = dados.nome
-    salvar_json(ARQUIVO_PLANO_CONTAS, plano_contas)
-    return item
+    with sessao_db() as db:
+        registro = db.query(PlanoConta).filter(
+            PlanoConta.empresa_id == empresa_id, PlanoConta.id == plano_conta_id
+        ).first()
+        if not registro:
+            raise HTTPException(status_code=404, detail="Classificacao nao encontrada.")
+        duplicado = db.query(PlanoConta).filter(
+            PlanoConta.empresa_id == empresa_id,
+            PlanoConta.id != plano_conta_id,
+            PlanoConta.nome.ilike(dados.nome),
+        ).first()
+        if duplicado:
+            raise HTTPException(status_code=400, detail="Classificacao ja cadastrada.")
+        registro.nome = dados.nome
+        db.commit()
+        return {"id": registro.id, "nome": registro.nome}
 
 
 @app.delete("/plano-contas/{plano_conta_id}")
 def excluir_plano_conta(plano_conta_id: int):
-    """
-    Exclui uma classificacao cadastrada no plano de contas.
-    """
-    plano_contas = ler_json(ARQUIVO_PLANO_CONTAS)
-    item = buscar_por_id(plano_contas, plano_conta_id)
-
-    if not item:
-        raise HTTPException(status_code=404, detail="Classificacao nao encontrada.")
-
-    plano_contas = [registro for registro in plano_contas if registro.get("id") != plano_conta_id]
-    salvar_json(ARQUIVO_PLANO_CONTAS, plano_contas)
+    empresa_id = obter_empresa()
+    with sessao_db() as db:
+        registro = db.query(PlanoConta).filter(
+            PlanoConta.empresa_id == empresa_id, PlanoConta.id == plano_conta_id
+        ).first()
+        if not registro:
+            raise HTTPException(status_code=404, detail="Classificacao nao encontrada.")
+        db.delete(registro)
+        db.commit()
     return {"mensagem": "Classificacao excluida com sucesso."}
 
 
@@ -1098,145 +1285,96 @@ def listar_lancamentos(
     empresa_id: Optional[int] = None,
     obra_servico: Optional[str] = None,
 ):
-    """
-    Lista lancamentos com filtros opcionais.
-    """
-    lancamentos = [normalizar_lancamento_antigo(item) for item in ler_json(ARQUIVO_LANCAMENTOS)]
-
-    if classificacao:
-        lancamentos = [
-            item for item in lancamentos
-            if item.get("classificacao") == classificacao
-        ]
-
-    if data_inicial:
-        data_inicial_str = str(data_inicial)
-        lancamentos = [
-            item for item in lancamentos
-            if item.get("data", "") >= data_inicial_str
-        ]
-
-    if data_final:
-        data_final_str = str(data_final)
-        lancamentos = [
-            item for item in lancamentos
-            if item.get("data", "") <= data_final_str
-        ]
-
-    if descricao:
-        descricao_lower = descricao.strip().lower()
-        lancamentos = [
-            item for item in lancamentos
-            if descricao_lower in item.get("descricao", "").lower()
-        ]
-
+    eid = obter_empresa()
+    with sessao_db() as db:
+        q = db.query(Lancamento).filter(Lancamento.empresa_id == eid)
+        if classificacao:
+            q = q.filter(Lancamento.classificacao == classificacao)
+        if data_inicial:
+            q = q.filter(Lancamento.data >= data_inicial)
+        if data_final:
+            q = q.filter(Lancamento.data <= data_final)
+        if descricao:
+            q = q.filter(Lancamento.descricao.ilike(f"%{descricao.strip()}%"))
+        result = [lancamento_para_dict(l) for l in q.order_by(Lancamento.data.desc()).all()]
     if veiculo_id:
-        lancamentos = [
-            item for item in lancamentos
-            if item.get("veiculo_id") == veiculo_id
-        ]
-
+        result = [r for r in result if r.get("veiculo_id") == veiculo_id]
     if empresa_id:
-        lancamentos = [
-            item for item in lancamentos
-            if item.get("empresa_id") == empresa_id
-        ]
-
+        result = [r for r in result if r.get("empresa_id") == empresa_id]
     if obra_servico:
-        obra_lower = obra_servico.strip().lower()
-        lancamentos = [
-            item for item in lancamentos
-            if obra_lower in item.get("obra_servico", "").lower()
-        ]
-
-    # Ordena do mais novo para o mais antigo.
-    lancamentos.sort(key=lambda x: x.get("data", ""), reverse=True)
-
-    return lancamentos
+        ob = obra_servico.strip().lower()
+        result = [r for r in result if ob in r.get("obra_servico", "").lower()]
+    return result
 
 
 @app.post("/lancamentos")
 def criar_lancamento(dados: LancamentoIn):
-    """
-    Cria um novo lancamento.
-    """
     if dados.classificacao not in listar_classificacoes_ativas():
         raise HTTPException(status_code=400, detail="Classificacao invalida.")
-
-    lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
-    timestamp = agora_iso()
-
-    novo_lancamento = {
-        "id": proximo_id(lancamentos),
-        "data": str(dados.data),
-        "classificacao": dados.classificacao,
-        "descricao": dados.descricao,
-        "valor": float(dados.valor),
+    eid = obter_empresa()
+    extras = {
         "veiculo_id": dados.veiculo_id,
         "empresa_id": dados.empresa_id,
         "obra_servico": dados.obra_servico,
-        "tipo_financeiro": inferir_tipo_financeiro(dados.classificacao),
-        "created_at": timestamp,
-        "updated_at": timestamp,
         "kilometragem": dados.kilometragem,
         "litros": dados.litros,
         "numero_nf": dados.numero_nf,
         "data_nf": str(dados.data_nf) if dados.data_nf else "",
     }
-
-    lancamentos.append(novo_lancamento)
-    salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
-
-    return novo_lancamento
+    with sessao_db() as db:
+        l = Lancamento(
+            empresa_id=eid,
+            data=dados.data,
+            classificacao=dados.classificacao,
+            descricao=dados.descricao,
+            valor=float(dados.valor),
+            tipo_financeiro=inferir_tipo_financeiro(dados.classificacao),
+            dados=json.dumps(extras, ensure_ascii=False),
+        )
+        db.add(l)
+        db.commit()
+        db.refresh(l)
+        return lancamento_para_dict(l)
 
 
 @app.put("/lancamentos/{lancamento_id}")
 def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
-    """
-    Atualiza um lancamento existente.
-    """
     if dados.classificacao not in listar_classificacoes_ativas():
         raise HTTPException(status_code=400, detail="Classificacao invalida.")
-
-    lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
-    lancamento = buscar_por_id(lancamentos, lancamento_id)
-
-    if not lancamento:
-        raise HTTPException(status_code=404, detail="Lancamento nao encontrado.")
-
-    lancamento["data"] = str(dados.data)
-    lancamento["classificacao"] = dados.classificacao
-    lancamento["descricao"] = dados.descricao
-    lancamento["valor"] = float(dados.valor)
-    lancamento["veiculo_id"] = dados.veiculo_id
-    lancamento["empresa_id"] = dados.empresa_id
-    lancamento["obra_servico"] = dados.obra_servico
-    lancamento["tipo_financeiro"] = inferir_tipo_financeiro(dados.classificacao)
-    lancamento["created_at"] = lancamento.get("created_at") or agora_iso()
-    lancamento["updated_at"] = agora_iso()
-    lancamento["kilometragem"] = dados.kilometragem
-    lancamento["litros"] = dados.litros
-    lancamento["numero_nf"] = dados.numero_nf
-    lancamento["data_nf"] = str(dados.data_nf) if dados.data_nf else ""
-
-    salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
-    return lancamento
+    eid = obter_empresa()
+    with sessao_db() as db:
+        l = db.query(Lancamento).filter(Lancamento.empresa_id == eid, Lancamento.id == lancamento_id).first()
+        if not l:
+            raise HTTPException(status_code=404, detail="Lancamento nao encontrado.")
+        extras = {
+            "veiculo_id": dados.veiculo_id,
+            "empresa_id": dados.empresa_id,
+            "obra_servico": dados.obra_servico,
+            "kilometragem": dados.kilometragem,
+            "litros": dados.litros,
+            "numero_nf": dados.numero_nf,
+            "data_nf": str(dados.data_nf) if dados.data_nf else "",
+        }
+        l.data = dados.data
+        l.classificacao = dados.classificacao
+        l.descricao = dados.descricao
+        l.valor = float(dados.valor)
+        l.tipo_financeiro = inferir_tipo_financeiro(dados.classificacao)
+        l.dados = json.dumps(extras, ensure_ascii=False)
+        db.commit()
+        db.refresh(l)
+        return lancamento_para_dict(l)
 
 
 @app.delete("/lancamentos/{lancamento_id}")
 def excluir_lancamento(lancamento_id: int):
-    """
-    Exclui um lancamento.
-    """
-    lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
-    lancamento = buscar_por_id(lancamentos, lancamento_id)
-
-    if not lancamento:
-        raise HTTPException(status_code=404, detail="Lancamento nao encontrado.")
-
-    lancamentos = [item for item in lancamentos if item.get("id") != lancamento_id]
-    salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
-
+    eid = obter_empresa()
+    with sessao_db() as db:
+        l = db.query(Lancamento).filter(Lancamento.empresa_id == eid, Lancamento.id == lancamento_id).first()
+        if not l:
+            raise HTTPException(status_code=404, detail="Lancamento nao encontrado.")
+        db.delete(l)
+        db.commit()
     return {"mensagem": "Lancamento excluido com sucesso."}
 
 
@@ -1271,31 +1409,21 @@ def listar_contas_receber(
     tomador: Optional[str] = None,
     veiculo_id: Optional[int] = None,
 ):
-    """
-    Lista contas a receber com filtros opcionais.
-    """
-    contas = [normalizar_conta_receber_antiga(item) for item in ler_json(ARQUIVO_CONTAS_RECEBER)]
-
-    if data_inicial:
-        data_inicial_str = str(data_inicial)
-        contas = [item for item in contas if item.get("data_inicio", "") >= data_inicial_str]
-
-    if data_final:
-        data_final_str = str(data_final)
-        contas = [item for item in contas if item.get("data_inicio", "") <= data_final_str]
-
-    if contrato:
-        contrato_lower = contrato.strip().lower()
-        contas = [item for item in contas if contrato_lower in item.get("contrato", "").lower()]
-
+    eid = obter_empresa()
+    with sessao_db() as db:
+        q = db.query(ContaReceber).filter(ContaReceber.empresa_id == eid)
+        if data_inicial:
+            q = q.filter(ContaReceber.data_inicio >= data_inicial)
+        if data_final:
+            q = q.filter(ContaReceber.data_inicio <= data_final)
+        if contrato:
+            q = q.filter(ContaReceber.contrato.ilike(f"%{contrato.strip()}%"))
+        contas = [conta_receber_para_dict(c) for c in q.order_by(ContaReceber.data_inicio.desc()).all()]
     if tomador:
-        tomador_lower = tomador.strip().lower()
-        contas = [item for item in contas if tomador_lower in item.get("tomador", "").lower()]
-
+        tm = tomador.strip().lower()
+        contas = [c for c in contas if tm in c.get("tomador", "").lower()]
     if veiculo_id:
-        contas = [item for item in contas if item.get("veiculo_id") == veiculo_id]
-
-    contas.sort(key=lambda x: x.get("data_inicio", ""), reverse=True)
+        contas = [c for c in contas if c.get("veiculo_id") == veiculo_id]
     return contas
 
 
@@ -1321,23 +1449,14 @@ def listar_horas_maquinas(
 
 @app.post("/contas-receber")
 def criar_conta_receber(dados: ContaReceberIn):
-    """
-    Cria um novo registro de conta a receber.
-    """
     if dados.desconto_classificacao:
         if dados.desconto_classificacao not in listar_classificacoes_ativas():
             raise HTTPException(status_code=400, detail="Classificacao do desconto invalida.")
         if not classificacao_eh_despesa(dados.desconto_classificacao):
             raise HTTPException(status_code=400, detail="Use uma classificacao de despesa para o desconto.")
-
-    contas = ler_json(ARQUIVO_CONTAS_RECEBER)
-
-    nova_conta = {
-        "id": proximo_id(contas),
-        "data_inicio": str(dados.data_inicio),
-        "contrato": dados.contrato,
+    eid = obter_empresa()
+    extras = {
         "cte_ticket": dados.cte_ticket,
-        "valor": calcular_valor_base_conta_receber(dados),
         "valor_hora_unitario": float(dados.valor_hora_unitario or 0),
         "quantidade_horas": float(dados.quantidade_horas or 0),
         "carga": dados.carga,
@@ -1351,65 +1470,82 @@ def criar_conta_receber(dados: ContaReceberIn):
         "status_pagamento": dados.status_pagamento,
         "data_recebimento": str(dados.data_recebimento) if dados.data_recebimento else "",
     }
-    nova_conta["valor_total_receber"] = calcular_total_conta_receber(nova_conta)
-
-    contas.append(nova_conta)
-    salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
-    return nova_conta
+    with sessao_db() as db:
+        c = ContaReceber(
+            empresa_id=eid,
+            data_inicio=dados.data_inicio,
+            contrato=dados.contrato,
+            valor=calcular_valor_base_conta_receber(dados),
+            status_pagamento=dados.status_pagamento,
+            dados=json.dumps(extras, ensure_ascii=False),
+        )
+        db.add(c)
+        db.commit()
+        db.refresh(c)
+        return conta_receber_para_dict(c)
 
 
 @app.put("/contas-receber/{conta_id}")
 def atualizar_conta_receber(conta_id: int, dados: ContaReceberIn):
-    """
-    Atualiza um registro de conta a receber.
-    """
     if dados.desconto_classificacao:
         if dados.desconto_classificacao not in listar_classificacoes_ativas():
             raise HTTPException(status_code=400, detail="Classificacao do desconto invalida.")
         if not classificacao_eh_despesa(dados.desconto_classificacao):
             raise HTTPException(status_code=400, detail="Use uma classificacao de despesa para o desconto.")
+    eid = obter_empresa()
+    with sessao_db() as db:
+        c = db.query(ContaReceber).filter(ContaReceber.empresa_id == eid, ContaReceber.id == conta_id).first()
+        if not c:
+            raise HTTPException(status_code=404, detail="Conta a receber nao encontrada.")
+        extras = {
+            "cte_ticket": dados.cte_ticket,
+            "valor_hora_unitario": float(dados.valor_hora_unitario or 0),
+            "quantidade_horas": float(dados.quantidade_horas or 0),
+            "carga": dados.carga,
+            "ton_qnt": dados.ton_qnt,
+            "tomador": dados.tomador,
+            "origem_destino": dados.origem_destino,
+            "bonificacao": float(dados.bonificacao or 0),
+            "veiculo_id": dados.veiculo_id,
+            "descontos": float(dados.descontos or 0),
+            "desconto_classificacao": dados.desconto_classificacao,
+            "data_recebimento": str(dados.data_recebimento) if dados.data_recebimento else "",
+        }
+        c.data_inicio = dados.data_inicio
+        c.contrato = dados.contrato
+        c.valor = calcular_valor_base_conta_receber(dados)
+        c.status_pagamento = dados.status_pagamento
+        c.dados = json.dumps(extras, ensure_ascii=False)
+        db.commit()
+        db.refresh(c)
+        return conta_receber_para_dict(c)
 
-    contas = ler_json(ARQUIVO_CONTAS_RECEBER)
-    conta = buscar_por_id(contas, conta_id)
 
-    if not conta:
-        raise HTTPException(status_code=404, detail="Conta a receber nao encontrada.")
-
-    conta["data_inicio"] = str(dados.data_inicio)
-    conta["contrato"] = dados.contrato
-    conta["cte_ticket"] = dados.cte_ticket
-    conta["valor"] = calcular_valor_base_conta_receber(dados)
-    conta["valor_hora_unitario"] = float(dados.valor_hora_unitario or 0)
-    conta["quantidade_horas"] = float(dados.quantidade_horas or 0)
-    conta["carga"] = dados.carga
-    conta["ton_qnt"] = dados.ton_qnt
-    conta["tomador"] = dados.tomador
-    conta["origem_destino"] = dados.origem_destino
-    conta["bonificacao"] = float(dados.bonificacao or 0)
-    conta["veiculo_id"] = dados.veiculo_id
-    conta["descontos"] = float(dados.descontos or 0)
-    conta["desconto_classificacao"] = dados.desconto_classificacao
-    conta["status_pagamento"] = dados.status_pagamento
-    conta["data_recebimento"] = str(dados.data_recebimento) if dados.data_recebimento else ""
-    conta["valor_total_receber"] = calcular_total_conta_receber(conta)
-
-    salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
-    return conta
+@app.patch("/contas-receber/{conta_id}/status")
+def alterar_status_conta_receber(conta_id: int, dados: ContaReceberStatusIn):
+    eid = obter_empresa()
+    with sessao_db() as db:
+        c = db.query(ContaReceber).filter(ContaReceber.empresa_id == eid, ContaReceber.id == conta_id).first()
+        if not c:
+            raise HTTPException(status_code=404, detail="Conta a receber nao encontrada.")
+        c.status_pagamento = dados.status_pagamento
+        ex = json.loads(c.dados or "{}")
+        ex["data_recebimento"] = str(date.today()) if dados.status_pagamento == "recebido" else ""
+        c.dados = json.dumps(ex, ensure_ascii=False)
+        db.commit()
+        db.refresh(c)
+        return conta_receber_para_dict(c)
 
 
 @app.delete("/contas-receber/{conta_id}")
 def excluir_conta_receber(conta_id: int):
-    """
-    Exclui uma conta a receber.
-    """
-    contas = ler_json(ARQUIVO_CONTAS_RECEBER)
-    conta = buscar_por_id(contas, conta_id)
-
-    if not conta:
-        raise HTTPException(status_code=404, detail="Conta a receber nao encontrada.")
-
-    contas = [item for item in contas if item.get("id") != conta_id]
-    salvar_json(ARQUIVO_CONTAS_RECEBER, contas)
+    eid = obter_empresa()
+    with sessao_db() as db:
+        c = db.query(ContaReceber).filter(ContaReceber.empresa_id == eid, ContaReceber.id == conta_id).first()
+        if not c:
+            raise HTTPException(status_code=404, detail="Conta a receber nao encontrada.")
+        db.delete(c)
+        db.commit()
     return {"mensagem": "Conta a receber excluida com sucesso."}
 
 
@@ -1419,74 +1555,77 @@ def excluir_conta_receber(conta_id: int):
 
 @app.get("/ativos")
 def listar_ativos():
-    ativos = [normalizar_ativo_antigo(item) for item in ler_json(ARQUIVO_ATIVOS)]
-    ativos.sort(key=lambda x: x.get("nome", "").lower())
-    return ativos
+    eid = obter_empresa()
+    with sessao_db() as db:
+        registros = db.query(Ativo).filter(Ativo.empresa_id == eid).order_by(Ativo.nome).all()
+        return [ativo_para_dict(a) for a in registros]
 
 
 @app.post("/ativos")
 def criar_ativo(dados: AtivoIn):
-    ativos = ler_json(ARQUIVO_ATIVOS)
-    timestamp = agora_iso()
-    ativo = {
-        "id": proximo_id(ativos),
-        "nome": dados.nome,
+    eid = obter_empresa()
+    extras = {
         "tipo": dados.tipo,
-        "valor": float(dados.valor or 0),
         "data_aquisicao": str(dados.data_aquisicao) if dados.data_aquisicao else "",
         "veiculo_id": dados.veiculo_id,
         "observacao": dados.observacao,
         "status": dados.status,
-        "created_at": timestamp,
-        "updated_at": timestamp,
     }
-    ativos.append(ativo)
-    salvar_json(ARQUIVO_ATIVOS, ativos)
-    return normalizar_ativo_antigo(ativo)
+    with sessao_db() as db:
+        a = Ativo(empresa_id=eid, nome=dados.nome, valor=float(dados.valor or 0),
+                  dados=json.dumps(extras, ensure_ascii=False))
+        db.add(a)
+        db.commit()
+        db.refresh(a)
+        return ativo_para_dict(a)
 
 
 @app.put("/ativos/{ativo_id}")
 def atualizar_ativo(ativo_id: int, dados: AtivoIn):
-    ativos = ler_json(ARQUIVO_ATIVOS)
-    ativo = buscar_por_id(ativos, ativo_id)
-    if not ativo:
-        raise HTTPException(status_code=404, detail="Ativo nao encontrado.")
-    ativo["nome"] = dados.nome
-    ativo["tipo"] = dados.tipo
-    ativo["valor"] = float(dados.valor or 0)
-    ativo["data_aquisicao"] = str(dados.data_aquisicao) if dados.data_aquisicao else ""
-    ativo["veiculo_id"] = dados.veiculo_id
-    ativo["observacao"] = dados.observacao
-    ativo["status"] = dados.status
-    ativo["created_at"] = ativo.get("created_at") or agora_iso()
-    ativo["updated_at"] = agora_iso()
-    salvar_json(ARQUIVO_ATIVOS, ativos)
-    return normalizar_ativo_antigo(ativo)
+    eid = obter_empresa()
+    with sessao_db() as db:
+        a = db.query(Ativo).filter(Ativo.empresa_id == eid, Ativo.id == ativo_id).first()
+        if not a:
+            raise HTTPException(status_code=404, detail="Ativo nao encontrado.")
+        extras = {
+            "tipo": dados.tipo,
+            "data_aquisicao": str(dados.data_aquisicao) if dados.data_aquisicao else "",
+            "veiculo_id": dados.veiculo_id,
+            "observacao": dados.observacao,
+            "status": dados.status,
+        }
+        a.nome = dados.nome
+        a.valor = float(dados.valor or 0)
+        a.dados = json.dumps(extras, ensure_ascii=False)
+        db.commit()
+        db.refresh(a)
+        return ativo_para_dict(a)
 
 
 @app.delete("/ativos/{ativo_id}")
 def excluir_ativo(ativo_id: int):
-    ativos = ler_json(ARQUIVO_ATIVOS)
-    if not buscar_por_id(ativos, ativo_id):
-        raise HTTPException(status_code=404, detail="Ativo nao encontrado.")
-    salvar_json(ARQUIVO_ATIVOS, [item for item in ativos if item.get("id") != ativo_id])
+    eid = obter_empresa()
+    with sessao_db() as db:
+        a = db.query(Ativo).filter(Ativo.empresa_id == eid, Ativo.id == ativo_id).first()
+        if not a:
+            raise HTTPException(status_code=404, detail="Ativo nao encontrado.")
+        db.delete(a)
+        db.commit()
     return {"mensagem": "Ativo excluido com sucesso."}
 
 
 @app.get("/passivos")
 def listar_passivos():
-    passivos = [normalizar_passivo_antigo(item) for item in ler_json(ARQUIVO_PASSIVOS)]
-    passivos.sort(key=lambda x: x.get("data_vencimento", ""))
-    return passivos
+    eid = obter_empresa()
+    with sessao_db() as db:
+        registros = db.query(Passivo).filter(Passivo.empresa_id == eid).all()
+        result = [passivo_para_dict(p) for p in registros]
+        result.sort(key=lambda x: x.get("data_vencimento", ""))
+        return result
 
 
-@app.post("/passivos")
-def criar_passivo(dados: PassivoIn):
-    passivos = ler_json(ARQUIVO_PASSIVOS)
-    timestamp = agora_iso()
-    passivo = {
-        "id": proximo_id(passivos),
-        "nome": dados.nome,
+def _extras_passivo(dados: PassivoIn) -> dict:
+    return {
         "tipo": dados.tipo,
         "valor_total": float(dados.valor_total or 0),
         "valor_pago": float(dados.valor_pago or 0),
@@ -1494,151 +1633,156 @@ def criar_passivo(dados: PassivoIn):
         "data_vencimento": str(dados.data_vencimento) if dados.data_vencimento else "",
         "observacao": dados.observacao,
         "status": dados.status,
-        "created_at": timestamp,
-        "updated_at": timestamp,
     }
-    passivo["saldo_devedor"] = max(passivo["valor_total"] - passivo["valor_pago"], 0)
-    passivos.append(passivo)
-    salvar_json(ARQUIVO_PASSIVOS, passivos)
-    return normalizar_passivo_antigo(passivo)
+
+
+@app.post("/passivos")
+def criar_passivo(dados: PassivoIn):
+    eid = obter_empresa()
+    with sessao_db() as db:
+        p = Passivo(empresa_id=eid, nome=dados.nome, valor=float(dados.valor_total or 0),
+                    dados=json.dumps(_extras_passivo(dados), ensure_ascii=False))
+        db.add(p)
+        db.commit()
+        db.refresh(p)
+        return passivo_para_dict(p)
 
 
 @app.put("/passivos/{passivo_id}")
 def atualizar_passivo(passivo_id: int, dados: PassivoIn):
-    passivos = ler_json(ARQUIVO_PASSIVOS)
-    passivo = buscar_por_id(passivos, passivo_id)
-    if not passivo:
-        raise HTTPException(status_code=404, detail="Passivo nao encontrado.")
-    passivo["nome"] = dados.nome
-    passivo["tipo"] = dados.tipo
-    passivo["valor_total"] = float(dados.valor_total or 0)
-    passivo["valor_pago"] = float(dados.valor_pago or 0)
-    passivo["saldo_devedor"] = max(passivo["valor_total"] - passivo["valor_pago"], 0)
-    passivo["data_inicio"] = str(dados.data_inicio) if dados.data_inicio else ""
-    passivo["data_vencimento"] = str(dados.data_vencimento) if dados.data_vencimento else ""
-    passivo["observacao"] = dados.observacao
-    passivo["status"] = dados.status
-    passivo["created_at"] = passivo.get("created_at") or agora_iso()
-    passivo["updated_at"] = agora_iso()
-    salvar_json(ARQUIVO_PASSIVOS, passivos)
-    return normalizar_passivo_antigo(passivo)
+    eid = obter_empresa()
+    with sessao_db() as db:
+        p = db.query(Passivo).filter(Passivo.empresa_id == eid, Passivo.id == passivo_id).first()
+        if not p:
+            raise HTTPException(status_code=404, detail="Passivo nao encontrado.")
+        p.nome = dados.nome
+        p.valor = float(dados.valor_total or 0)
+        p.dados = json.dumps(_extras_passivo(dados), ensure_ascii=False)
+        db.commit()
+        db.refresh(p)
+        return passivo_para_dict(p)
 
 
 @app.delete("/passivos/{passivo_id}")
 def excluir_passivo(passivo_id: int):
-    passivos = ler_json(ARQUIVO_PASSIVOS)
-    if not buscar_por_id(passivos, passivo_id):
-        raise HTTPException(status_code=404, detail="Passivo nao encontrado.")
-    salvar_json(ARQUIVO_PASSIVOS, [item for item in passivos if item.get("id") != passivo_id])
+    eid = obter_empresa()
+    with sessao_db() as db:
+        p = db.query(Passivo).filter(Passivo.empresa_id == eid, Passivo.id == passivo_id).first()
+        if not p:
+            raise HTTPException(status_code=404, detail="Passivo nao encontrado.")
+        db.delete(p)
+        db.commit()
     return {"mensagem": "Passivo excluido com sucesso."}
 
 
 @app.get("/estoque/produtos")
 def listar_produtos_estoque(nome: Optional[str] = None, categoria: Optional[str] = None, estoque_baixo: Optional[bool] = None):
-    produtos = [normalizar_produto_estoque_antigo(item) for item in ler_json(ARQUIVO_ESTOQUE_PRODUTOS)]
-    if nome:
-        produtos = [item for item in produtos if nome.lower() in item.get("nome", "").lower()]
-    if categoria:
-        produtos = [item for item in produtos if categoria.lower() in item.get("categoria", "").lower()]
+    eid = obter_empresa()
+    with sessao_db() as db:
+        q = db.query(EstoqueProduto).filter(EstoqueProduto.empresa_id == eid)
+        if nome:
+            q = q.filter(EstoqueProduto.nome.ilike(f"%{nome}%"))
+        if categoria:
+            q = q.filter(EstoqueProduto.categoria.ilike(f"%{categoria}%"))
+        produtos = [produto_estoque_para_dict(ep) for ep in q.order_by(EstoqueProduto.nome).all()]
     if estoque_baixo is not None:
-        produtos = [item for item in produtos if item.get("estoque_baixo") is estoque_baixo]
-    produtos.sort(key=lambda x: x.get("nome", "").lower())
+        produtos = [p for p in produtos if p.get("estoque_baixo") is estoque_baixo]
     return produtos
 
 
 @app.post("/estoque/produtos")
 def criar_produto_estoque(dados: ProdutoEstoqueIn):
-    produtos = ler_json(ARQUIVO_ESTOQUE_PRODUTOS)
-    timestamp = agora_iso()
-    produto = {
-        "id": proximo_id(produtos),
-        "nome": dados.nome,
-        "categoria": dados.categoria,
+    eid = obter_empresa()
+    extras = {
         "unidade_medida": dados.unidade_medida,
-        "quantidade_atual": float(dados.quantidade_atual or 0),
         "valor_custo": float(dados.valor_custo or 0),
         "estoque_minimo": float(dados.estoque_minimo or 0),
         "observacao": dados.observacao,
-        "created_at": timestamp,
-        "updated_at": timestamp,
     }
-    produtos.append(produto)
-    salvar_json(ARQUIVO_ESTOQUE_PRODUTOS, produtos)
-    return normalizar_produto_estoque_antigo(produto)
+    with sessao_db() as db:
+        ep = EstoqueProduto(empresa_id=eid, nome=dados.nome, categoria=dados.categoria,
+                            quantidade=float(dados.quantidade_atual or 0),
+                            dados=json.dumps(extras, ensure_ascii=False))
+        db.add(ep)
+        db.commit()
+        db.refresh(ep)
+        return produto_estoque_para_dict(ep)
 
 
 @app.put("/estoque/produtos/{produto_id}")
 def atualizar_produto_estoque(produto_id: int, dados: ProdutoEstoqueIn):
-    produtos = ler_json(ARQUIVO_ESTOQUE_PRODUTOS)
-    produto = buscar_por_id(produtos, produto_id)
-    if not produto:
-        raise HTTPException(status_code=404, detail="Produto nao encontrado.")
-    produto["nome"] = dados.nome
-    produto["categoria"] = dados.categoria
-    produto["unidade_medida"] = dados.unidade_medida
-    produto["quantidade_atual"] = float(dados.quantidade_atual or 0)
-    produto["valor_custo"] = float(dados.valor_custo or 0)
-    produto["estoque_minimo"] = float(dados.estoque_minimo or 0)
-    produto["observacao"] = dados.observacao
-    produto["created_at"] = produto.get("created_at") or agora_iso()
-    produto["updated_at"] = agora_iso()
-    salvar_json(ARQUIVO_ESTOQUE_PRODUTOS, produtos)
-    return normalizar_produto_estoque_antigo(produto)
+    eid = obter_empresa()
+    with sessao_db() as db:
+        ep = db.query(EstoqueProduto).filter(EstoqueProduto.empresa_id == eid, EstoqueProduto.id == produto_id).first()
+        if not ep:
+            raise HTTPException(status_code=404, detail="Produto nao encontrado.")
+        ep.nome = dados.nome
+        ep.categoria = dados.categoria
+        ep.quantidade = float(dados.quantidade_atual or 0)
+        ep.dados = json.dumps({
+            "unidade_medida": dados.unidade_medida,
+            "valor_custo": float(dados.valor_custo or 0),
+            "estoque_minimo": float(dados.estoque_minimo or 0),
+            "observacao": dados.observacao,
+        }, ensure_ascii=False)
+        db.commit()
+        db.refresh(ep)
+        return produto_estoque_para_dict(ep)
 
 
 @app.delete("/estoque/produtos/{produto_id}")
 def excluir_produto_estoque(produto_id: int):
-    produtos = ler_json(ARQUIVO_ESTOQUE_PRODUTOS)
-    if not buscar_por_id(produtos, produto_id):
-        raise HTTPException(status_code=404, detail="Produto nao encontrado.")
-    salvar_json(ARQUIVO_ESTOQUE_PRODUTOS, [item for item in produtos if item.get("id") != produto_id])
+    eid = obter_empresa()
+    with sessao_db() as db:
+        ep = db.query(EstoqueProduto).filter(EstoqueProduto.empresa_id == eid, EstoqueProduto.id == produto_id).first()
+        if not ep:
+            raise HTTPException(status_code=404, detail="Produto nao encontrado.")
+        db.delete(ep)
+        db.commit()
     return {"mensagem": "Produto excluido com sucesso."}
 
 
 @app.get("/estoque/movimentacoes")
 def listar_movimentacoes_estoque(produto_id: Optional[int] = None):
-    movimentacoes = ler_json(ARQUIVO_ESTOQUE_MOVIMENTACOES)
-    if produto_id:
-        movimentacoes = [item for item in movimentacoes if item.get("produto_id") == produto_id]
-    movimentacoes.sort(key=lambda x: x.get("data", ""), reverse=True)
-    return movimentacoes
+    eid = obter_empresa()
+    with sessao_db() as db:
+        q = db.query(EstoqueMovimentacao).filter(EstoqueMovimentacao.empresa_id == eid)
+        if produto_id:
+            q = q.filter(EstoqueMovimentacao.produto_id == produto_id)
+        movs = [movimentacao_para_dict(m) for m in q.all()]
+    movs.sort(key=lambda x: x.get("data", ""), reverse=True)
+    return movs
 
 
 @app.post("/estoque/movimentacoes")
 def criar_movimentacao_estoque(dados: MovimentacaoEstoqueIn):
-    produtos = ler_json(ARQUIVO_ESTOQUE_PRODUTOS)
-    produto = buscar_por_id(produtos, dados.produto_id)
-    if not produto:
-        raise HTTPException(status_code=404, detail="Produto nao encontrado.")
-    quantidade = float(dados.quantidade or 0)
-    atual = float(produto.get("quantidade_atual") or 0)
-    if dados.tipo_movimentacao == "Entrada":
-        produto["quantidade_atual"] = atual + quantidade
-    elif dados.tipo_movimentacao == "Saida":
-        if quantidade > atual:
-            raise HTTPException(status_code=400, detail="Saida maior que o estoque disponivel.")
-        produto["quantidade_atual"] = atual - quantidade
-    else:
-        produto["quantidade_atual"] = quantidade
-    if dados.valor_unitario:
-        produto["valor_custo"] = float(dados.valor_unitario)
-    produto["updated_at"] = agora_iso()
-    salvar_json(ARQUIVO_ESTOQUE_PRODUTOS, produtos)
-
-    movimentacoes = ler_json(ARQUIVO_ESTOQUE_MOVIMENTACOES)
-    movimentacao = {
-        "id": proximo_id(movimentacoes),
-        "produto_id": dados.produto_id,
-        "tipo_movimentacao": dados.tipo_movimentacao,
-        "quantidade": quantidade,
-        "valor_unitario": float(dados.valor_unitario or 0),
-        "data": str(dados.data),
-        "observacao": dados.observacao,
-        "created_at": agora_iso(),
-    }
-    movimentacoes.append(movimentacao)
-    salvar_json(ARQUIVO_ESTOQUE_MOVIMENTACOES, movimentacoes)
-    return movimentacao
+    eid = obter_empresa()
+    with sessao_db() as db:
+        ep = db.query(EstoqueProduto).filter(EstoqueProduto.empresa_id == eid, EstoqueProduto.id == dados.produto_id).first()
+        if not ep:
+            raise HTTPException(status_code=404, detail="Produto nao encontrado.")
+        quantidade = float(dados.quantidade or 0)
+        atual = float(ep.quantidade or 0)
+        if dados.tipo_movimentacao == "Entrada":
+            ep.quantidade = atual + quantidade
+        elif dados.tipo_movimentacao == "Saida":
+            if quantidade > atual:
+                raise HTTPException(status_code=400, detail="Saida maior que o estoque disponivel.")
+            ep.quantidade = atual - quantidade
+        else:
+            ep.quantidade = quantidade
+        ex_prod = json.loads(ep.dados or "{}")
+        if dados.valor_unitario:
+            ex_prod["valor_custo"] = float(dados.valor_unitario)
+            ep.dados = json.dumps(ex_prod, ensure_ascii=False)
+        extras = {"valor_unitario": float(dados.valor_unitario or 0), "data": str(dados.data), "observacao": dados.observacao}
+        mov = EstoqueMovimentacao(empresa_id=eid, produto_id=dados.produto_id,
+                                  tipo=dados.tipo_movimentacao, quantidade=quantidade,
+                                  dados=json.dumps(extras, ensure_ascii=False))
+        db.add(mov)
+        db.commit()
+        db.refresh(mov)
+        return movimentacao_para_dict(mov)
 
 
 # =========================================================
@@ -1784,10 +1928,13 @@ def agrupar_por_empresa(lancamentos) -> list:
 
 
 def listar_contas_pagar_resumo() -> dict:
-    contas = ler_json(ARQUIVO_CONTAS_PAGAR)
+    eid = obter_empresa()
+    with sessao_db() as db:
+        registros = db.query(Passivo).filter(Passivo.empresa_id == eid).all()
+        contas = [passivo_para_dict(p) for p in registros]
     total = sum(float(item.get("valor") or 0) for item in contas)
-    pendente = sum(float(item.get("valor") or 0) for item in contas if item.get("status_pagamento", "pendente") == "pendente")
-    pago = sum(float(item.get("valor") or 0) for item in contas if item.get("status_pagamento") == "pago")
+    pendente = sum(float(item.get("valor") or 0) for item in contas if item.get("status", "Pendente") != "Pago")
+    pago = sum(float(item.get("valor") or 0) for item in contas if item.get("status") == "Pago")
     return {"total": total, "pendente": pendente, "pago": pago, "itens": contas}
 
 
@@ -2066,204 +2213,360 @@ def exportar_relatorio_excel(data_inicial: Optional[date] = None, data_final: Op
 
 @app.get("/veiculos")
 def listar_veiculos():
-    """
-    Lista veiculos.
-    Tambem normaliza registros antigos para nao quebrar o frontend.
-    """
-    veiculos = ler_json(ARQUIVO_VEICULOS)
-    veiculos_normalizados = [normalizar_veiculo_antigo(item) for item in veiculos]
-
-    # Ordena por nome
-    veiculos_normalizados.sort(key=lambda x: x.get("nome", "").lower())
-
-    return veiculos_normalizados
+    eid = obter_empresa()
+    with sessao_db() as db:
+        registros = db.query(Veiculo).filter(Veiculo.empresa_id == eid).order_by(Veiculo.nome).all()
+        return [veiculo_para_dict(v) for v in registros]
 
 
 @app.post("/veiculos")
 def criar_veiculo(dados: VeiculoIn):
-    """
-    Cria um novo veiculo.
-    Valida se a placa ja existe.
-    """
-    veiculos = ler_json(ARQUIVO_VEICULOS)
-
-    placa_normalizada = dados.placa.strip().upper()
-
-    if placa_normalizada and any(item.get("placa", "").upper() == placa_normalizada for item in veiculos):
-        raise HTTPException(status_code=400, detail="Ja existe um veiculo com esta placa.")
-
-    novo_veiculo = {
-    "id": proximo_id(veiculos),
-    "nome": dados.nome,
-    "marca": dados.marca,
-    "modelo": dados.modelo,
-    "ano": dados.ano,
-    "placa": placa_normalizada,
-    "tipo": dados.tipo,
-    "status": dados.status,
-    "observacao": dados.observacao,
-    "foto": dados.foto,
-}
-
-    veiculos.append(novo_veiculo)
-    salvar_json(ARQUIVO_VEICULOS, veiculos)
-
-    return novo_veiculo
+    eid = obter_empresa()
+    placa = dados.placa.strip().upper()
+    with sessao_db() as db:
+        if placa and db.query(Veiculo).filter(Veiculo.empresa_id == eid, Veiculo.placa == placa).first():
+            raise HTTPException(status_code=400, detail="Ja existe um veiculo com esta placa.")
+        v = Veiculo(empresa_id=eid, nome=dados.nome, marca=dados.marca, modelo=dados.modelo,
+                    ano=dados.ano, placa=placa, tipo=dados.tipo, status=dados.status,
+                    observacao=dados.observacao, foto=dados.foto)
+        db.add(v)
+        db.commit()
+        db.refresh(v)
+        return veiculo_para_dict(v)
 
 
 @app.put("/veiculos/{veiculo_id}")
 def atualizar_veiculo(veiculo_id: int, dados: VeiculoIn):
-    """
-    Atualiza veiculo.
-    Tambem valida duplicidade de placa.
-    """
-    veiculos = ler_json(ARQUIVO_VEICULOS)
-    veiculo = buscar_por_id(veiculos, veiculo_id)
+    eid = obter_empresa()
+    placa = dados.placa.strip().upper()
+    with sessao_db() as db:
+        veiculo = db.query(Veiculo).filter(Veiculo.empresa_id == eid, Veiculo.id == veiculo_id).first()
 
-    if not veiculo:
-        raise HTTPException(status_code=404, detail="Veiculo nao encontrado.")
-
-    placa_normalizada = dados.placa.strip().upper()
-
-    for item in veiculos:
-        if placa_normalizada and item.get("id") != veiculo_id and item.get("placa", "").upper() == placa_normalizada:
+        if not veiculo:
+            raise HTTPException(status_code=404, detail="Veiculo nao encontrado.")
+        if placa and db.query(Veiculo).filter(Veiculo.empresa_id == eid, Veiculo.id != veiculo_id, Veiculo.placa == placa).first():
             raise HTTPException(status_code=400, detail="Ja existe outro veiculo com esta placa.")
-
-    veiculo["nome"] = dados.nome
-    veiculo["marca"] = dados.marca
-    veiculo["modelo"] = dados.modelo
-    veiculo["ano"] = dados.ano
-    veiculo["placa"] = placa_normalizada
-    veiculo["tipo"] = dados.tipo
-    veiculo["status"] = dados.status
-    veiculo["observacao"] = dados.observacao
-    veiculo["foto"] = dados.foto
-
-    salvar_json(ARQUIVO_VEICULOS, veiculos)
-    return veiculo
+        veiculo.nome = dados.nome
+        veiculo.marca = dados.marca
+        veiculo.modelo = dados.modelo
+        veiculo.ano = dados.ano
+        veiculo.placa = placa
+        veiculo.tipo = dados.tipo
+        veiculo.status = dados.status
+        veiculo.observacao = dados.observacao
+        veiculo.foto = dados.foto
+        db.commit()
+        db.refresh(veiculo)
+        return veiculo_para_dict(veiculo)
 
 
 @app.delete("/veiculos/{veiculo_id}")
 def excluir_veiculo(veiculo_id: int):
-    """
-    Exclui um veiculo.
-    """
-    veiculos = ler_json(ARQUIVO_VEICULOS)
-    veiculo = buscar_por_id(veiculos, veiculo_id)
-
-    if not veiculo:
-        raise HTTPException(status_code=404, detail="Veiculo nao encontrado.")
-
-    veiculos = [item for item in veiculos if item.get("id") != veiculo_id]
-    salvar_json(ARQUIVO_VEICULOS, veiculos)
-
+    eid = obter_empresa()
+    with sessao_db() as db:
+        v = db.query(Veiculo).filter(Veiculo.empresa_id == eid, Veiculo.id == veiculo_id).first()
+        if not v:
+            raise HTTPException(status_code=404, detail="Veiculo nao encontrado.")
+        db.delete(v)
+        db.commit()
     return {"mensagem": "Veiculo excluido com sucesso."}
 
 
-# =========================================================
-# MOTORISTAS
-# =========================================================
+def _extras_motorista(dados: MotoristaIn) -> dict:
+    return {
+        "lotacao": dados.lotacao, "pis": dados.pis, "banco": dados.banco,
+        "agencia": dados.agencia, "conta": dados.conta, "tipo_conta": dados.tipo_conta,
+        "empregador": dados.empregador, "empregador_cnpj": dados.empregador_cnpj,
+        "salario_base": dados.salario_base, "carga_horaria_mensal": dados.carga_horaria_mensal,
+        "valor_hora_extra": dados.valor_hora_extra, "inss_percentual": dados.inss_percentual,
+        "irrf_percentual": dados.irrf_percentual, "vale_refeicao": dados.vale_refeicao,
+        "convenio_medico": dados.convenio_medico, "outros_descontos_padrao": dados.outros_descontos_padrao,
+    }
+
 
 @app.get("/motoristas")
 def listar_motoristas():
-    """
-    Lista motoristas ordenados por nome.
-    """
-    motoristas = ler_json(ARQUIVO_MOTORISTAS)
-    motoristas.sort(key=lambda x: x.get("nome", "").lower())
-    return motoristas
+    eid = obter_empresa()
+    with sessao_db() as db:
+        registros = db.query(Motorista).filter(Motorista.empresa_id == eid).order_by(Motorista.nome).all()
+        return [motorista_para_dict(m) for m in registros]
 
 
 @app.post("/motoristas")
 def criar_motorista(dados: MotoristaIn):
-    """
-    Cria novo motorista.
-    """
-    motoristas = ler_json(ARQUIVO_MOTORISTAS)
-
-    novo_motorista = {
-        "id": proximo_id(motoristas),
-        "nome": dados.nome,
-        "telefone": dados.telefone,
-        "cnh": dados.cnh,
-        "cargo": dados.cargo,
-        "admissao": str(dados.admissao) if dados.admissao else "",
-        "lotacao": dados.lotacao,
-        "pis": dados.pis,
-        "banco": dados.banco,
-        "agencia": dados.agencia,
-        "conta": dados.conta,
-        "tipo_conta": dados.tipo_conta,
-        "empregador": dados.empregador,
-        "empregador_cnpj": dados.empregador_cnpj,
-        "salario_base": dados.salario_base,
-        "carga_horaria_mensal": dados.carga_horaria_mensal,
-        "valor_hora_extra": dados.valor_hora_extra,
-        "inss_percentual": dados.inss_percentual,
-        "irrf_percentual": dados.irrf_percentual,
-        "vale_refeicao": dados.vale_refeicao,
-        "convenio_medico": dados.convenio_medico,
-        "outros_descontos_padrao": dados.outros_descontos_padrao,
-    }
-
-    motoristas.append(novo_motorista)
-    salvar_json(ARQUIVO_MOTORISTAS, motoristas)
-
-    return novo_motorista
+    eid = obter_empresa()
+    with sessao_db() as db:
+        m = Motorista(empresa_id=eid, nome=dados.nome, telefone=dados.telefone,
+                      cnh=dados.cnh, cargo=dados.cargo,
+                      admissao=dados.admissao or None,
+                      dados=json.dumps(_extras_motorista(dados), ensure_ascii=False))
+        db.add(m)
+        db.commit()
+        db.refresh(m)
+        return motorista_para_dict(m)
 
 
 @app.put("/motoristas/{motorista_id}")
 def atualizar_motorista(motorista_id: int, dados: MotoristaIn):
-    """
-    Atualiza motorista.
-    """
-    motoristas = ler_json(ARQUIVO_MOTORISTAS)
-    motorista = buscar_por_id(motoristas, motorista_id)
-
-    if not motorista:
-        raise HTTPException(status_code=404, detail="Motorista nao encontrado.")
-
-    motorista["nome"] = dados.nome
-    motorista["telefone"] = dados.telefone
-    motorista["cnh"] = dados.cnh
-    motorista["cargo"] = dados.cargo
-    motorista["admissao"] = str(dados.admissao) if dados.admissao else ""
-    motorista["lotacao"] = dados.lotacao
-    motorista["pis"] = dados.pis
-    motorista["banco"] = dados.banco
-    motorista["agencia"] = dados.agencia
-    motorista["conta"] = dados.conta
-    motorista["tipo_conta"] = dados.tipo_conta
-    motorista["empregador"] = dados.empregador
-    motorista["empregador_cnpj"] = dados.empregador_cnpj
-    motorista["salario_base"] = dados.salario_base
-    motorista["carga_horaria_mensal"] = dados.carga_horaria_mensal
-    motorista["valor_hora_extra"] = dados.valor_hora_extra
-    motorista["inss_percentual"] = dados.inss_percentual
-    motorista["irrf_percentual"] = dados.irrf_percentual
-    motorista["vale_refeicao"] = dados.vale_refeicao
-    motorista["convenio_medico"] = dados.convenio_medico
-    motorista["outros_descontos_padrao"] = dados.outros_descontos_padrao
-
-    salvar_json(ARQUIVO_MOTORISTAS, motoristas)
-    return motorista
+    eid = obter_empresa()
+    with sessao_db() as db:
+        m = db.query(Motorista).filter(Motorista.empresa_id == eid, Motorista.id == motorista_id).first()
+        if not m:
+            raise HTTPException(status_code=404, detail="Motorista nao encontrado.")
+        m.nome = dados.nome
+        m.telefone = dados.telefone
+        m.cnh = dados.cnh
+        m.cargo = dados.cargo
+        m.admissao = dados.admissao or None
+        m.dados = json.dumps(_extras_motorista(dados), ensure_ascii=False)
+        db.commit()
+        db.refresh(m)
+        return motorista_para_dict(m)
 
 
 @app.delete("/motoristas/{motorista_id}")
 def excluir_motorista(motorista_id: int):
-    """
-    Exclui motorista.
-    """
-    motoristas = ler_json(ARQUIVO_MOTORISTAS)
-    motorista = buscar_por_id(motoristas, motorista_id)
-
-    if not motorista:
-        raise HTTPException(status_code=404, detail="Motorista nao encontrado.")
-
-    motoristas = [item for item in motoristas if item.get("id") != motorista_id]
-    salvar_json(ARQUIVO_MOTORISTAS, motoristas)
-
+    eid = obter_empresa()
+    with sessao_db() as db:
+        m = db.query(Motorista).filter(Motorista.empresa_id == eid, Motorista.id == motorista_id).first()
+        if not m:
+            raise HTTPException(status_code=404, detail="Motorista nao encontrado.")
+        db.delete(m)
+        db.commit()
     return {"mensagem": "Motorista excluido com sucesso."}
+
+
+def posicao_inicial_motorista(motorista_id: int) -> tuple[float, float]:
+    base_lat = -23.55052
+    base_lng = -46.63331
+    angulo = motorista_id * 1.37
+    raio = 0.018 + (motorista_id % 5) * 0.006
+    return (
+        round(base_lat + math.sin(angulo) * raio, 6),
+        round(base_lng + math.cos(angulo) * raio, 6),
+    )
+
+
+def normalizar_localizacao_motorista(motorista: dict, localizacao: dict | None) -> dict:
+    if not localizacao:
+        latitude, longitude = posicao_inicial_motorista(int(motorista.get("id") or 0))
+        localizacao = {
+            "motorista_id": motorista.get("id"),
+            "latitude": latitude,
+            "longitude": longitude,
+            "velocidade": 0,
+            "direcao": 0,
+            "precisao": 0,
+            "bateria": None,
+            "updated_at": agora_iso(),
+            "origem": "simulado",
+        }
+    minutos = minutos_desde_iso(localizacao.get("updated_at", ""))
+    return {
+        "motorista_id": motorista.get("id"),
+        "motorista_nome": motorista.get("nome", "Motorista"),
+        "telefone": motorista.get("telefone", ""),
+        "cargo": motorista.get("cargo", ""),
+        "latitude": float(localizacao.get("latitude") or 0),
+        "longitude": float(localizacao.get("longitude") or 0),
+        "velocidade": float(localizacao.get("velocidade") or 0),
+        "direcao": float(localizacao.get("direcao") or 0),
+        "precisao": float(localizacao.get("precisao") or 0),
+        "bateria": localizacao.get("bateria"),
+        "updated_at": localizacao.get("updated_at", ""),
+        "origem": localizacao.get("origem", "gps"),
+        "online": minutos <= 5,
+        "minutos_sem_sinal": round(minutos, 1),
+    }
+
+
+@app.get("/localizacoes-motoristas")
+def listar_localizacoes_motoristas():
+    eid = obter_empresa()
+    with sessao_db() as db:
+        motoristas = [motorista_para_dict(m) for m in db.query(Motorista).filter(Motorista.empresa_id == eid).order_by(Motorista.nome).all()]
+    localizacoes = ler_json_loc(ARQUIVO_LOCALIZACOES_MOTORISTAS)
+    por_motorista = {item.get("motorista_id"): item for item in localizacoes}
+    alterou = False
+
+    itens = []
+    for motorista in motoristas:
+        localizacao = por_motorista.get(motorista.get("id"))
+        item = normalizar_localizacao_motorista(motorista, localizacao)
+        itens.append(item)
+        if not localizacao:
+            localizacoes.append({k: item[k] for k in ("motorista_id", "latitude", "longitude", "velocidade", "direcao", "precisao", "bateria", "updated_at", "origem")})
+            alterou = True
+
+    if alterou:
+        salvar_json_loc(ARQUIVO_LOCALIZACOES_MOTORISTAS, localizacoes)
+
+    return {
+        "atualizado_em": agora_iso(),
+        "total": len(itens),
+        "online": len([item for item in itens if item["online"]]),
+        "itens": itens,
+    }
+
+
+@app.post("/localizacoes-motoristas")
+def registrar_localizacao_motorista(dados: LocalizacaoMotoristaIn):
+    eid = obter_empresa()
+    with sessao_db() as db:
+        m = db.query(Motorista).filter(Motorista.empresa_id == eid, Motorista.id == dados.motorista_id).first()
+    if not m:
+        raise HTTPException(status_code=404, detail="Motorista nao encontrado.")
+    motorista = motorista_para_dict(m)
+
+    localizacoes = ler_json_loc(ARQUIVO_LOCALIZACOES_MOTORISTAS)
+    localizacao = next((item for item in localizacoes if item.get("motorista_id") == dados.motorista_id), None)
+    if not localizacao:
+        localizacao = {"motorista_id": dados.motorista_id}
+        localizacoes.append(localizacao)
+
+    localizacao.update({
+        "motorista_id": dados.motorista_id,
+        "latitude": round(float(dados.latitude), 6),
+        "longitude": round(float(dados.longitude), 6),
+        "velocidade": round(float(dados.velocidade or 0), 1),
+        "direcao": round(float(dados.direcao or 0), 1) % 360,
+        "precisao": round(float(dados.precisao or 0), 1),
+        "bateria": dados.bateria,
+        "updated_at": agora_iso(),
+        "origem": "gps",
+    })
+    salvar_json_loc(ARQUIVO_LOCALIZACOES_MOTORISTAS, localizacoes)
+    return normalizar_localizacao_motorista(motorista, localizacao)
+
+
+@app.post("/localizacoes-motoristas/simular")
+def simular_localizacoes_motoristas():
+    eid = obter_empresa()
+    with sessao_db() as db:
+        motoristas = [motorista_para_dict(m) for m in db.query(Motorista).filter(Motorista.empresa_id == eid).all()]
+    localizacoes = ler_json_loc(ARQUIVO_LOCALIZACOES_MOTORISTAS)
+    por_motorista = {item.get("motorista_id"): item for item in localizacoes}
+    agora = agora_iso()
+
+    for motorista in motoristas:
+        motorista_id = int(motorista.get("id") or 0)
+        localizacao = por_motorista.get(motorista_id)
+        if not localizacao:
+            latitude, longitude = posicao_inicial_motorista(motorista_id)
+            localizacao = {"motorista_id": motorista_id, "latitude": latitude, "longitude": longitude}
+            localizacoes.append(localizacao)
+
+        passo = 0.0014 + (motorista_id % 3) * 0.00035
+        direcao = (float(localizacao.get("direcao") or motorista_id * 43) + 18 + motorista_id) % 360
+        radianos = math.radians(direcao)
+        localizacao.update({
+            "latitude": round(float(localizacao.get("latitude") or 0) + math.cos(radianos) * passo, 6),
+            "longitude": round(float(localizacao.get("longitude") or 0) + math.sin(radianos) * passo, 6),
+            "velocidade": 28 + (motorista_id % 6) * 7,
+            "direcao": round(direcao, 1),
+            "precisao": 12,
+            "bateria": max(20, 96 - motorista_id * 3),
+            "updated_at": agora,
+            "origem": "simulado",
+        })
+
+    salvar_json_loc(ARQUIVO_LOCALIZACOES_MOTORISTAS, localizacoes)
+    return listar_localizacoes_motoristas()
+
+
+def empresas_com_motoristas_mobile() -> list[int]:
+    with sessao_db() as db:
+        from sqlalchemy import distinct
+        ids = [row[0] for row in db.query(distinct(Motorista.empresa_id)).order_by(Motorista.empresa_id).all()]
+    return ids if ids else [1]
+
+
+def ler_motoristas_da_empresa_mobile(empresa_id: int) -> list[dict]:
+    with sessao_db() as db:
+        registros = db.query(Motorista).filter(Motorista.empresa_id == empresa_id).order_by(Motorista.nome).all()
+        return [motorista_para_dict(m) for m in registros]
+
+
+def localizar_motorista_mobile(empresa_id: int | None = None, motorista_id: int | None = None) -> tuple[int, dict]:
+    empresas_ids = [empresa_id] if empresa_id else empresas_com_motoristas_mobile()
+    for empresa_atual in empresas_ids:
+        if not empresa_atual:
+            continue
+        motoristas = ler_motoristas_da_empresa_mobile(int(empresa_atual))
+        if not motoristas:
+            continue
+        if motorista_id:
+            motorista = next((m for m in motoristas if m.get("id") == motorista_id), None)
+            if motorista:
+                return int(empresa_atual), motorista
+            continue
+        return int(empresa_atual), motoristas[0]
+    raise HTTPException(status_code=404, detail="Nenhum motorista cadastrado para rastreamento.")
+
+
+def dados_token_motorista_mobile(token: str) -> tuple[int, int]:
+    partes = token.split(":")
+    if len(partes) == 3 and partes[0] == "teste":
+        return int(partes[1]), int(partes[2])
+    if len(partes) == 2 and partes[0] == "teste":
+        return 1, int(partes[1])
+    raise HTTPException(status_code=401, detail="Sessao do motorista invalida.")
+
+
+@app.post("/motorista-mobile/login")
+def login_motorista_mobile(dados: MotoristaMobileLoginIn):
+    if dados.usuario.strip() != "teste" or dados.senha.strip() != "teste":
+        raise HTTPException(status_code=401, detail="Usuario ou senha invalidos.")
+
+    empresa_id, motorista = localizar_motorista_mobile(dados.empresa_id, dados.motorista_id)
+    motorista_id = int(motorista.get("id") or 0)
+    return {
+        "token": f"teste:{empresa_id}:{motorista_id}",
+        "empresa_id": empresa_id,
+        "motorista_id": motorista_id,
+        "motorista_nome": motorista.get("nome", "Motorista"),
+    }
+
+
+@app.post("/motorista-mobile/localizacao")
+def registrar_localizacao_motorista_mobile(dados: LocalizacaoMotoristaMobileIn):
+    empresa_id_token, motorista_id_token = dados_token_motorista_mobile(dados.token)
+    empresa_id = int(dados.empresa_id or empresa_id_token)
+    if empresa_id != empresa_id_token or int(dados.motorista_id) != motorista_id_token:
+        raise HTTPException(status_code=401, detail="Sessao do motorista invalida.")
+
+    token_empresa = None
+    if empresa_id != 1:
+        token_empresa = EMPRESA_ATUAL_ID.set(empresa_id)
+    try:
+        with sessao_db() as db:
+            m = db.query(Motorista).filter(Motorista.empresa_id == empresa_id, Motorista.id == dados.motorista_id).first()
+        if not m:
+            raise HTTPException(status_code=404, detail="Motorista nao encontrado.")
+        motorista = motorista_para_dict(m)
+
+        localizacoes = ler_json_loc(ARQUIVO_LOCALIZACOES_MOTORISTAS)
+        localizacao = next((item for item in localizacoes if item.get("motorista_id") == dados.motorista_id), None)
+        if not localizacao:
+            localizacao = {"motorista_id": dados.motorista_id}
+            localizacoes.append(localizacao)
+
+        localizacao.update({
+            "motorista_id": dados.motorista_id,
+            "latitude": round(float(dados.latitude), 6),
+            "longitude": round(float(dados.longitude), 6),
+            "velocidade": round(float(dados.velocidade or 0), 1),
+            "direcao": round(float(dados.direcao or 0), 1) % 360,
+            "precisao": round(float(dados.precisao or 0), 1),
+            "bateria": dados.bateria,
+            "updated_at": agora_iso(),
+            "origem": "mobile",
+        })
+        salvar_json_loc(ARQUIVO_LOCALIZACOES_MOTORISTAS, localizacoes)
+        return normalizar_localizacao_motorista(motorista, localizacao)
+    finally:
+        if token_empresa is not None:
+            EMPRESA_ATUAL_ID.reset(token_empresa)
 
 
 # =========================================================
@@ -2272,7 +2575,7 @@ def excluir_motorista(motorista_id: int):
 
 @app.get("/folha-pagamento")
 def listar_folhas_pagamento():
-    folhas = ler_json(ARQUIVO_FOLHA_PAGAMENTO)
+    folhas = ler_json_folha()
     folhas.sort(key=lambda x: x.get("data_pagamento", ""), reverse=True)
     return folhas
 
@@ -2282,13 +2585,16 @@ def criar_folha_pagamento(dados: FolhaPagamentoIn):
     if not dados.itens:
         raise HTTPException(status_code=400, detail="Inclua ao menos um motorista na folha.")
 
-    motoristas = ler_json(ARQUIVO_MOTORISTAS)
-    folhas = ler_json(ARQUIVO_FOLHA_PAGAMENTO)
+    eid = obter_empresa()
+    with sessao_db() as db:
+        motoristas_db = {m.id: motorista_para_dict(m) for m in db.query(Motorista).filter(Motorista.empresa_id == eid).all()}
+
+    folhas = ler_json_folha()
     timestamp = agora_iso()
     itens_calculados = []
 
     for item in dados.itens:
-        motorista = buscar_por_id(motoristas, item.motorista_id)
+        motorista = motoristas_db.get(item.motorista_id)
         if not motorista:
             raise HTTPException(status_code=404, detail=f"Motorista {item.motorista_id} nao encontrado.")
         itens_calculados.append(calcular_item_folha(item, motorista))
@@ -2303,7 +2609,7 @@ def criar_folha_pagamento(dados: FolhaPagamentoIn):
     }
 
     nova_folha = {
-        "id": proximo_id(folhas),
+        "id": proximo_id_lista(folhas),
         "periodo": dados.periodo,
         "data_pagamento": str(dados.data_pagamento),
         "descricao": dados.descricao or "Folha de pagamento",
@@ -2315,53 +2621,55 @@ def criar_folha_pagamento(dados: FolhaPagamentoIn):
     }
 
     if dados.gerar_lancamento and totais["salario_liquido"] > 0:
-        lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
-        lancamento = {
-            "id": proximo_id(lancamentos),
-            "data": str(dados.data_pagamento),
-            "classificacao": "1.5 SALARIO + ENCAGOS FOLHA PGTO",
-            "descricao": f"{nova_folha['descricao']} - {dados.periodo}",
-            "valor": totais["salario_liquido"],
+        extras = json.dumps({
             "veiculo_id": None,
             "empresa_id": None,
             "obra_servico": "",
-            "tipo_financeiro": "custo",
-            "created_at": timestamp,
-            "updated_at": timestamp,
             "kilometragem": None,
             "litros": None,
             "numero_nf": "",
             "data_nf": "",
             "origem": "folha_pagamento",
             "folha_pagamento_id": nova_folha["id"],
-        }
-        lancamentos.append(lancamento)
-        salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
-        nova_folha["lancamento_id"] = lancamento["id"]
+        }, ensure_ascii=False)
+        with sessao_db() as db:
+            lan = Lancamento(
+                empresa_id=eid,
+                data=str(dados.data_pagamento),
+                classificacao="1.5 SALARIO + ENCAGOS FOLHA PGTO",
+                descricao=f"{nova_folha['descricao']} - {dados.periodo}",
+                valor=totais["salario_liquido"],
+                tipo_financeiro="custo",
+                dados=extras,
+            )
+            db.add(lan)
+            db.commit()
+            db.refresh(lan)
+            nova_folha["lancamento_id"] = lan.id
 
     folhas.append(nova_folha)
-    salvar_json(ARQUIVO_FOLHA_PAGAMENTO, folhas)
+    salvar_json_folha(folhas)
     return nova_folha
 
 
 @app.delete("/folha-pagamento/{folha_id}")
 def excluir_folha_pagamento(folha_id: int):
-    folhas = ler_json(ARQUIVO_FOLHA_PAGAMENTO)
-    folha = buscar_por_id(folhas, folha_id)
+    folhas = ler_json_folha()
+    folha = buscar_id_lista(folhas, folha_id)
 
     if not folha:
         raise HTTPException(status_code=404, detail="Folha de pagamento nao encontrada.")
 
     folhas = [item for item in folhas if item.get("id") != folha_id]
-    salvar_json(ARQUIVO_FOLHA_PAGAMENTO, folhas)
+    salvar_json_folha(folhas)
 
     lancamento_id = folha.get("lancamento_id")
     if lancamento_id:
-        lancamentos = ler_json(ARQUIVO_LANCAMENTOS)
-        lancamentos = [
-            item for item in lancamentos
-            if item.get("id") != lancamento_id and item.get("folha_pagamento_id") != folha_id
-        ]
-        salvar_json(ARQUIVO_LANCAMENTOS, lancamentos)
+        eid = obter_empresa()
+        with sessao_db() as db:
+            lan = db.query(Lancamento).filter(Lancamento.empresa_id == eid, Lancamento.id == lancamento_id).first()
+            if lan:
+                db.delete(lan)
+                db.commit()
 
     return {"mensagem": "Folha de pagamento excluida com sucesso."}

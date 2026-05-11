@@ -21,7 +21,7 @@ Backups criados antes das alteracoes principais:
 | Medio | Upload de logo sem politica clara | Campo limitado no schema; pendente armazenamento dedicado |
 | Medio | XSS por `innerHTML` em telas antigas | `escapeHtml` existe e novas telas usam escape; pendente aplicar em todos os renders antigos |
 | Medio | Brute force no login | Rate limit simples em memoria; pendente backend persistente |
-| Baixo | Documentacao incompleta | Criados `ARCHITECTURE.md` e `DATABASE_FLOW.md` |
+| Baixo | Documentacao incompleta | Criados `docs/ARCHITECTURE.md` e `docs/DATABASE_FLOW.md` |
 
 ## Controles Implementados
 

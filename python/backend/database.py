@@ -1,10 +1,21 @@
 from collections.abc import Generator
+from pathlib import Path
 
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .settings import settings
 
+
+def preparar_sqlite_local(database_url: str) -> None:
+    url = make_url(database_url)
+    if url.drivername != "sqlite" or not url.database or url.database == ":memory:":
+        return
+    Path(url.database).expanduser().parent.mkdir(parents=True, exist_ok=True)
+
+
+preparar_sqlite_local(settings.database_url)
 
 engine_kwargs = {"pool_pre_ping": True}
 if settings.database_url.startswith("sqlite"):

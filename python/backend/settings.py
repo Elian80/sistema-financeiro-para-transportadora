@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    database_url: str = f"sqlite:///{(BASE_DIR / 'python' / 'data' / 'financeiro_dev.db').as_posix()}"
+    database_url: str = "postgresql+psycopg://admim:1234@localhost:5432/financeiro"
     jwt_secret_key: str = "dev-only-change-this-secret"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60

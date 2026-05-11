@@ -53,6 +53,9 @@ let editandoProdutoId = null;
 let cacheVeiculos = [];
 let filtroPeriodoFolha = "";
 let adminEmpresaFiltro = "";
+let mapaInstancia = null;
+let mapaMarkers = new Map();
+let mapaAtualizacaoTimer = null;
 
 function aplicarIconesNavegacao() {
   navButtons.forEach((button) => {
@@ -129,6 +132,27 @@ const pages = {
         </div>
         ${botaoFiltros("painel-filtros-dashboard")}
       </section>
+
+      <div class="kpi-grid dashboard-summary-grid" style="margin-bottom:18px;">
+        <section class="kpi-card">
+          <div class="kpi-label">Margem líquida</div>
+          <div class="kpi-value" id="dashboard-margem-liquida">0,0%</div>
+          ${kpiTrend("+0.0%", "positive")}
+          <div class="dashboard-note">Participacao de lucro sobre faturamento</div>
+        </section>
+        <section class="kpi-card">
+          <div class="kpi-label">Ticket medio</div>
+          <div class="kpi-value positive" id="dashboard-ticket-medio">R$ 0,00</div>
+          ${kpiTrend("+0.0%", "positive")}
+          <div class="dashboard-note">Receitas por lancamento</div>
+        </section>
+        <section class="kpi-card">
+          <div class="kpi-label">Frota operante</div>
+          <div class="kpi-value" id="dashboard-frota-operante">0%</div>
+          ${kpiTrend("+0.0%", "positive")}
+          <div class="dashboard-note">Veiculos ativos sobre total</div>
+        </section>
+      </div>
 
       ${popupFiltros("painel-filtros-dashboard", "Filtros do dashboard", "Refine os indicadores principais desta tela.", `
         <div class="form-grid">
@@ -817,6 +841,16 @@ const pages = {
           <div class="kpi-label">Total a receber</div>
           <div class="kpi-value positive" id="cr-total-receber-kpi">R$ 0,00</div>
         </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Recebido</div>
+          <div class="kpi-value positive" id="cr-total-recebido-kpi">R$ 0,00</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Pendente</div>
+          <div class="kpi-value warning" id="cr-total-pendente-kpi">R$ 0,00</div>
+        </div>
       </div>
 
       <section class="panel-box">
@@ -849,12 +883,13 @@ const pages = {
                 <th>Veiculo</th>
                 <th>Descontos</th>
                 <th>Valor total a receber</th>
+                <th>Status</th>
                 <th>Acoes</th>
               </tr>
             </thead>
             <tbody id="tabela-contas-receber">
               <tr>
-                <td colspan="14" class="empty-row">Nenhuma conta a receber encontrada.</td>
+                <td colspan="15" class="empty-row">Nenhuma conta a receber encontrada.</td>
               </tr>
             </tbody>
           </table>
@@ -1269,10 +1304,40 @@ const pages = {
     title: "Mapa",
     subtitle: "Localizacao operacional em tempo real",
     render: () => `
-      <div class="panel-box">
-        <h3>Mapa em tempo real</h3>
-        <p>Aqui ficara a visualizacao dos caminhoes em tempo real.</p>
-      </div>
+      <section class="mapa-shell">
+        <div class="mapa-topbar">
+          <div>
+            <h3>Motoristas em rota</h3>
+            <span id="mapa-status-atualizacao">Aguardando sinal...</span>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="ghost-btn" id="btn-mapa-centralizar">Centralizar</button>
+            <button type="button" class="primary-btn" id="btn-mapa-simular">Simular GPS</button>
+          </div>
+        </div>
+
+        <div class="mapa-layout">
+          <aside class="mapa-driver-panel">
+            <div class="mapa-summary-grid">
+              <div>
+                <span>Online</span>
+                <strong id="mapa-online-total">0</strong>
+              </div>
+              <div>
+                <span>Total</span>
+                <strong id="mapa-motoristas-total">0</strong>
+              </div>
+            </div>
+            <div id="mapa-lista-motoristas" class="mapa-driver-list">
+              <p class="empty-row">Carregando motoristas...</p>
+            </div>
+          </aside>
+
+          <div class="mapa-canvas-wrap">
+            <div id="mapa-operacional" class="mapa-canvas"></div>
+          </div>
+        </div>
+      </section>
     `
   }
 };
@@ -1308,6 +1373,11 @@ function formatarValor(valor) {
     style: "currency",
     currency: "BRL"
   });
+}
+
+function formatarPercentual(valor) {
+  if (!Number.isFinite(valor)) return "0,0%";
+  return `${valor.toFixed(1).replace(".", ",")}%`;
 }
 
 function normalizarTexto(texto) {
@@ -3274,17 +3344,27 @@ function atualizarKpisContasReceber(contas) {
   const totalBruto = document.getElementById("cr-total-bruto-kpi");
   const totalDescontos = document.getElementById("cr-total-descontos-kpi");
   const totalReceber = document.getElementById("cr-total-receber-kpi");
+  const totalRecebido = document.getElementById("cr-total-recebido-kpi");
+  const totalPendente = document.getElementById("cr-total-pendente-kpi");
 
-  if (!totalRegistros || !totalBruto || !totalDescontos || !totalReceber) return;
+  if (!totalRegistros || !totalBruto || !totalDescontos || !totalReceber || !totalRecebido || !totalPendente) return;
 
   const bruto = contas.reduce((total, item) => total + normalizarNumero(item.valor), 0);
   const descontos = contas.reduce((total, item) => total + normalizarNumero(item.descontos), 0);
   const receber = contas.reduce((total, item) => total + normalizarNumero(item.valor_total_receber), 0);
+  const recebido = contas
+    .filter((item) => item.status_pagamento === "recebido")
+    .reduce((total, item) => total + normalizarNumero(item.valor_total_receber), 0);
+  const pendente = contas
+    .filter((item) => item.status_pagamento !== "recebido" && item.status_pagamento !== "cancelado")
+    .reduce((total, item) => total + normalizarNumero(item.valor_total_receber), 0);
 
   totalRegistros.textContent = String(contas.length);
   totalBruto.textContent = formatarValor(bruto);
   totalDescontos.textContent = formatarValor(descontos);
   totalReceber.textContent = formatarValor(receber);
+  totalRecebido.textContent = formatarValor(recebido);
+  totalPendente.textContent = formatarValor(pendente);
 }
 
 function renderizarTabelaContasReceber(contas) {
@@ -3295,33 +3375,39 @@ function renderizarTabelaContasReceber(contas) {
   atualizarKpisContasReceber(contas);
 
   if (!contas.length) {
-    tabela.innerHTML = `<tr><td colspan="14" class="empty-row">Nenhuma conta a receber encontrada.</td></tr>`;
+    tabela.innerHTML = `<tr><td colspan="15" class="empty-row">Nenhuma conta a receber encontrada.</td></tr>`;
     total.textContent = "0 registros";
     return;
   }
 
   tabela.innerHTML = contas.map((item) => {
     const descontoDetalhe = item.desconto_classificacao
-      ? `<small>${item.desconto_classificacao}</small>`
+      ? `<small>${escapeHtml(item.desconto_classificacao)}</small>`
       : "";
+    const status = item.status_pagamento || "pendente";
+    const proximoStatus = status === "recebido" ? "pendente" : "recebido";
+    const textoBotaoStatus = status === "recebido" ? "Marcar pendente" : "Marcar recebido";
+    const classeBotaoStatus = status === "recebido" ? "delete-btn" : "edit-btn";
 
     return `
       <tr>
         <td>${formatarDataCurta(item.data_inicio)}</td>
-        <td>${item.contrato || ""}</td>
-        <td>${item.cte_ticket || ""}</td>
+        <td>${escapeHtml(item.contrato || "")}</td>
+        <td>${escapeHtml(item.cte_ticket || "")}</td>
         <td>${formatarValor(item.valor)}</td>
         <td>${normalizarNumero(item.quantidade_horas) > 0 ? `${normalizarNumero(item.quantidade_horas).toLocaleString("pt-BR")}h x ${formatarValor(item.valor_hora_unitario)}` : "-"}</td>
-        <td>${item.carga || ""}</td>
-        <td>${item.ton_qnt || ""}</td>
-        <td>${item.tomador || ""}</td>
-        <td>${item.origem_destino || ""}</td>
+        <td>${escapeHtml(item.carga || "")}</td>
+        <td>${escapeHtml(item.ton_qnt || "")}</td>
+        <td>${escapeHtml(item.tomador || "")}</td>
+        <td>${escapeHtml(item.origem_destino || "")}</td>
         <td>${formatarValor(item.bonificacao)}</td>
-        <td>${nomeVeiculoPorId(item.veiculo_id)}</td>
+        <td>${escapeHtml(nomeVeiculoPorId(item.veiculo_id))}</td>
         <td>${formatarValor(item.descontos)}${descontoDetalhe}</td>
         <td class="positive"><strong>${formatarValor(item.valor_total_receber)}</strong></td>
+        <td><span class="status-pill ${escapeHtml(status)}">${escapeHtml(status)}</span></td>
         <td>
           <div class="action-row">
+            <button class="small-btn ${classeBotaoStatus}" onclick="alterarStatusContaReceber(${item.id}, '${proximoStatus}')">${textoBotaoStatus}</button>
             <button class="small-btn edit-btn" onclick="editarContaReceberPorId(${item.id})">Editar</button>
             <button class="small-btn delete-btn" onclick="excluirContaReceber(${item.id})">Excluir</button>
           </div>
@@ -3365,6 +3451,13 @@ window.excluirContaReceber = async (id) => {
   if (!confirm("Deseja excluir esta conta a receber?")) return;
 
   await apiDelete(`/contas-receber/${id}`);
+  await carregarContasReceber();
+};
+
+window.alterarStatusContaReceber = async (id, statusPagamento) => {
+  await apiSend(`/contas-receber/${id}/status`, "PATCH", {
+    status_pagamento: statusPagamento
+  });
   await carregarContasReceber();
 };
 
@@ -4567,7 +4660,20 @@ async function iniciarDashboard() {
   saldoEl.classList.toggle("negative", saldo < 0);
   saldoEl.classList.toggle("positive", saldo >= 0);
 
-  document.getElementById("dashboard-periodo").textContent = `${lancamentos.length} lancamento(s) cadastrados`;
+  const dataInicial = document.getElementById("dash-data-inicial")?.value;
+  const dataFinal = document.getElementById("dash-data-final")?.value;
+  const periodoLabel = dataInicial || dataFinal
+    ? `Periodo: ${dataInicial ? formatarDataCurta(dataInicial) : "inicio"} - ${dataFinal ? formatarDataCurta(dataFinal) : "hoje"}`
+    : "Todos os dados";
+
+  const margemLiquida = totalReceitas ? (dadosDashboard.resumo.lucro_liquido / totalReceitas) * 100 : 0;
+  const ticketMedio = receitas.length ? totalReceitas / receitas.length : 0;
+  const frotaOperante = veiculos.length ? (ativos / veiculos.length) * 100 : 0;
+
+  document.getElementById("dashboard-periodo").textContent = `${lancamentos.length} lancamento(s) · ${periodoLabel}`;
+  document.getElementById("dashboard-margem-liquida").textContent = formatarPercentual(margemLiquida);
+  document.getElementById("dashboard-ticket-medio").textContent = formatarValor(ticketMedio);
+  document.getElementById("dashboard-frota-operante").textContent = formatarPercentual(frotaOperante);
   document.getElementById("dashboard-receitas").textContent = formatarValor(totalReceitas);
   document.getElementById("dashboard-receitas-qtd").textContent = `${receitas.length} lancamento(s)`;
   document.getElementById("dashboard-despesas").textContent = formatarValor(totalDespesas);
@@ -4673,6 +4779,168 @@ function renderizarUltimosLancamentosDashboard(lancamentos) {
 }
 
 // =========================================================
+// MAPA EM TEMPO REAL
+// =========================================================
+function pararAtualizacaoMapa() {
+  if (mapaAtualizacaoTimer) {
+    clearInterval(mapaAtualizacaoTimer);
+    mapaAtualizacaoTimer = null;
+  }
+}
+
+function criarIconeMotorista(item) {
+  const online = item.online ? "online" : "offline";
+  const inicial = String(item.motorista_nome || "M").trim().slice(0, 1).toUpperCase();
+  return L.divIcon({
+    className: `driver-map-marker ${online}`,
+    html: `<span>${escapeHtml(inicial)}</span>`,
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+    popupAnchor: [0, -20]
+  });
+}
+
+function textoTempoSinal(item) {
+  if (item.online) return "agora";
+  const minutos = normalizarNumero(item.minutos_sem_sinal);
+  if (minutos < 60) return `${Math.round(minutos)} min sem sinal`;
+  return `${Math.round(minutos / 60)} h sem sinal`;
+}
+
+function centralizarMapaMotoristas(itens = []) {
+  if (!mapaInstancia || !itens.length) return;
+  const pontos = itens
+    .filter((item) => Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude)))
+    .map((item) => [item.latitude, item.longitude]);
+  if (!pontos.length) return;
+  mapaInstancia.fitBounds(pontos, { padding: [48, 48], maxZoom: 15 });
+}
+
+function atualizarListaMotoristasMapa(itens) {
+  const lista = document.getElementById("mapa-lista-motoristas");
+  if (!lista) return;
+  if (!itens.length) {
+    lista.innerHTML = `<p class="empty-row">Nenhum motorista cadastrado.</p>`;
+    return;
+  }
+
+  lista.innerHTML = itens.map((item) => `
+    <button type="button" class="mapa-driver-card" onclick="focarMotoristaMapa(${item.motorista_id})">
+      <span class="mapa-driver-dot ${item.online ? "online" : "offline"}"></span>
+      <span>
+        <strong>${escapeHtml(item.motorista_nome)}</strong>
+        <small>${escapeHtml(item.cargo || "Motorista")} - ${Math.round(normalizarNumero(item.velocidade))} km/h</small>
+      </span>
+      <em>${escapeHtml(textoTempoSinal(item))}</em>
+    </button>
+  `).join("");
+}
+
+function atualizarMarcadoresMapa(itens) {
+  if (!mapaInstancia) return;
+
+  itens.forEach((item) => {
+    const ponto = [item.latitude, item.longitude];
+    const popup = `
+      <div class="mapa-popup">
+        <strong>${escapeHtml(item.motorista_nome)}</strong>
+        <span>${escapeHtml(item.cargo || "Motorista")}</span>
+        <span>${Math.round(normalizarNumero(item.velocidade))} km/h</span>
+        <span>${escapeHtml(textoTempoSinal(item))}</span>
+      </div>
+    `;
+    const marker = mapaMarkers.get(item.motorista_id);
+    if (marker) {
+      marker.setLatLng(ponto);
+      marker.setIcon(criarIconeMotorista(item));
+      marker.setPopupContent(popup);
+    } else {
+      const novoMarker = L.marker(ponto, { icon: criarIconeMotorista(item) })
+        .addTo(mapaInstancia)
+        .bindPopup(popup);
+      mapaMarkers.set(item.motorista_id, novoMarker);
+    }
+  });
+
+  const idsAtuais = new Set(itens.map((item) => item.motorista_id));
+  mapaMarkers.forEach((marker, id) => {
+    if (!idsAtuais.has(id)) {
+      marker.remove();
+      mapaMarkers.delete(id);
+    }
+  });
+}
+
+async function atualizarMapaMotoristas({ centralizar = false } = {}) {
+  const statusEl = document.getElementById("mapa-status-atualizacao");
+  let dados;
+  try {
+    dados = await apiGet("/localizacoes-motoristas");
+  } catch (error) {
+    if (statusEl) {
+      statusEl.textContent = error.message || "Nao foi possivel carregar localizacoes.";
+    }
+    throw error;
+  }
+  const itens = dados.itens || [];
+  atualizarMarcadoresMapa(itens);
+  atualizarListaMotoristasMapa(itens);
+
+  document.getElementById("mapa-online-total").textContent = dados.online || 0;
+  document.getElementById("mapa-motoristas-total").textContent = dados.total || 0;
+  if (statusEl) {
+    statusEl.textContent = `Atualizado em ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+  }
+
+  if (centralizar || !mapaInstancia.__financeiroCentralizado) {
+    centralizarMapaMotoristas(itens);
+    mapaInstancia.__financeiroCentralizado = true;
+  }
+}
+
+window.focarMotoristaMapa = (motoristaId) => {
+  const marker = mapaMarkers.get(motoristaId);
+  if (!marker || !mapaInstancia) return;
+  mapaInstancia.setView(marker.getLatLng(), 16, { animate: true });
+  marker.openPopup();
+};
+
+async function iniciarMapa() {
+  pararAtualizacaoMapa();
+  mapaMarkers = new Map();
+
+  const container = document.getElementById("mapa-operacional");
+  if (!container) return;
+  if (!window.L) {
+    container.innerHTML = `<div class="mapa-fallback">Nao foi possivel carregar o mapa. Recarregue a pagina ou verifique a conexao.</div>`;
+    return;
+  }
+
+  mapaInstancia = L.map(container, {
+    zoomControl: false,
+    attributionControl: true
+  }).setView([-23.55052, -46.63331], 12);
+
+  L.control.zoom({ position: "bottomright" }).addTo(mapaInstancia);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(mapaInstancia);
+
+  document.getElementById("btn-mapa-centralizar")?.addEventListener("click", () => atualizarMapaMotoristas({ centralizar: true }));
+  document.getElementById("btn-mapa-simular")?.addEventListener("click", async () => {
+    await apiSend("/localizacoes-motoristas/simular", "POST", {});
+    await atualizarMapaMotoristas({ centralizar: true });
+  });
+
+  [80, 350, 900].forEach((tempo) => {
+    setTimeout(() => mapaInstancia?.invalidateSize(), tempo);
+  });
+  await atualizarMapaMotoristas({ centralizar: true });
+  mapaAtualizacaoTimer = setInterval(() => atualizarMapaMotoristas().catch(() => {}), 5000);
+}
+
+// =========================================================
 // MENU LATERAL
 // =========================================================
 function telaMobile() {
@@ -4765,6 +5033,13 @@ async function loadPage(pageKey) {
   const page = pages[pageKey];
   if (!page) return;
 
+  pararAtualizacaoMapa();
+  if (mapaInstancia) {
+    mapaInstancia.remove();
+    mapaInstancia = null;
+    mapaMarkers = new Map();
+  }
+
   pageTitle.textContent = page.title;
   pageSubtitle.textContent = page.subtitle;
   pageContent.innerHTML = page.render();
@@ -4798,6 +5073,10 @@ async function loadPage(pageKey) {
 
     if (pageKey === "estoque") {
       await iniciarEstoque();
+    }
+
+    if (pageKey === "mapa") {
+      await iniciarMapa();
     }
 
     if (pageKey === "configuracoes") {

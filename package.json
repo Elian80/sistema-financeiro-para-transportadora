@@ -1,11 +1,12 @@
 {
   "name": "financeiro",
   "version": "1.0.0",
-  "description": "Sistema desktop financeiro",
+  "description": "Sistema financeiro SaaS com FastAPI, PostgreSQL e PWA",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "web": "cd python && python -m uvicorn web:app --host 127.0.0.1 --port 8000 --reload"
+    "web": "cd python && python -m uvicorn web:app --host 127.0.0.1 --port 8000 --reload",
+    "web:prod": "cd python && python -m uvicorn web:app --host 0.0.0.0 --port 8000"
   },
   "author": "",
   "license": "ISC",

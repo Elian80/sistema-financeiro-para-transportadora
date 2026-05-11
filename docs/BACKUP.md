@@ -9,7 +9,7 @@ pg_dump financeiro > backup_financeiro.sql
 Com `DATABASE_URL`:
 
 ```bash
-pg_dump postgresql://financeiro_user:SENHA_FORTE@localhost:5432/financeiro > backup_financeiro.sql
+pg_dump postgresql://admim:1234@localhost:5432/financeiro > backup_financeiro.sql
 ```
 
 ## Restore manual
@@ -21,7 +21,7 @@ psql financeiro < backup_financeiro.sql
 Com `DATABASE_URL`:
 
 ```bash
-psql postgresql://financeiro_user:SENHA_FORTE@localhost:5432/financeiro < backup_financeiro.sql
+psql postgresql://admim:1234@localhost:5432/financeiro < backup_financeiro.sql
 ```
 
 ## Script automático

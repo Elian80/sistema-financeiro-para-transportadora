@@ -1,0 +1,153 @@
+:root {
+  --bg: #0B0F1A;
+  --panel: #0F172A;
+  --surface: rgba(255, 255, 255, 0.055);
+  --line: rgba(148, 163, 184, 0.18);
+  --text: #E5E7EB;
+  --muted: #9CA3AF;
+  --blue: #22D3EE;
+  --blue-2: #3B82F6;
+  --green: #22C55E;
+  --red: #EF4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, Segoe UI, Arial, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(34, 211, 238, 0.18), transparent 20rem),
+    linear-gradient(135deg, #070b16 0%, var(--bg) 100%);
+}
+
+.driver-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.driver-card {
+  width: 100%;
+  max-width: 440px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
+.brand-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.brand-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--blue), var(--blue-2));
+  color: white;
+  font-weight: 900;
+  font-size: 24px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.driver-form,
+.tracking-panel {
+  display: grid;
+  gap: 12px;
+}
+
+label,
+.signal-grid span,
+.driver-status-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  outline: none;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 15px;
+  background: linear-gradient(135deg, var(--blue), var(--blue-2));
+  color: white;
+  font-weight: 800;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: rgba(239, 68, 68, 0.16);
+  color: #FCA5A5;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.tracking-panel {
+  margin-top: 10px;
+}
+
+.driver-status-card,
+.signal-grid div {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--surface);
+}
+
+.driver-status-card strong,
+.signal-grid strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.signal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.driver-message {
+  min-height: 22px;
+  margin-top: 16px;
+  color: var(--green);
+  font-size: 14px;
+}
+
+.driver-message.error {
+  color: #FCA5A5;
+}

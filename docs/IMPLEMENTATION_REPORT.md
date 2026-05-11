@@ -9,13 +9,13 @@ Data: 2026-04-30
 
 ## Arquivos Criados
 
-- `ARCHITECTURE.md`
-- `DATABASE_FLOW.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE_FLOW.md`
 - `.env.example`
-- `SECURITY_AUDIT.md`
-- `SECURITY_TESTS.md`
-- `BACKUP.md`
-- `IMPLEMENTATION_REPORT.md`
+- `docs/SECURITY_AUDIT.md`
+- `docs/SECURITY_TESTS.md`
+- `docs/BACKUP.md`
+- `docs/IMPLEMENTATION_REPORT.md`
 - `alembic.ini`
 - `python/backend/*`
 - `python/backend/migrations/*`

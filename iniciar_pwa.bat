@@ -33,8 +33,31 @@ start "Financeiro - Servidor Web" powershell -NoExit -ExecutionPolicy Bypass -Co
 echo Aguardando servidor responder...
 timeout /t 5 /nobreak >nul
 
+set "LOCAL_APP_URL=http://127.0.0.1:8001/app"
+set "LOCAL_MOTORISTA_URL=http://127.0.0.1:8001/motorista"
+for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne '127.0.0.1' -and $_.IPAddress -notlike '169.*' -and $_.InterfaceOperationalStatus -eq 'Up' } | Select-Object -ExpandProperty IPAddress | Select-Object -First 1)"`) do set "LOCAL_IP=%%I"
+
+if defined LOCAL_IP (
+  set "LOCAL_APP_MOBILE_URL=http://%LOCAL_IP%:8001/app"
+  set "LOCAL_MOTORISTA_MOBILE_URL=http://%LOCAL_IP%:8001/motorista"
+) else (
+  set "LOCAL_APP_MOBILE_URL=%LOCAL_APP_URL%"
+  set "LOCAL_MOTORISTA_MOBILE_URL=%LOCAL_MOTORISTA_URL%"
+)
+
+> "LINK_LOCAL_PC.url" echo [InternetShortcut]
+>>"LINK_LOCAL_PC.url" echo URL=%LOCAL_APP_URL%
+> "LINK_LOCAL_MOTORISTA.url" echo [InternetShortcut]
+>>"LINK_LOCAL_MOTORISTA.url" echo URL=%LOCAL_MOTORISTA_URL%
+> "LINK_LOCAL_CELULAR.url" echo [InternetShortcut]
+>>"LINK_LOCAL_CELULAR.url" echo URL=%LOCAL_APP_MOBILE_URL%
+> "LINK_LOCAL_CELULAR_MOTORISTA.url" echo [InternetShortcut]
+>>"LINK_LOCAL_CELULAR_MOTORISTA.url" echo URL=%LOCAL_MOTORISTA_MOBILE_URL%
+> "LINK_LOCAL_CELULAR.txt" echo %LOCAL_APP_MOBILE_URL%
+>>"LINK_LOCAL_CELULAR.txt" echo %LOCAL_MOTORISTA_MOBILE_URL%
+
 echo Abrindo navegador...
-start "" "http://127.0.0.1:8001"
+start "" "%LOCAL_APP_URL%"
 
 echo.
 echo Sistema iniciado.

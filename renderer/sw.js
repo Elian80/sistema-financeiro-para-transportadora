@@ -1,15 +1,24 @@
-const CACHE_NAME = "financeiro-pwa-v53";
+const CACHE_NAME = "financeiro-pwa-v56";
 
 const APP_SHELL = [
   "/",
   "/app",
+  "/motorista",
   "/login.html",
   "/index.html",
+  "/motorista.html",
   "/login.css",
   "/style.css",
+  "/motorista.css",
   "/login.js?v=12",
-  "/app.js?v=28",
+  "/app.js?v=30",
+  "/motorista.js?v=2",
   "/pwa.js?v=12",
+  "/vendor/leaflet/leaflet.css",
+  "/vendor/leaflet/leaflet.js",
+  "/vendor/leaflet/images/marker-icon.png",
+  "/vendor/leaflet/images/marker-icon-2x.png",
+  "/vendor/leaflet/images/marker-shadow.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/apple-touch-icon.png",
@@ -41,7 +50,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (["/lancamentos", "/veiculos", "/motoristas", "/folha-pagamento", "/classificacoes", "/plano-contas", "/contas-receber", "/relatorios", "/ativos", "/passivos", "/estoque"].some((path) => url.pathname.startsWith(path))) {
+  if (["/lancamentos", "/veiculos", "/motoristas", "/motorista-mobile", "/localizacoes-motoristas", "/folha-pagamento", "/classificacoes", "/plano-contas", "/contas-receber", "/relatorios", "/ativos", "/passivos", "/estoque"].some((path) => url.pathname.startsWith(path))) {
     event.respondWith(fetch(request));
     return;
   }

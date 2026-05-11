@@ -1,0 +1,16 @@
+[Unit]
+Description=Sistema Financeiro SaaS
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=financeiro
+Group=financeiro
+WorkingDirectory=/opt/financeiro/python
+EnvironmentFile=/opt/financeiro/.env
+ExecStart=/opt/financeiro/.venv/bin/python -m uvicorn web:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -14,5 +14,10 @@ def abrir_app():
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
+@app.get("/motorista")
+def abrir_motorista():
+    return FileResponse(FRONTEND_DIR / "motorista.html")
+
+
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIR), name="frontend")
