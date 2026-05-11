@@ -1104,6 +1104,20 @@ const pages = {
       </div>
 
       <section class="panel-box">
+        <div class="table-toolbar">
+          <div><h3 style="margin:0;">Acessos do App Motorista</h3><span>Credenciais separadas para o app mobile dos motoristas</span></div>
+          <button class="primary-btn" id="btn-novo-acesso-motorista" type="button">+ Novo acesso</button>
+        </div>
+        <div id="form-acesso-motorista-container"></div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table class="data-table">
+            <thead><tr><th>Nome</th><th>Email</th><th>Motorista vinculado</th><th>Status</th><th>Link app</th><th>Acoes</th></tr></thead>
+            <tbody id="tabela-motorista-acessos"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel-box">
         <div class="table-toolbar"><div><h3 style="margin:0;">Auditoria</h3><span>Ultimas acoes administrativas</span></div></div>
         <div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Acao</th><th>Entidade</th><th>ID</th><th>IP</th><th>Acoes</th></tr></thead><tbody id="tabela-admin-auditoria"></tbody></table></div>
       </section>
@@ -4031,7 +4045,7 @@ window.desativarUsuario = async (usuarioId) => {
 };
 
 async function iniciarAdminMaster() {
-  await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
+  await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminUsuarios(), renderizarAdminAuditoria(), renderizarMotoristaAcessos()]);
 
   const modalEmpresa = document.getElementById("modal-admin-empresa");
   const modalUsuario = document.getElementById("modal-admin-usuario");
@@ -4206,6 +4220,92 @@ async function renderizarAdminAuditoria() {
     </tr>
   `).join("") || `<tr><td colspan="6" class="empty-row">Nenhum log encontrado.</td></tr>`;
 }
+
+async function renderizarMotoristaAcessos() {
+  const tabela = document.getElementById("tabela-motorista-acessos");
+  if (!tabela) return;
+  const acessos = await apiGet("/motorista-acessos");
+  const appUrl = `${window.location.origin}/motorista.html`;
+  tabela.innerHTML = acessos.map(a => `
+    <tr>
+      <td>${escapeHtml(a.nome)}</td>
+      <td>${escapeHtml(a.email)}</td>
+      <td>${escapeHtml(a.motorista_nome || "-")}</td>
+      <td><span class="status-pill ${a.ativo ? "active" : "inactive"}">${a.ativo ? "Ativo" : "Inativo"}</span></td>
+      <td><button class="small-btn" onclick="copiarLinkApp('${appUrl}')">Copiar link</button></td>
+      <td>
+        <button class="small-btn delete-btn" onclick="excluirAcessoMotorista(${a.id})">Excluir</button>
+        <button class="small-btn" onclick="toggleAtivoMotorista(${a.id}, ${!a.ativo})">${a.ativo ? "Desativar" : "Ativar"}</button>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="6" class="empty-row">Nenhum acesso cadastrado.</td></tr>`;
+
+  const btn = document.getElementById("btn-novo-acesso-motorista");
+  if (btn) {
+    btn.onclick = () => abrirFormAcessoMotorista();
+  }
+}
+
+function abrirFormAcessoMotorista() {
+  const container = document.getElementById("form-acesso-motorista-container");
+  if (!container) return;
+  if (container.innerHTML) { container.innerHTML = ""; return; }
+  container.innerHTML = `
+    <div class="edit-inline-form" style="margin-bottom:14px;">
+      <h4 style="margin:0 0 12px;">Novo acesso motorista</h4>
+      <div class="edit-inline-fields">
+        <div class="field"><label>Nome *</label><input id="am-nome" placeholder="Nome do motorista" /></div>
+        <div class="field"><label>Email *</label><input id="am-email" type="email" placeholder="login@email.com" /></div>
+        <div class="field"><label>Senha *</label><input id="am-senha" type="password" placeholder="Min. 8 caracteres" /></div>
+        <div class="field"><label>Motorista vinculado</label><select id="am-motorista"></select></div>
+      </div>
+      <div class="edit-inline-actions">
+        <button class="primary-btn" type="button" id="btn-salvar-acesso-motorista">Salvar</button>
+        <button class="ghost-btn" type="button" id="btn-cancelar-acesso-motorista">Cancelar</button>
+        <span id="am-msg" class="mensagem"></span>
+      </div>
+    </div>
+  `;
+  apiGet("/motoristas").then(mots => {
+    const sel = document.getElementById("am-motorista");
+    if (sel) sel.innerHTML = `<option value="">Nenhum</option>` + mots.map(m => `<option value="${m.id}">${escapeHtml(m.nome)}</option>`).join("");
+  });
+  document.getElementById("btn-cancelar-acesso-motorista").onclick = () => { container.innerHTML = ""; };
+  document.getElementById("btn-salvar-acesso-motorista").onclick = async () => {
+    const msg = document.getElementById("am-msg");
+    msg.textContent = "";
+    try {
+      await apiSend("/motorista-acessos", "POST", {
+        nome: document.getElementById("am-nome").value.trim(),
+        email: document.getElementById("am-email").value.trim(),
+        senha: document.getElementById("am-senha").value,
+        motorista_id: document.getElementById("am-motorista").value || null,
+      });
+      container.innerHTML = "";
+      mostrarToast("Acesso criado.", "success");
+      await renderizarMotoristaAcessos();
+    } catch (err) {
+      msg.textContent = err.message;
+    }
+  };
+}
+
+window.copiarLinkApp = (url) => {
+  navigator.clipboard.writeText(url).then(() => mostrarToast("Link copiado!", "success")).catch(() => mostrarToast(url));
+};
+
+window.excluirAcessoMotorista = async (id) => {
+  if (!confirm("Excluir este acesso?")) return;
+  await apiDelete(`/motorista-acessos/${id}`);
+  mostrarToast("Acesso excluido.", "success");
+  await renderizarMotoristaAcessos();
+};
+
+window.toggleAtivoMotorista = async (id, ativo) => {
+  await apiSend(`/motorista-acessos/${id}`, "PUT", { ativo });
+  mostrarToast(ativo ? "Acesso ativado." : "Acesso desativado.", "success");
+  await renderizarMotoristaAcessos();
+};
 
 window.acaoEmpresa = async (empresaId, acao) => {
   await apiSend(`/empresas/${empresaId}/${acao}`, "POST", {});
@@ -4912,7 +5012,7 @@ function pararAtualizacaoMapa() {
 
 function criarIconeMotorista(item) {
   const online = item.online ? "online" : "offline";
-  const inicial = String(item.motorista_nome || "M").trim().slice(0, 1).toUpperCase();
+  const inicial = String(item.nome || "M").trim().slice(0, 1).toUpperCase();
   return L.divIcon({
     className: `driver-map-marker ${online}`,
     html: `<span>${escapeHtml(inicial)}</span>`,
@@ -4932,8 +5032,8 @@ function textoTempoSinal(item) {
 function centralizarMapaMotoristas(itens = []) {
   if (!mapaInstancia || !itens.length) return;
   const pontos = itens
-    .filter((item) => Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude)))
-    .map((item) => [item.latitude, item.longitude]);
+    .filter((item) => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)))
+    .map((item) => [item.lat, item.lng]);
   if (!pontos.length) return;
   mapaInstancia.fitBounds(pontos, { padding: [48, 48], maxZoom: 15 });
 }
@@ -4942,16 +5042,15 @@ function atualizarListaMotoristasMapa(itens) {
   const lista = document.getElementById("mapa-lista-motoristas");
   if (!lista) return;
   if (!itens.length) {
-    lista.innerHTML = `<p class="empty-row">Nenhum motorista cadastrado.</p>`;
+    lista.innerHTML = `<p class="empty-row">Nenhum motorista com GPS ativo.</p>`;
     return;
   }
-
   lista.innerHTML = itens.map((item) => `
-    <button type="button" class="mapa-driver-card" onclick="focarMotoristaMapa(${item.motorista_id})">
+    <button type="button" class="mapa-driver-card" onclick="focarMotoristaMapa(${item.motorista_acesso_id})">
       <span class="mapa-driver-dot ${item.online ? "online" : "offline"}"></span>
       <span>
-        <strong>${escapeHtml(item.motorista_nome)}</strong>
-        <small>${escapeHtml(item.cargo || "Motorista")} - ${Math.round(normalizarNumero(item.velocidade))} km/h</small>
+        <strong>${escapeHtml(item.nome)}</strong>
+        <small>${Math.round(normalizarNumero(item.velocidade))} km/h${item.viagem ? " — " + escapeHtml(item.viagem.destino || "") : ""}</small>
       </span>
       <em>${escapeHtml(textoTempoSinal(item))}</em>
     </button>
@@ -4960,18 +5059,18 @@ function atualizarListaMotoristasMapa(itens) {
 
 function atualizarMarcadoresMapa(itens) {
   if (!mapaInstancia) return;
-
   itens.forEach((item) => {
-    const ponto = [item.latitude, item.longitude];
+    if (!item.lat || !item.lng) return;
+    const ponto = [item.lat, item.lng];
     const popup = `
       <div class="mapa-popup">
-        <strong>${escapeHtml(item.motorista_nome)}</strong>
-        <span>${escapeHtml(item.cargo || "Motorista")}</span>
+        <strong>${escapeHtml(item.nome)}</strong>
         <span>${Math.round(normalizarNumero(item.velocidade))} km/h</span>
+        ${item.viagem ? `<span>${escapeHtml(item.viagem.origem || "")} → ${escapeHtml(item.viagem.destino || "")}</span>` : ""}
         <span>${escapeHtml(textoTempoSinal(item))}</span>
       </div>
     `;
-    const marker = mapaMarkers.get(item.motorista_id);
+    const marker = mapaMarkers.get(item.motorista_acesso_id);
     if (marker) {
       marker.setLatLng(ponto);
       marker.setIcon(criarIconeMotorista(item));
@@ -4980,48 +5079,40 @@ function atualizarMarcadoresMapa(itens) {
       const novoMarker = L.marker(ponto, { icon: criarIconeMotorista(item) })
         .addTo(mapaInstancia)
         .bindPopup(popup);
-      mapaMarkers.set(item.motorista_id, novoMarker);
+      mapaMarkers.set(item.motorista_acesso_id, novoMarker);
     }
   });
-
-  const idsAtuais = new Set(itens.map((item) => item.motorista_id));
+  const idsAtuais = new Set(itens.map((item) => item.motorista_acesso_id));
   mapaMarkers.forEach((marker, id) => {
-    if (!idsAtuais.has(id)) {
-      marker.remove();
-      mapaMarkers.delete(id);
-    }
+    if (!idsAtuais.has(id)) { marker.remove(); mapaMarkers.delete(id); }
   });
 }
 
 async function atualizarMapaMotoristas({ centralizar = false } = {}) {
   const statusEl = document.getElementById("mapa-status-atualizacao");
-  let dados;
+  let itens;
   try {
-    dados = await apiGet("/localizacoes-motoristas");
+    itens = await apiGet("/mapa/motoristas");
   } catch (error) {
-    if (statusEl) {
-      statusEl.textContent = error.message || "Nao foi possivel carregar localizacoes.";
-    }
-    throw error;
+    if (statusEl) statusEl.textContent = error.message || "Erro ao carregar localizacoes.";
+    return;
   }
-  const itens = dados.itens || [];
   atualizarMarcadoresMapa(itens);
   atualizarListaMotoristasMapa(itens);
-
-  document.getElementById("mapa-online-total").textContent = dados.online || 0;
-  document.getElementById("mapa-motoristas-total").textContent = dados.total || 0;
+  const online = itens.filter(i => i.online).length;
+  document.getElementById("mapa-online-total").textContent = online;
+  document.getElementById("mapa-motoristas-total").textContent = itens.length;
   if (statusEl) {
     statusEl.textContent = `Atualizado em ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
   }
-
   if (centralizar || !mapaInstancia.__financeiroCentralizado) {
     centralizarMapaMotoristas(itens);
     mapaInstancia.__financeiroCentralizado = true;
   }
 }
 
-window.focarMotoristaMapa = (motoristaId) => {
-  const marker = mapaMarkers.get(motoristaId);
+window.focarMotoristaMapa = (id) => {
+  const marker = mapaMarkers.get(id);
   if (!marker || !mapaInstancia) return;
   mapaInstancia.setView(marker.getLatLng(), 16, { animate: true });
   marker.openPopup();
@@ -5050,10 +5141,6 @@ async function iniciarMapa() {
   }).addTo(mapaInstancia);
 
   document.getElementById("btn-mapa-centralizar")?.addEventListener("click", () => atualizarMapaMotoristas({ centralizar: true }));
-  document.getElementById("btn-mapa-simular")?.addEventListener("click", async () => {
-    await apiSend("/localizacoes-motoristas/simular", "POST", {});
-    await atualizarMapaMotoristas({ centralizar: true });
-  });
 
   [80, 350, 900].forEach((tempo) => {
     setTimeout(() => mapaInstancia?.invalidateSize(), tempo);

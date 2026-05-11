@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .dependencies import get_current_user
-from .models import AuditLog, Empresa, Usuario
+from .models import AuditLog, Empresa, Motorista, MotoristaAcesso, Usuario
 from .schemas import (
     AlterarSenhaIn,
     EmpresaCreate,
@@ -13,7 +13,7 @@ from .schemas import (
     UsuarioOut,
     UsuarioUpdate,
 )
-from .security import gerar_hash_senha, validar_senha_forte
+from .security import criar_motorista_token, gerar_hash_senha, validar_senha_forte
 
 
 router = APIRouter(tags=["admin"])
@@ -367,3 +367,99 @@ def excluir_audit_log(log_id: int, request: Request, db: Session = Depends(get_d
     db.delete(log)
     db.commit()
     return {"mensagem": "Log excluido com sucesso."}
+
+
+# =========================================================
+# MOTORISTA ACESSOS
+# =========================================================
+
+@router.get("/motorista-acessos")
+def listar_motorista_acessos(db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if usuario.perfil not in {"master", "admin", "gestor"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+    q = db.query(MotoristaAcesso)
+    if usuario.perfil != "master":
+        q = q.filter(MotoristaAcesso.empresa_id == usuario.empresa_id)
+    acessos = q.order_by(MotoristaAcesso.nome).all()
+    result = []
+    for a in acessos:
+        mot = db.get(Motorista, a.motorista_id) if a.motorista_id else None
+        result.append({
+            "id": a.id,
+            "empresa_id": a.empresa_id,
+            "motorista_id": a.motorista_id,
+            "motorista_nome": mot.nome if mot else "",
+            "nome": a.nome,
+            "email": a.email,
+            "ativo": a.ativo,
+            "created_at": a.created_at,
+        })
+    return result
+
+
+@router.post("/motorista-acessos")
+def criar_motorista_acesso(dados: dict, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if usuario.perfil not in {"master", "admin", "gestor"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+    email = (dados.get("email") or "").strip().lower()
+    senha = dados.get("senha") or ""
+    nome = (dados.get("nome") or "").strip()
+    motorista_id = dados.get("motorista_id") or None
+    empresa_id = usuario.empresa_id if usuario.perfil != "master" else int(dados.get("empresa_id", usuario.empresa_id))
+    if not email or not senha or not nome:
+        raise HTTPException(status_code=400, detail="Nome, email e senha sao obrigatorios.")
+    validar_senha_forte(senha)
+    if db.query(MotoristaAcesso).filter(MotoristaAcesso.email == email).first():
+        raise HTTPException(status_code=400, detail="Email ja cadastrado.")
+    acesso = MotoristaAcesso(
+        empresa_id=empresa_id,
+        motorista_id=int(motorista_id) if motorista_id else None,
+        nome=nome,
+        email=email,
+        senha_hash=gerar_hash_senha(senha),
+        ativo=True,
+    )
+    db.add(acesso)
+    db.flush()
+    registrar_auditoria(db, request, usuario, "criar", "motorista_acesso", str(acesso.id), f"Acesso criado: {email}")
+    db.commit()
+    db.refresh(acesso)
+    return {"id": acesso.id, "nome": acesso.nome, "email": acesso.email, "ativo": acesso.ativo}
+
+
+@router.put("/motorista-acessos/{acesso_id}")
+def atualizar_motorista_acesso(acesso_id: int, dados: dict, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if usuario.perfil not in {"master", "admin", "gestor"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+    acesso = db.get(MotoristaAcesso, acesso_id)
+    if not acesso:
+        raise HTTPException(status_code=404, detail="Acesso nao encontrado.")
+    if usuario.perfil != "master" and acesso.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+    if "nome" in dados:
+        acesso.nome = (dados["nome"] or "").strip()
+    if "motorista_id" in dados:
+        acesso.motorista_id = int(dados["motorista_id"]) if dados["motorista_id"] else None
+    if "ativo" in dados:
+        acesso.ativo = bool(dados["ativo"])
+    if dados.get("senha"):
+        validar_senha_forte(dados["senha"])
+        acesso.senha_hash = gerar_hash_senha(dados["senha"])
+    registrar_auditoria(db, request, usuario, "editar", "motorista_acesso", str(acesso.id))
+    db.commit()
+    return {"id": acesso.id, "nome": acesso.nome, "email": acesso.email, "ativo": acesso.ativo}
+
+
+@router.delete("/motorista-acessos/{acesso_id}")
+def excluir_motorista_acesso(acesso_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    if usuario.perfil not in {"master", "admin", "gestor"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+    acesso = db.get(MotoristaAcesso, acesso_id)
+    if not acesso:
+        raise HTTPException(status_code=404, detail="Acesso nao encontrado.")
+    if usuario.perfil != "master" and acesso.empresa_id != usuario.empresa_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
+    registrar_auditoria(db, request, usuario, "excluir", "motorista_acesso", str(acesso.id), f"Email: {acesso.email}")
+    db.delete(acesso)
+    db.commit()
+    return {"mensagem": "Acesso excluido."}

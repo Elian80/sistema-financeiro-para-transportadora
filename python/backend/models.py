@@ -149,3 +149,45 @@ class AuditLog(Base):
     detalhes: Mapped[str] = mapped_column(Text, default="", nullable=False)
     ip: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class MotoristaAcesso(Base, EmpresaScopedMixin):
+    __tablename__ = "motorista_acessos"
+
+    motorista_id: Mapped[int | None] = mapped_column(ForeignKey("motoristas.id"), nullable=True, index=True)
+    nome: Mapped[str] = mapped_column(String(160), default="", nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    senha_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class Viagem(Base, EmpresaScopedMixin):
+    __tablename__ = "viagens"
+
+    motorista_acesso_id: Mapped[int] = mapped_column(ForeignKey("motorista_acessos.id"), nullable=False, index=True)
+    veiculo_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    origem: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    destino: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    carga: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    km_inicial: Mapped[float | None] = mapped_column(Float, nullable=True)
+    km_final: Mapped[float | None] = mapped_column(Float, nullable=True)
+    data_inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    data_fim: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rota: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    observacao: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="em_andamento", nullable=False)
+
+
+class MotoristaLocalizacao(Base):
+    __tablename__ = "motorista_localizacoes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    empresa_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    motorista_acesso_id: Mapped[int] = mapped_column(ForeignKey("motorista_acessos.id"), nullable=False, unique=True)
+    viagem_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nome: Mapped[str] = mapped_column(String(160), default="", nullable=False)
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lng: Mapped[float] = mapped_column(Float, nullable=False)
+    velocidade: Mapped[float | None] = mapped_column(Float, nullable=True)
+    heading: Mapped[float | None] = mapped_column(Float, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

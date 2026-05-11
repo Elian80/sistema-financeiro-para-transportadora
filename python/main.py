@@ -25,13 +25,16 @@ from backend.models import (
     EstoqueProduto,
     Lancamento,
     Motorista,
+    MotoristaAcesso,
+    MotoristaLocalizacao,
     Passivo,
     PlanoConta,
     Usuario,
     Veiculo,
+    Viagem,
 )
 from contextlib import contextmanager
-from backend.security import decodificar_token
+from backend.security import criar_motorista_token, decodificar_motorista_token, decodificar_token, gerar_hash_senha, verificar_senha
 from backend.settings import settings
 
 # =========================================================
@@ -71,6 +74,7 @@ ROTAS_PROTEGIDAS = (
     "/motoristas",
     "/localizacoes-motoristas",
     "/folha-pagamento",
+    "/mapa",
 )
 
 DOMINIOS_LEGADOS = {
@@ -2673,3 +2677,252 @@ def excluir_folha_pagamento(folha_id: int):
                 db.commit()
 
     return {"mensagem": "Folha de pagamento excluida com sucesso."}
+
+
+# =========================================================
+# MOTORISTA APP
+# =========================================================
+
+def _obter_motorista_acesso(request: Request, db) -> MotoristaAcesso:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Autenticacao obrigatoria.")
+    token = auth.removeprefix("Bearer ").strip()
+    try:
+        payload = decodificar_motorista_token(token)
+        acesso = db.get(MotoristaAcesso, int(payload.get("sub")))
+        if not acesso or not acesso.ativo:
+            raise HTTPException(status_code=401, detail="Acesso inativo ou inexistente.")
+        return acesso
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token invalido.")
+
+
+@app.post("/motorista-app/login")
+def motorista_login(dados: dict, request: Request):
+    email = (dados.get("email") or "").strip().lower()
+    senha = dados.get("senha") or ""
+    if not email or not senha:
+        raise HTTPException(status_code=400, detail="Email e senha obrigatorios.")
+    with sessao_db() as db:
+        acesso = db.query(MotoristaAcesso).filter(MotoristaAcesso.email == email).first()
+        if not acesso or not acesso.ativo:
+            raise HTTPException(status_code=401, detail="Credenciais invalidas.")
+        from backend.security import verificar_senha as _ver
+        if not _ver(senha, acesso.senha_hash):
+            raise HTTPException(status_code=401, detail="Credenciais invalidas.")
+        token = criar_motorista_token(acesso.id, acesso.empresa_id)
+        motorista = db.get(Motorista, acesso.motorista_id) if acesso.motorista_id else None
+        return {
+            "access_token": token,
+            "nome": acesso.nome,
+            "motorista_id": acesso.motorista_id,
+            "cnh": motorista.cnh if motorista else "",
+            "telefone": motorista.telefone if motorista else "",
+        }
+
+
+@app.get("/motorista-app/me")
+def motorista_me(request: Request):
+    with sessao_db() as db:
+        acesso = _obter_motorista_acesso(request, db)
+        motorista = db.get(Motorista, acesso.motorista_id) if acesso.motorista_id else None
+        viagem_ativa = db.query(Viagem).filter(
+            Viagem.motorista_acesso_id == acesso.id,
+            Viagem.status == "em_andamento"
+        ).first()
+        return {
+            "id": acesso.id,
+            "nome": acesso.nome,
+            "email": acesso.email,
+            "motorista_id": acesso.motorista_id,
+            "cnh": motorista.cnh if motorista else "",
+            "telefone": motorista.telefone if motorista else "",
+            "cargo": motorista.cargo if motorista else "",
+            "viagem_ativa": {
+                "id": viagem_ativa.id,
+                "origem": viagem_ativa.origem,
+                "destino": viagem_ativa.destino,
+                "carga": viagem_ativa.carga,
+                "km_inicial": viagem_ativa.km_inicial,
+                "data_inicio": viagem_ativa.data_inicio.isoformat(),
+                "status": viagem_ativa.status,
+            } if viagem_ativa else None,
+        }
+
+
+@app.post("/motorista-app/viagem/iniciar")
+def iniciar_viagem(dados: dict, request: Request):
+    with sessao_db() as db:
+        acesso = _obter_motorista_acesso(request, db)
+        existente = db.query(Viagem).filter(
+            Viagem.motorista_acesso_id == acesso.id,
+            Viagem.status == "em_andamento"
+        ).first()
+        if existente:
+            raise HTTPException(status_code=400, detail="Ja existe uma viagem em andamento.")
+        viagem = Viagem(
+            empresa_id=acesso.empresa_id,
+            motorista_acesso_id=acesso.id,
+            veiculo_id=int(dados["veiculo_id"]) if dados.get("veiculo_id") else None,
+            origem=(dados.get("origem") or "").strip(),
+            destino=(dados.get("destino") or "").strip(),
+            carga=(dados.get("carga") or "").strip(),
+            km_inicial=float(dados["km_inicial"]) if dados.get("km_inicial") else None,
+            observacao=(dados.get("observacao") or "").strip(),
+            status="em_andamento",
+            rota="[]",
+        )
+        db.add(viagem)
+        db.commit()
+        db.refresh(viagem)
+        return {"id": viagem.id, "status": viagem.status, "data_inicio": viagem.data_inicio.isoformat()}
+
+
+@app.put("/motorista-app/viagem/{viagem_id}/finalizar")
+def finalizar_viagem(viagem_id: int, dados: dict, request: Request):
+    with sessao_db() as db:
+        acesso = _obter_motorista_acesso(request, db)
+        viagem = db.query(Viagem).filter(
+            Viagem.id == viagem_id,
+            Viagem.motorista_acesso_id == acesso.id
+        ).first()
+        if not viagem:
+            raise HTTPException(status_code=404, detail="Viagem nao encontrada.")
+        if viagem.status != "em_andamento":
+            raise HTTPException(status_code=400, detail="Viagem nao esta em andamento.")
+        from datetime import datetime, timezone
+        viagem.km_final = float(dados["km_final"]) if dados.get("km_final") else None
+        viagem.observacao = (dados.get("observacao") or viagem.observacao)
+        viagem.status = "finalizada"
+        viagem.data_fim = datetime.now(timezone.utc)
+        db.commit()
+        km_total = (viagem.km_final or 0) - (viagem.km_inicial or 0)
+        return {"id": viagem.id, "status": viagem.status, "km_total": round(km_total, 1)}
+
+
+@app.post("/motorista-app/viagem/{viagem_id}/ponto")
+def adicionar_ponto_rota(viagem_id: int, dados: dict, request: Request):
+    with sessao_db() as db:
+        acesso = _obter_motorista_acesso(request, db)
+        viagem = db.query(Viagem).filter(
+            Viagem.id == viagem_id,
+            Viagem.motorista_acesso_id == acesso.id,
+            Viagem.status == "em_andamento"
+        ).first()
+        if not viagem:
+            raise HTTPException(status_code=404, detail="Viagem ativa nao encontrada.")
+        try:
+            rota = json.loads(viagem.rota or "[]")
+        except Exception:
+            rota = []
+        rota.append({
+            "lat": float(dados.get("lat", 0)),
+            "lng": float(dados.get("lng", 0)),
+            "velocidade": float(dados.get("velocidade") or 0),
+            "ts": dados.get("ts", ""),
+        })
+        viagem.rota = json.dumps(rota)
+        db.commit()
+        return {"pontos": len(rota)}
+
+
+@app.post("/motorista-app/localizacao")
+def atualizar_localizacao_motorista(dados: dict, request: Request):
+    with sessao_db() as db:
+        acesso = _obter_motorista_acesso(request, db)
+        from datetime import datetime, timezone
+        loc = db.query(MotoristaLocalizacao).filter(
+            MotoristaLocalizacao.motorista_acesso_id == acesso.id
+        ).first()
+        viagem_ativa = db.query(Viagem).filter(
+            Viagem.motorista_acesso_id == acesso.id,
+            Viagem.status == "em_andamento"
+        ).first()
+        if loc:
+            loc.lat = float(dados.get("lat", 0))
+            loc.lng = float(dados.get("lng", 0))
+            loc.velocidade = float(dados.get("velocidade") or 0)
+            loc.heading = float(dados.get("heading") or 0)
+            loc.viagem_id = viagem_ativa.id if viagem_ativa else None
+            loc.nome = acesso.nome
+            loc.timestamp = datetime.now(timezone.utc)
+        else:
+            loc = MotoristaLocalizacao(
+                empresa_id=acesso.empresa_id,
+                motorista_acesso_id=acesso.id,
+                nome=acesso.nome,
+                lat=float(dados.get("lat", 0)),
+                lng=float(dados.get("lng", 0)),
+                velocidade=float(dados.get("velocidade") or 0),
+                heading=float(dados.get("heading") or 0),
+                viagem_id=viagem_ativa.id if viagem_ativa else None,
+            )
+            db.add(loc)
+        db.commit()
+        return {"ok": True}
+
+
+@app.get("/motorista-app/viagens")
+def listar_viagens_motorista(request: Request):
+    with sessao_db() as db:
+        acesso = _obter_motorista_acesso(request, db)
+        viagens = db.query(Viagem).filter(
+            Viagem.motorista_acesso_id == acesso.id
+        ).order_by(Viagem.data_inicio.desc()).limit(50).all()
+        return [
+            {
+                "id": v.id,
+                "origem": v.origem,
+                "destino": v.destino,
+                "carga": v.carga,
+                "km_inicial": v.km_inicial,
+                "km_final": v.km_final,
+                "km_total": round((v.km_final or 0) - (v.km_inicial or 0), 1) if v.km_final and v.km_inicial else None,
+                "data_inicio": v.data_inicio.isoformat(),
+                "data_fim": v.data_fim.isoformat() if v.data_fim else None,
+                "status": v.status,
+                "observacao": v.observacao,
+            }
+            for v in viagens
+        ]
+
+
+# =========================================================
+# MAPA — localizacoes em tempo real (app financeiro)
+# =========================================================
+
+@app.get("/mapa/motoristas")
+def mapa_motoristas():
+    eid = obter_empresa()
+    with sessao_db() as db:
+        locs = db.query(MotoristaLocalizacao).filter(
+            MotoristaLocalizacao.empresa_id == eid
+        ).all()
+        from datetime import datetime, timezone
+        agora = datetime.now(timezone.utc)
+        result = []
+        for loc in locs:
+            acesso = db.get(MotoristaAcesso, loc.motorista_acesso_id)
+            delta = (agora - loc.timestamp.replace(tzinfo=timezone.utc) if loc.timestamp.tzinfo is None else agora - loc.timestamp)
+            minutos = delta.total_seconds() / 60
+            viagem = db.get(Viagem, loc.viagem_id) if loc.viagem_id else None
+            result.append({
+                "motorista_acesso_id": loc.motorista_acesso_id,
+                "nome": loc.nome or (acesso.nome if acesso else ""),
+                "lat": loc.lat,
+                "lng": loc.lng,
+                "velocidade": loc.velocidade or 0,
+                "heading": loc.heading or 0,
+                "online": minutos <= 5,
+                "minutos_sem_sinal": round(minutos, 1),
+                "viagem": {
+                    "id": viagem.id,
+                    "origem": viagem.origem,
+                    "destino": viagem.destino,
+                    "status": viagem.status,
+                } if viagem else None,
+            })
+        return result

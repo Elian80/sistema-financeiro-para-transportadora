@@ -2,66 +2,135 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0B0F1A" />
-  <title>Motorista - Rastreamento</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Motorista" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>App Motorista</title>
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="motorista.css" />
+  <link rel="stylesheet" href="motorista.css?v=1" />
 </head>
 <body>
-  <main class="driver-shell">
-    <section class="driver-card">
-      <div class="brand-row">
-        <div class="brand-mark">F</div>
+
+  <!-- LOGIN -->
+  <div id="tela-login" class="tela">
+    <div class="login-box">
+      <div class="login-logo">
+        <div class="login-logo-icon">M</div>
+        <h1>App Motorista</h1>
+        <p>Acesse com suas credenciais</p>
+      </div>
+      <form id="form-login">
+        <div class="field">
+          <label>Email</label>
+          <input id="login-email" type="email" autocomplete="email" placeholder="seu@email.com" required />
+        </div>
+        <div class="field">
+          <label>Senha</label>
+          <input id="login-senha" type="password" autocomplete="current-password" placeholder="Sua senha" required />
+        </div>
+        <button class="btn-primary" type="submit">Entrar</button>
+        <p id="login-erro" class="msg-erro"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP SHELL -->
+  <div id="tela-app" class="tela" hidden>
+    <header class="app-header">
+      <div class="header-info">
+        <div class="avatar" id="header-avatar">M</div>
         <div>
-          <h1>Motorista</h1>
-          <p>Compartilhamento de localizacao</p>
+          <strong id="header-nome">Motorista</strong>
+          <span id="header-status-gps" class="gps-badge off">GPS off</span>
         </div>
       </div>
+      <button class="btn-icon" id="btn-sair" title="Sair">&#x2715;</button>
+    </header>
 
-      <form id="driver-login-form" class="driver-form">
-        <label for="driver-user">Usuario</label>
-        <input id="driver-user" autocomplete="username" value="teste" required />
+    <main class="app-main">
 
-        <label for="driver-password">Senha</label>
-        <input id="driver-password" type="password" autocomplete="current-password" value="teste" required />
-
-        <button type="submit" id="driver-login-btn">Entrar</button>
-      </form>
-
-      <section id="driver-tracking" class="tracking-panel" hidden>
-        <div class="driver-status-card">
-          <span>Motorista conectado</span>
-          <strong id="driver-name">-</strong>
+      <!-- VIAGEM ATIVA -->
+      <section class="card card-viagem" id="card-viagem">
+        <div class="card-title">
+          <span class="card-icon">&#x1F69B;</span>
+          <span id="viagem-titulo">Nenhuma viagem ativa</span>
         </div>
-
-        <button type="button" id="driver-start-btn">Iniciar localizacao</button>
-        <button type="button" id="driver-stop-btn" class="secondary" hidden>Parar compartilhamento</button>
-
-        <div class="signal-grid">
-          <div>
-            <span>Latitude</span>
-            <strong id="driver-lat">-</strong>
-          </div>
-          <div>
-            <span>Longitude</span>
-            <strong id="driver-lng">-</strong>
-          </div>
-          <div>
-            <span>Velocidade</span>
-            <strong id="driver-speed">0 km/h</strong>
-          </div>
-          <div>
-            <span>Precisao</span>
-            <strong id="driver-accuracy">-</strong>
-          </div>
+        <div id="viagem-info" hidden>
+          <div class="viagem-detalhe"><label>Origem</label><span id="vi-origem">-</span></div>
+          <div class="viagem-detalhe"><label>Destino</label><span id="vi-destino">-</span></div>
+          <div class="viagem-detalhe"><label>Carga</label><span id="vi-carga">-</span></div>
+          <div class="viagem-detalhe"><label>KM inicial</label><span id="vi-km">-</span></div>
+          <div class="viagem-detalhe"><label>Inicio</label><span id="vi-inicio">-</span></div>
+        </div>
+        <div id="viagem-acoes">
+          <button class="btn-primary" id="btn-iniciar-viagem">+ Iniciar viagem</button>
+          <button class="btn-danger" id="btn-finalizar-viagem" hidden>Finalizar viagem</button>
         </div>
       </section>
 
-      <p id="driver-message" class="driver-message"></p>
-    </section>
-  </main>
+      <!-- GPS -->
+      <section class="card">
+        <div class="card-title"><span class="card-icon">&#x1F4CD;</span>Compartilhar localizacao</div>
+        <div class="gps-row">
+          <div>
+            <div id="gps-coords">Aguardando sinal...</div>
+            <div id="gps-velocidade" class="gps-sub"></div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="toggle-gps" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
 
-  <script src="motorista.js?v=2"></script>
+      <!-- FORM INICIAR VIAGEM (inline) -->
+      <section class="card" id="form-iniciar-container" hidden>
+        <div class="card-title"><span class="card-icon">&#x1F4CB;</span>Nova viagem</div>
+        <form id="form-iniciar-viagem">
+          <div class="field"><label>Origem *</label><input id="nv-origem" placeholder="Cidade de partida" required /></div>
+          <div class="field"><label>Destino *</label><input id="nv-destino" placeholder="Cidade de destino" required /></div>
+          <div class="field"><label>Carga / Servico</label><input id="nv-carga" placeholder="Ex: Graneis, entrega..." /></div>
+          <div class="field"><label>KM inicial *</label><input id="nv-km" type="number" step="0.1" placeholder="0" required /></div>
+          <div class="field"><label>Veiculo</label><select id="nv-veiculo"><option value="">Selecione...</option></select></div>
+          <div class="field"><label>Observacao</label><input id="nv-obs" placeholder="Opcional..." /></div>
+          <div class="btn-row">
+            <button class="btn-primary" type="submit">Confirmar</button>
+            <button class="btn-ghost" type="button" id="btn-cancelar-iniciar">Cancelar</button>
+          </div>
+          <p id="nv-erro" class="msg-erro"></p>
+        </form>
+      </section>
+
+      <!-- FORM FINALIZAR VIAGEM -->
+      <section class="card" id="form-finalizar-container" hidden>
+        <div class="card-title"><span class="card-icon">&#x1F3C1;</span>Finalizar viagem</div>
+        <form id="form-finalizar-viagem">
+          <div class="field"><label>KM final *</label><input id="fv-km" type="number" step="0.1" placeholder="0" required /></div>
+          <div class="field"><label>Observacao</label><input id="fv-obs" placeholder="Ocorrencias, combustivel..." /></div>
+          <div class="btn-row">
+            <button class="btn-danger-fill btn-primary" type="submit">Finalizar</button>
+            <button class="btn-ghost" type="button" id="btn-cancelar-finalizar">Cancelar</button>
+          </div>
+          <p id="fv-erro" class="msg-erro"></p>
+        </form>
+      </section>
+
+      <!-- HISTORICO -->
+      <section class="card">
+        <div class="card-title"><span class="card-icon">&#x1F4C5;</span>Historico de viagens</div>
+        <div id="lista-viagens">
+          <p class="vazio">Carregando...</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="motorista.js?v=1"></script>
 </body>
 </html>

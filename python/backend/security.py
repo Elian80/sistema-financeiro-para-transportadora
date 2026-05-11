@@ -40,3 +40,24 @@ def decodificar_token(token: str) -> dict:
 def validar_senha_forte(senha: str) -> None:
     if len(senha or "") < 8:
         raise ValueError("A senha deve ter pelo menos 8 caracteres.")
+
+
+def criar_motorista_token(motorista_acesso_id: int, empresa_id: int) -> str:
+    expira = datetime.now(UTC) + timedelta(days=30)
+    payload = {
+        "sub": str(motorista_acesso_id),
+        "empresa_id": empresa_id,
+        "type": "motorista_access",
+        "exp": expira,
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decodificar_motorista_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    except JWTError as exc:
+        raise ValueError("Token invalido.") from exc
+    if payload.get("type") != "motorista_access":
+        raise ValueError("Tipo de token invalido.")
+    return payload
