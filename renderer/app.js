@@ -969,9 +969,9 @@ const pages = {
         </div>
       </section>
 
-      <!-- Modal: cadastrar / editar produto -->
-      <div class="modal-overlay estoque-modal-overlay" id="modal-produto" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="titulo-form-produto">
-        <section class="modal-content estoque-modal-content">
+      <!-- Popover: cadastrar / editar produto -->
+      <div class="estoque-popover-backdrop" id="modal-produto-overlay"></div>
+      <aside class="estoque-popover" id="modal-produto" role="dialog" aria-modal="true" aria-labelledby="titulo-form-produto">
           <div class="estoque-modal-header">
             <div>
               <h3 id="titulo-form-produto">Novo produto</h3>
@@ -993,8 +993,7 @@ const pages = {
             </div>
           </form>
           <p id="mensagem-produto" class="mensagem"></p>
-        </section>
-      </div>
+      </aside>
 
       <!-- Modal: movimentar estoque -->
       <div class="modal-overlay estoque-modal-overlay" id="modal-movimentacao" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-mov">
@@ -3718,7 +3717,7 @@ async function carregarEstoque() {
     i => formatarValor(i.valor_custo),
     i => formatarValor(i.valor_total_estoque),
     i => i.estoque_minimo,
-    i => `<div class="action-row"><button class="small-btn edit-btn" onclick="editarProduto(${i.id})">Editar</button><button class="small-btn delete-btn" onclick="excluirProduto(${i.id})">Excluir</button></div>`
+    i => `<div class="action-row"><button class="small-btn edit-btn" onclick="editarProduto(${i.id}, this)">Editar</button><button class="small-btn delete-btn" onclick="excluirProduto(${i.id})">Excluir</button></div>`
   ]);
   const select = document.getElementById("mov-produto-id");
   select.innerHTML = produtos.map(item => `<option value="${item.id}">${item.nome}</option>`).join("");
@@ -3744,13 +3743,28 @@ function payloadProduto() {
   };
 }
 
-function abrirModalProduto() {
-  document.getElementById("modal-produto").style.display = "flex";
+function abrirModalProduto(anchorEl) {
+  const pop = document.getElementById("modal-produto");
+  const bdr = document.getElementById("modal-produto-overlay");
+  if (anchorEl) {
+    const rect = anchorEl.getBoundingClientRect();
+    const pw = Math.min(460, window.innerWidth - 24);
+    let left = rect.right - pw;
+    let top  = rect.bottom + 8;
+    if (left < 12) left = 12;
+    if (left + pw > window.innerWidth - 12) left = window.innerWidth - pw - 12;
+    if (top + 540 > window.innerHeight - 12) top = Math.max(12, rect.top - 540 - 8);
+    pop.style.left = left + "px";
+    pop.style.top  = top  + "px";
+  }
+  pop.classList.add("popover-open");
+  bdr.classList.add("popover-open");
   document.body.classList.add("filter-popup-open");
 }
 
 function fecharModalProduto() {
-  document.getElementById("modal-produto").style.display = "none";
+  document.getElementById("modal-produto").classList.remove("popover-open");
+  document.getElementById("modal-produto-overlay").classList.remove("popover-open");
   document.body.classList.remove("filter-popup-open");
 }
 
@@ -3772,7 +3786,7 @@ function resetProduto() {
   fecharModalProduto();
 }
 
-window.editarProduto = async (id) => {
+window.editarProduto = async (id, btn) => {
   const item = (await apiGet("/estoque/produtos")).find(registro => registro.id === id);
   if (!item) return;
   editandoProdutoId = id;
@@ -3784,7 +3798,7 @@ window.editarProduto = async (id) => {
   document.getElementById("produto-minimo").value = item.estoque_minimo || "";
   document.getElementById("produto-observacao").value = item.observacao || "";
   document.getElementById("titulo-form-produto").textContent = "Editar produto";
-  abrirModalProduto();
+  abrirModalProduto(btn);
 };
 
 window.excluirProduto = async (id) => {
@@ -3798,10 +3812,10 @@ async function iniciarEstoque() {
   await carregarEstoque();
 
   // Abrir modal de novo produto
-  document.getElementById("btn-novo-produto").addEventListener("click", () => {
+  document.getElementById("btn-novo-produto").addEventListener("click", (e) => {
     resetProduto();
     document.getElementById("titulo-form-produto").textContent = "Novo produto";
-    abrirModalProduto();
+    abrirModalProduto(e.currentTarget);
   });
 
   // Abrir modal de movimentacao
@@ -3817,8 +3831,8 @@ async function iniciarEstoque() {
   document.getElementById("btn-fechar-modal-movimentacao").addEventListener("click", () => fecharModalMovimentacao());
   document.getElementById("btn-cancelar-movimentacao").addEventListener("click", () => fecharModalMovimentacao());
 
-  // Fechar modais clicando no overlay
-  document.getElementById("modal-produto").addEventListener("click", (e) => {
+  // Fechar drawer clicando no overlay
+  document.getElementById("modal-produto-overlay").addEventListener("click", (e) => {
     if (e.target === e.currentTarget) resetProduto();
   });
   document.getElementById("modal-movimentacao").addEventListener("click", (e) => {
@@ -3828,7 +3842,7 @@ async function iniciarEstoque() {
   // Fechar com ESC
   document.addEventListener("keydown", function estoqueEsc(e) {
     if (e.key !== "Escape") return;
-    if (document.getElementById("modal-produto")?.style.display === "flex") resetProduto();
+    if (document.getElementById("modal-produto")?.classList.contains("popover-open")) resetProduto();
     if (document.getElementById("modal-movimentacao")?.style.display === "flex") fecharModalMovimentacao();
   });
 

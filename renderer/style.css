@@ -3140,6 +3140,48 @@ body[data-theme="light"] .estoque-modal-content {
   background: #ffffff;
 }
 
+/* Estoque produto — popover posicionado perto do botao */
+.estoque-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+}
+
+.estoque-popover-backdrop.popover-open {
+  display: block;
+}
+
+.estoque-popover {
+  position: fixed;
+  z-index: 10000;
+  width: min(460px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+  padding: 24px;
+  display: none;
+}
+
+.estoque-popover.popover-open {
+  display: block;
+  animation: popoverIn 0.16s ease;
+}
+
+@keyframes popoverIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+body[data-theme="light"] .estoque-popover {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
 /* =========================================================
    DASHBOARD — secao de metricas compactas
    ========================================================= */
