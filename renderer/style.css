@@ -3182,6 +3182,49 @@ body[data-theme="light"] .estoque-popover {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
+/* Estoque — edicao inline na linha da tabela */
+.edit-inline-row > td {
+  padding: 0 !important;
+  border-bottom: 2px solid var(--blue) !important;
+}
+
+.edit-inline-form {
+  padding: 16px 20px;
+  background: var(--panel-strong);
+  animation: editRowIn 0.18s ease;
+}
+
+@keyframes editRowIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.edit-inline-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.edit-inline-fields .field-obs {
+  grid-column: span 2;
+}
+
+.edit-inline-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.edit-inline-actions .mensagem {
+  margin: 0;
+  font-size: 13px;
+}
+
+body[data-theme="light"] .edit-inline-form {
+  background: #f0f4ff;
+}
+
 /* =========================================================
    DASHBOARD — secao de metricas compactas
    ========================================================= */

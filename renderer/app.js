@@ -3784,22 +3784,83 @@ function resetProduto() {
   document.getElementById("produto-unidade").value = "un";
   document.getElementById("titulo-form-produto").textContent = "Novo produto";
   fecharModalProduto();
+  fecharEdicaoInline();
 }
 
 window.editarProduto = async (id, btn) => {
-  const item = (await apiGet("/estoque/produtos")).find(registro => registro.id === id);
+  const existente = document.getElementById(`edit-row-${id}`);
+  document.querySelectorAll(".edit-inline-row").forEach(r => r.remove());
+  if (existente) { editandoProdutoId = null; return; }
+
+  const item = (await apiGet("/estoque/produtos")).find(r => r.id === id);
   if (!item) return;
   editandoProdutoId = id;
-  document.getElementById("produto-nome").value = item.nome || "";
-  document.getElementById("produto-categoria").value = item.categoria || "";
-  document.getElementById("produto-unidade").value = item.unidade_medida || "un";
-  document.getElementById("produto-quantidade").value = item.quantidade_atual || "";
-  document.getElementById("produto-valor").value = item.valor_custo || "";
-  document.getElementById("produto-minimo").value = item.estoque_minimo || "";
-  document.getElementById("produto-observacao").value = item.observacao || "";
-  document.getElementById("titulo-form-produto").textContent = "Editar produto";
-  abrirModalProduto(btn);
+
+  const tr = btn.closest("tr");
+  tr.insertAdjacentHTML("afterend", `
+    <tr class="edit-inline-row" id="edit-row-${id}">
+      <td colspan="${tr.cells.length}">
+        <div class="edit-inline-form">
+          <div class="edit-inline-fields">
+            <div class="field"><label>Nome *</label><input id="edit-nome" required /></div>
+            <div class="field"><label>Categoria</label><input id="edit-categoria" /></div>
+            <div class="field"><label>Unidade</label><input id="edit-unidade" /></div>
+            <div class="field"><label>Quantidade</label><input type="number" step="0.001" id="edit-quantidade" /></div>
+            <div class="field"><label>Valor custo</label><input type="number" step="0.01" id="edit-valor" /></div>
+            <div class="field"><label>Estoque min.</label><input type="number" step="0.001" id="edit-minimo" /></div>
+            <div class="field field-obs"><label>Observacao</label><input id="edit-obs" /></div>
+          </div>
+          <div class="edit-inline-actions">
+            <button class="primary-btn" type="button" id="btn-salvar-inline">Salvar</button>
+            <button class="ghost-btn" type="button" id="btn-cancelar-inline">Cancelar</button>
+            <span id="edit-mensagem" class="mensagem"></span>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `);
+
+  document.getElementById("edit-nome").value = item.nome || "";
+  document.getElementById("edit-categoria").value = item.categoria || "";
+  document.getElementById("edit-unidade").value = item.unidade_medida || "un";
+  document.getElementById("edit-quantidade").value = item.quantidade_atual || "";
+  document.getElementById("edit-valor").value = item.valor_custo || "";
+  document.getElementById("edit-minimo").value = item.estoque_minimo || "";
+  document.getElementById("edit-obs").value = item.observacao || "";
+  document.getElementById("edit-nome").focus();
+
+  document.getElementById("btn-salvar-inline").addEventListener("click", () => salvarEdicaoInline(id));
+  document.getElementById("btn-cancelar-inline").addEventListener("click", fecharEdicaoInline);
 };
+
+function fecharEdicaoInline() {
+  document.querySelectorAll(".edit-inline-row").forEach(r => r.remove());
+  editandoProdutoId = null;
+}
+
+async function salvarEdicaoInline(id) {
+  const payload = {
+    nome: document.getElementById("edit-nome").value.trim(),
+    categoria: document.getElementById("edit-categoria").value.trim(),
+    unidade_medida: document.getElementById("edit-unidade").value.trim() || "un",
+    quantidade_atual: normalizarNumero(document.getElementById("edit-quantidade").value),
+    valor_custo: normalizarNumero(document.getElementById("edit-valor").value),
+    estoque_minimo: normalizarNumero(document.getElementById("edit-minimo").value),
+    observacao: document.getElementById("edit-obs").value.trim(),
+  };
+  if (!payload.nome) {
+    document.getElementById("edit-mensagem").textContent = "Nome obrigatorio.";
+    return;
+  }
+  try {
+    await apiPut(`/estoque/produtos/${id}`, payload);
+    fecharEdicaoInline();
+    mostrarToast("Produto salvo.", "success");
+    await carregarEstoque();
+  } catch (erro) {
+    document.getElementById("edit-mensagem").textContent = erro.message;
+  }
+}
 
 window.excluirProduto = async (id) => {
   if (!confirm("Deseja excluir este produto?")) return;
@@ -3844,6 +3905,7 @@ async function iniciarEstoque() {
     if (e.key !== "Escape") return;
     if (document.getElementById("modal-produto")?.classList.contains("popover-open")) resetProduto();
     if (document.getElementById("modal-movimentacao")?.style.display === "flex") fecharModalMovimentacao();
+    if (document.querySelector(".edit-inline-row")) fecharEdicaoInline();
   });
 
   // Submit: salvar produto
