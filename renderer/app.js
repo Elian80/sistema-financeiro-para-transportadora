@@ -924,7 +924,7 @@ const pages = {
         <div class="kpi-card"><div class="kpi-label">Ultimas movimentacoes</div><div class="kpi-value" id="est-ultimas">0</div></div>
       </div>
 
-      <section class="panel-box filter-launcher" style="margin-bottom:18px;">
+      <section class="panel-box" style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;">
         <div>
           <h3 style="margin:0;">Produtos em estoque</h3>
           <p style="margin:4px 0 0;">Cadastre produtos, registre entradas e saidas.</p>
