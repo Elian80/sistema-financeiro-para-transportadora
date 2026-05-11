@@ -936,6 +936,8 @@ const pages = {
         </div>
       </section>
 
+      <div id="estoque-inline-container"></div>
+
       ${popupFiltros("painel-filtros-estoque", "Filtros de estoque", "Busque produtos por nome, categoria ou alerta de estoque baixo.", `
         <div class="form-grid">
           <div class="field"><label>Nome</label><input id="filtro-produto-nome" /></div>
@@ -969,57 +971,6 @@ const pages = {
         </div>
       </section>
 
-      <!-- Popover: cadastrar / editar produto -->
-      <div class="estoque-popover-backdrop" id="modal-produto-overlay"></div>
-      <aside class="estoque-popover" id="modal-produto" role="dialog" aria-modal="true" aria-labelledby="titulo-form-produto">
-          <div class="estoque-modal-header">
-            <div>
-              <h3 id="titulo-form-produto">Novo produto</h3>
-              <p>Preencha os dados do produto e salve.</p>
-            </div>
-            <button class="ghost-btn" id="btn-fechar-modal-produto" type="button">Fechar</button>
-          </div>
-          <form id="form-produto" class="form-grid">
-            <div class="field"><label>Nome *</label><input id="produto-nome" required placeholder="Ex: Oleo lubrificante 15W-40" /></div>
-            <div class="field"><label>Categoria</label><input id="produto-categoria" placeholder="Ex: Lubrificantes" /></div>
-            <div class="field"><label>Unidade de medida</label><input id="produto-unidade" value="un" placeholder="un, L, kg..." /></div>
-            <div class="field"><label>Quantidade atual</label><input type="number" step="0.001" id="produto-quantidade" placeholder="0" /></div>
-            <div class="field"><label>Valor de custo (unit.)</label><input type="number" step="0.01" id="produto-valor" placeholder="0,00" /></div>
-            <div class="field"><label>Estoque minimo</label><input type="number" step="0.001" id="produto-minimo" placeholder="0" /></div>
-            <div class="field full"><label>Observacao</label><input id="produto-observacao" placeholder="Informacoes adicionais..." /></div>
-            <div class="field full btn-row">
-              <button class="primary-btn" type="submit">Salvar produto</button>
-              <button class="ghost-btn" type="button" id="btn-cancelar-produto">Cancelar</button>
-            </div>
-          </form>
-          <p id="mensagem-produto" class="mensagem"></p>
-      </aside>
-
-      <!-- Modal: movimentar estoque -->
-      <div class="modal-overlay estoque-modal-overlay" id="modal-movimentacao" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-mov">
-        <section class="modal-content estoque-modal-content">
-          <div class="estoque-modal-header">
-            <div>
-              <h3 id="titulo-modal-mov">Movimentar estoque</h3>
-              <p>Registre entradas, saidas ou ajustes de quantidade.</p>
-            </div>
-            <button class="ghost-btn" id="btn-fechar-modal-movimentacao" type="button">Fechar</button>
-          </div>
-          <form id="form-movimentacao" class="form-grid">
-            <div class="field"><label>Produto *</label><select id="mov-produto-id"></select></div>
-            <div class="field"><label>Tipo de movimentacao</label><select id="mov-tipo"><option>Entrada</option><option>Saida</option><option>Ajuste</option></select></div>
-            <div class="field"><label>Quantidade *</label><input type="number" step="0.001" id="mov-quantidade" required placeholder="0" /></div>
-            <div class="field"><label>Valor unitario</label><input type="number" step="0.01" id="mov-valor" placeholder="0,00" /></div>
-            <div class="field"><label>Data *</label><input type="date" id="mov-data" required /></div>
-            <div class="field"><label>Observacao</label><input id="mov-observacao" placeholder="Motivo, NF, fornecedor..." /></div>
-            <div class="field full btn-row">
-              <button class="primary-btn" type="submit">Registrar movimentacao</button>
-              <button class="ghost-btn" type="button" id="btn-cancelar-movimentacao">Cancelar</button>
-            </div>
-          </form>
-          <p id="mensagem-movimentacao" class="mensagem"></p>
-        </section>
-      </div>
     `
   },
 
@@ -3720,7 +3671,7 @@ async function carregarEstoque() {
     i => `<div class="action-row"><button class="small-btn edit-btn" onclick="editarProduto(${i.id}, this)">Editar</button><button class="small-btn delete-btn" onclick="excluirProduto(${i.id})">Excluir</button></div>`
   ]);
   const select = document.getElementById("mov-produto-id");
-  select.innerHTML = produtos.map(item => `<option value="${item.id}">${item.nome}</option>`).join("");
+  if (select) select.innerHTML = produtos.map(item => `<option value="${item.id}">${item.nome}</option>`).join("");
   preencherTabela("tabela-movimentacoes", movimentacoes, [
     i => formatarDataCurta(i.data),
     i => (relatorio.produtos.find(p => p.id === i.produto_id)?.nome || i.produto_id),
@@ -3743,47 +3694,119 @@ function payloadProduto() {
   };
 }
 
-function abrirModalProduto(anchorEl) {
-  const pop = document.getElementById("modal-produto");
-  const bdr = document.getElementById("modal-produto-overlay");
-  if (anchorEl) {
-    const rect = anchorEl.getBoundingClientRect();
-    const pw = Math.min(460, window.innerWidth - 24);
-    let left = rect.right - pw;
-    let top  = rect.bottom + 8;
-    if (left < 12) left = 12;
-    if (left + pw > window.innerWidth - 12) left = window.innerWidth - pw - 12;
-    if (top + 540 > window.innerHeight - 12) top = Math.max(12, rect.top - 540 - 8);
-    pop.style.left = left + "px";
-    pop.style.top  = top  + "px";
-  }
-  pop.classList.add("popover-open");
-  bdr.classList.add("popover-open");
-  document.body.classList.add("filter-popup-open");
+function fecharPainelEstoque() {
+  const container = document.getElementById("estoque-inline-container");
+  if (container) { container.innerHTML = ""; delete container.dataset.aberto; }
 }
 
-function fecharModalProduto() {
-  document.getElementById("modal-produto").classList.remove("popover-open");
-  document.getElementById("modal-produto-overlay").classList.remove("popover-open");
-  document.body.classList.remove("filter-popup-open");
+function abrirPainelProduto() {
+  const container = document.getElementById("estoque-inline-container");
+  if (container.dataset.aberto === "produto") { fecharPainelEstoque(); return; }
+  fecharPainelEstoque();
+  fecharEdicaoInline();
+  container.dataset.aberto = "produto";
+  container.innerHTML = `
+    <div class="edit-inline-form" style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h4 style="margin:0;" id="titulo-form-produto">Novo produto</h4>
+        <button class="ghost-btn" type="button" id="btn-fechar-painel-produto">Fechar</button>
+      </div>
+      <form id="form-produto">
+        <div class="edit-inline-fields">
+          <div class="field"><label>Nome *</label><input id="produto-nome" required placeholder="Ex: Oleo lubrificante 15W-40" /></div>
+          <div class="field"><label>Categoria</label><input id="produto-categoria" placeholder="Ex: Lubrificantes" /></div>
+          <div class="field"><label>Unidade</label><input id="produto-unidade" value="un" placeholder="un, L, kg..." /></div>
+          <div class="field"><label>Quantidade atual</label><input type="number" step="0.001" id="produto-quantidade" placeholder="0" /></div>
+          <div class="field"><label>Valor de custo (unit.)</label><input type="number" step="0.01" id="produto-valor" placeholder="0,00" /></div>
+          <div class="field"><label>Estoque minimo</label><input type="number" step="0.001" id="produto-minimo" placeholder="0" /></div>
+          <div class="field field-obs"><label>Observacao</label><input id="produto-observacao" placeholder="Informacoes adicionais..." /></div>
+        </div>
+        <div class="edit-inline-actions">
+          <button class="primary-btn" type="submit">Salvar produto</button>
+          <button class="ghost-btn" type="button" id="btn-cancelar-produto">Cancelar</button>
+          <span id="mensagem-produto" class="mensagem"></span>
+        </div>
+      </form>
+    </div>
+  `;
+  document.getElementById("produto-nome").focus();
+  document.getElementById("btn-fechar-painel-produto").addEventListener("click", resetProduto);
+  document.getElementById("btn-cancelar-produto").addEventListener("click", resetProduto);
+  document.getElementById("form-produto").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const msgEl = document.getElementById("mensagem-produto");
+    msgEl.textContent = "";
+    try {
+      await apiSend(editandoProdutoId ? `/estoque/produtos/${editandoProdutoId}` : "/estoque/produtos", editandoProdutoId ? "PUT" : "POST", payloadProduto());
+      resetProduto();
+      mostrarToast("Produto salvo.", "success");
+      await carregarEstoque();
+    } catch (erro) {
+      msgEl.textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
+  });
 }
 
-function abrirModalMovimentacao() {
-  document.getElementById("modal-movimentacao").style.display = "flex";
-  document.body.classList.add("filter-popup-open");
-}
-
-function fecharModalMovimentacao() {
-  document.getElementById("modal-movimentacao").style.display = "none";
-  document.body.classList.remove("filter-popup-open");
+async function abrirPainelMovimentacao() {
+  const container = document.getElementById("estoque-inline-container");
+  if (container.dataset.aberto === "movimentacao") { fecharPainelEstoque(); return; }
+  fecharPainelEstoque();
+  fecharEdicaoInline();
+  container.dataset.aberto = "movimentacao";
+  const produtos = await apiGet("/estoque/produtos");
+  const hoje = new Date().toISOString().slice(0, 10);
+  container.innerHTML = `
+    <div class="edit-inline-form" style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h4 style="margin:0;">Movimentar estoque</h4>
+        <button class="ghost-btn" type="button" id="btn-fechar-painel-mov">Fechar</button>
+      </div>
+      <form id="form-movimentacao">
+        <div class="edit-inline-fields">
+          <div class="field"><label>Produto *</label><select id="mov-produto-id">${produtos.map(p => `<option value="${p.id}">${p.nome}</option>`).join("")}</select></div>
+          <div class="field"><label>Tipo</label><select id="mov-tipo"><option>Entrada</option><option>Saida</option><option>Ajuste</option></select></div>
+          <div class="field"><label>Quantidade *</label><input type="number" step="0.001" id="mov-quantidade" required placeholder="0" /></div>
+          <div class="field"><label>Valor unitario</label><input type="number" step="0.01" id="mov-valor" placeholder="0,00" /></div>
+          <div class="field"><label>Data *</label><input type="date" id="mov-data" required value="${hoje}" /></div>
+          <div class="field"><label>Observacao</label><input id="mov-observacao" placeholder="Motivo, NF, fornecedor..." /></div>
+        </div>
+        <div class="edit-inline-actions">
+          <button class="primary-btn" type="submit">Registrar movimentacao</button>
+          <button class="ghost-btn" type="button" id="btn-cancelar-movimentacao">Cancelar</button>
+          <span id="mensagem-movimentacao" class="mensagem"></span>
+        </div>
+      </form>
+    </div>
+  `;
+  document.getElementById("btn-fechar-painel-mov").addEventListener("click", fecharPainelEstoque);
+  document.getElementById("btn-cancelar-movimentacao").addEventListener("click", fecharPainelEstoque);
+  document.getElementById("form-movimentacao").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const msgEl = document.getElementById("mensagem-movimentacao");
+    msgEl.textContent = "";
+    try {
+      await apiSend("/estoque/movimentacoes", "POST", {
+        produto_id: Number(document.getElementById("mov-produto-id").value),
+        tipo_movimentacao: document.getElementById("mov-tipo").value,
+        quantidade: normalizarNumero(document.getElementById("mov-quantidade").value),
+        valor_unitario: normalizarNumero(document.getElementById("mov-valor").value),
+        data: document.getElementById("mov-data").value,
+        observacao: document.getElementById("mov-observacao").value.trim()
+      });
+      fecharPainelEstoque();
+      mostrarToast("Movimentacao registrada.", "success");
+      await carregarEstoque();
+    } catch (erro) {
+      msgEl.textContent = erro.message;
+      mostrarToast(erro.message, "error");
+    }
+  });
 }
 
 function resetProduto() {
   editandoProdutoId = null;
-  document.getElementById("form-produto").reset();
-  document.getElementById("produto-unidade").value = "un";
-  document.getElementById("titulo-form-produto").textContent = "Novo produto";
-  fecharModalProduto();
+  fecharPainelEstoque();
   fecharEdicaoInline();
 }
 
@@ -3872,83 +3895,16 @@ window.excluirProduto = async (id) => {
 async function iniciarEstoque() {
   await carregarEstoque();
 
-  // Abrir modal de novo produto
-  document.getElementById("btn-novo-produto").addEventListener("click", (e) => {
-    resetProduto();
-    document.getElementById("titulo-form-produto").textContent = "Novo produto";
-    abrirModalProduto(e.currentTarget);
-  });
+  document.getElementById("btn-novo-produto").addEventListener("click", abrirPainelProduto);
+  document.getElementById("btn-movimentar-estoque").addEventListener("click", abrirPainelMovimentacao);
 
-  // Abrir modal de movimentacao
-  document.getElementById("btn-movimentar-estoque").addEventListener("click", () => {
-    document.getElementById("form-movimentacao").reset();
-    document.getElementById("mensagem-movimentacao").textContent = "";
-    abrirModalMovimentacao();
-  });
-
-  // Fechar modais pelos botoes
-  document.getElementById("btn-fechar-modal-produto").addEventListener("click", () => resetProduto());
-  document.getElementById("btn-cancelar-produto").addEventListener("click", () => resetProduto());
-  document.getElementById("btn-fechar-modal-movimentacao").addEventListener("click", () => fecharModalMovimentacao());
-  document.getElementById("btn-cancelar-movimentacao").addEventListener("click", () => fecharModalMovimentacao());
-
-  // Fechar drawer clicando no overlay
-  document.getElementById("modal-produto-overlay").addEventListener("click", (e) => {
-    if (e.target === e.currentTarget) resetProduto();
-  });
-  document.getElementById("modal-movimentacao").addEventListener("click", (e) => {
-    if (e.target === e.currentTarget) fecharModalMovimentacao();
-  });
-
-  // Fechar com ESC
   document.addEventListener("keydown", function estoqueEsc(e) {
     if (e.key !== "Escape") return;
-    if (document.getElementById("modal-produto")?.classList.contains("popover-open")) resetProduto();
-    if (document.getElementById("modal-movimentacao")?.style.display === "flex") fecharModalMovimentacao();
+    const container = document.getElementById("estoque-inline-container");
+    if (container?.dataset.aberto) fecharPainelEstoque();
     if (document.querySelector(".edit-inline-row")) fecharEdicaoInline();
   });
 
-  // Submit: salvar produto
-  document.getElementById("form-produto").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const msgEl = document.getElementById("mensagem-produto");
-    msgEl.textContent = "";
-    try {
-      await apiSend(editandoProdutoId ? `/estoque/produtos/${editandoProdutoId}` : "/estoque/produtos", editandoProdutoId ? "PUT" : "POST", payloadProduto());
-      resetProduto();
-      mostrarToast("Produto salvo.", "success");
-      await carregarEstoque();
-    } catch (erro) {
-      msgEl.textContent = erro.message;
-      mostrarToast(erro.message, "error");
-    }
-  });
-
-  // Submit: registrar movimentacao
-  document.getElementById("form-movimentacao").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const msgEl = document.getElementById("mensagem-movimentacao");
-    msgEl.textContent = "";
-    try {
-      await apiSend("/estoque/movimentacoes", "POST", {
-        produto_id: Number(document.getElementById("mov-produto-id").value),
-        tipo_movimentacao: document.getElementById("mov-tipo").value,
-        quantidade: normalizarNumero(document.getElementById("mov-quantidade").value),
-        valor_unitario: normalizarNumero(document.getElementById("mov-valor").value),
-        data: document.getElementById("mov-data").value,
-        observacao: document.getElementById("mov-observacao").value.trim()
-      });
-      fecharModalMovimentacao();
-      document.getElementById("form-movimentacao").reset();
-      mostrarToast("Movimentacao registrada.", "success");
-      await carregarEstoque();
-    } catch (erro) {
-      msgEl.textContent = erro.message;
-      mostrarToast(erro.message, "error");
-    }
-  });
-
-  // Filtros
   document.getElementById("btn-filtrar-estoque").addEventListener("click", async () => {
     await carregarEstoque();
     fecharPopupFiltros("painel-filtros-estoque");
