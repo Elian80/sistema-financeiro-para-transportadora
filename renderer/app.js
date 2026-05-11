@@ -125,109 +125,92 @@ const pages = {
     title: "Dashboard",
     subtitle: "Visao geral da operacao e do financeiro",
     render: () => `
-      <section class="panel-box filter-launcher">
-        <div>
-          <h3>Dashboard financeiro</h3>
-          <p>Use filtros para recalcular os indicadores por periodo, veiculo ou empresa.</p>
-        </div>
-        ${botaoFiltros("painel-filtros-dashboard")}
-      </section>
-
-      <div class="kpi-grid dashboard-summary-grid" style="margin-bottom:18px;">
-        <section class="kpi-card">
-          <div class="kpi-label">Margem líquida</div>
-          <div class="kpi-value" id="dashboard-margem-liquida">0,0%</div>
-          ${kpiTrend("+0.0%", "positive")}
-          <div class="dashboard-note">Participacao de lucro sobre faturamento</div>
-        </section>
-        <section class="kpi-card">
-          <div class="kpi-label">Ticket medio</div>
-          <div class="kpi-value positive" id="dashboard-ticket-medio">R$ 0,00</div>
-          ${kpiTrend("+0.0%", "positive")}
-          <div class="dashboard-note">Receitas por lancamento</div>
-        </section>
-        <section class="kpi-card">
-          <div class="kpi-label">Frota operante</div>
-          <div class="kpi-value" id="dashboard-frota-operante">0%</div>
-          ${kpiTrend("+0.0%", "positive")}
-          <div class="dashboard-note">Veiculos ativos sobre total</div>
-        </section>
-      </div>
-
-      ${popupFiltros("painel-filtros-dashboard", "Filtros do dashboard", "Refine os indicadores principais desta tela.", `
+      ${popupFiltros("painel-filtros-dashboard", "Filtros do dashboard", "Refine os indicadores por periodo, veiculo ou empresa.", `
         <div class="form-grid">
           <div class="field"><label>Data inicial</label><input type="date" id="dash-data-inicial" /></div>
           <div class="field"><label>Data final</label><input type="date" id="dash-data-final" /></div>
           <div class="field"><label>Veiculo</label><select id="dash-veiculo-id"><option value="">Todos</option></select></div>
           <div class="field"><label>Empresa ID</label><input type="number" id="dash-empresa-id" placeholder="Opcional" /></div>
-          <div class="field full btn-row"><button type="button" class="primary-btn" id="btn-dashboard-filtrar">Atualizar dashboard</button></div>
+          <div class="field full btn-row">
+            <button type="button" class="primary-btn" id="btn-dashboard-filtrar">Aplicar filtros</button>
+            <button type="button" class="ghost-btn" id="btn-dashboard-limpar">Limpar</button>
+          </div>
         </div>
       `)}
 
-      <div class="dashboard-grid">
+      <div class="panel-box filter-launcher" style="margin-bottom:18px;">
+        <div>
+          <h3 style="margin:0;font-size:15px;">Periodo analisado</h3>
+          <p id="dashboard-periodo" style="margin:4px 0 0;font-size:13px;">Carregando...</p>
+        </div>
+        <div class="estoque-actions">
+          ${botaoFiltros("painel-filtros-dashboard")}
+        </div>
+      </div>
+
+      <div class="dashboard-grid" style="margin-bottom:18px;">
         <section class="kpi-card dashboard-hero">
           <div class="kpi-label">Saldo do periodo</div>
           <div class="kpi-value" id="dashboard-saldo">R$ 0,00</div>
-          ${kpiTrend("+12.4%", "positive")}
+          ${kpiTrend("", "positive")}
           ${sparklineSvg("4,30 18,24 32,27 46,16 60,19 74,10 88,14")}
-          <div class="dashboard-note" id="dashboard-periodo">Carregando dados...</div>
+          <div class="dashboard-note" id="dashboard-receitas-qtd">0 lancamentos</div>
         </section>
-
         <section class="kpi-card">
           <div class="kpi-label">Receitas</div>
           <div class="kpi-value positive" id="dashboard-receitas">R$ 0,00</div>
-          ${kpiTrend("+8.5%", "positive")}
           ${sparklineSvg("4,31 18,25 32,20 46,22 60,12 74,10 88,6")}
-          <div class="dashboard-note" id="dashboard-receitas-qtd">0 lancamentos</div>
+          <div class="dashboard-note" id="dashboard-despesas-qtd">0 despesas</div>
         </section>
-
         <section class="kpi-card">
           <div class="kpi-label">Despesas</div>
           <div class="kpi-value negative" id="dashboard-despesas">R$ 0,00</div>
-          ${kpiTrend("-3.2%", "negative")}
           ${sparklineSvg("4,12 18,16 32,13 46,22 60,20 74,28 88,25")}
-          <div class="dashboard-note" id="dashboard-despesas-qtd">0 lancamentos</div>
+          <div class="dashboard-note">Custos + despesas</div>
         </section>
-
         <section class="kpi-card">
-          <div class="kpi-label">Frota ativa</div>
-          <div class="kpi-value" id="dashboard-frota-ativa">0</div>
-          ${kpiTrend("+2.0%", "positive")}
-          ${sparklineSvg("4,26 18,26 32,22 46,22 60,18 74,18 88,14")}
-          <div class="dashboard-note" id="dashboard-frota-total">0 veiculos cadastrados</div>
+          <div class="kpi-label">Lucro liquido</div>
+          <div class="kpi-value" id="dashboard-lucro-liquido">R$ 0,00</div>
+          ${sparklineSvg("4,30 18,28 32,20 46,22 60,16 74,10 88,12")}
+          <div class="dashboard-note">Receitas menos despesas totais</div>
         </section>
+      </div>
+      <span id="dashboard-frota-total" hidden></span>
+
+      <div class="dash-metrics-strip">
+        <div class="dash-metric-card">
+          <div>
+            <div class="dash-metric-label">Margem liquida</div>
+            <div class="dash-metric-value" id="dashboard-margem-liquida">0,0%</div>
+          </div>
+          <span class="kpi-trend positive" id="dash-trend-margem">—</span>
+        </div>
+        <div class="dash-metric-card">
+          <div>
+            <div class="dash-metric-label">Ticket medio</div>
+            <div class="dash-metric-value positive" id="dashboard-ticket-medio">R$ 0,00</div>
+          </div>
+          <span class="kpi-trend positive" id="dash-trend-ticket">—</span>
+        </div>
+        <div class="dash-metric-card">
+          <div>
+            <div class="dash-metric-label">Frota operante</div>
+            <div class="dash-metric-value" id="dashboard-frota-operante">0%</div>
+          </div>
+          <span class="kpi-trend positive" id="dash-trend-frota">—</span>
+        </div>
       </div>
 
       <div class="kpi-grid" style="margin-bottom:18px;">
-        <section class="kpi-card"><div class="kpi-label">Custos operacionais</div><div class="kpi-value negative" id="dashboard-custos">R$ 0,00</div>${kpiTrend("-1.8%", "negative")}${sparklineSvg("4,12 18,18 32,16 46,22 60,19 74,28 88,26")}</section>
-        <section class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="dashboard-investimentos">R$ 0,00</div>${kpiTrend("+4.1%", "positive")}${sparklineSvg("4,30 18,30 32,24 46,18 60,20 74,14 88,9")}</section>
-        <section class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="dashboard-lucro-bruto">R$ 0,00</div>${kpiTrend("+6.7%", "positive")}${sparklineSvg("4,32 18,24 32,26 46,18 60,12 74,14 88,8")}</section>
-        <section class="kpi-card"><div class="kpi-label">Lucro liquido</div><div class="kpi-value" id="dashboard-lucro-liquido">R$ 0,00</div>${kpiTrend("+5.3%", "positive")}${sparklineSvg("4,30 18,28 32,20 46,22 60,16 74,10 88,12")}</section>
-        <section class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value warning" id="dashboard-contas-pendentes">R$ 0,00</div>${kpiTrend("alerta", "warning")}${sparklineSvg("4,18 18,14 32,22 46,18 60,26 74,22 88,30")}</section>
-        <section class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="dashboard-patrimonio">R$ 0,00</div>${kpiTrend("+7.2%", "positive")}${sparklineSvg("4,32 18,24 32,27 46,18 60,20 74,12 88,10")}</section>
+        <section class="kpi-card"><div class="kpi-label">Custos operacionais</div><div class="kpi-value negative" id="dashboard-custos">R$ 0,00</div>${sparklineSvg("4,12 18,18 32,16 46,22 60,19 74,28 88,26")}</section>
+        <section class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="dashboard-investimentos">R$ 0,00</div>${sparklineSvg("4,30 18,30 32,24 46,18 60,20 74,14 88,9")}</section>
+        <section class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="dashboard-lucro-bruto">R$ 0,00</div>${sparklineSvg("4,32 18,24 32,26 46,18 60,12 74,14 88,8")}</section>
+        <section class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value warning" id="dashboard-contas-pendentes">R$ 0,00</div>${sparklineSvg("4,18 18,14 32,22 46,18 60,26 74,22 88,30")}</section>
+        <section class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="dashboard-patrimonio">R$ 0,00</div>${sparklineSvg("4,32 18,24 32,27 46,18 60,20 74,12 88,10")}</section>
+        <section class="kpi-card"><div class="kpi-label">Frota ativa</div><div class="kpi-value" id="dashboard-frota-ativa">0</div>${sparklineSvg("4,26 18,26 32,22 46,22 60,18 74,18 88,14")}</section>
       </div>
 
-      <section class="panel-box" style="margin-bottom:18px;">
-        <div class="table-toolbar">
-          <div>
-            <h3 style="margin:0;">Horas trabalhadas por maquina</h3>
-            <span>Selecione veiculo e periodo para conferir horas e dias trabalhados</span>
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="field"><label>Veiculo</label><select id="dash-horas-veiculo"><option value="">Todas as maquinas</option></select></div>
-          <div class="field"><label>Data inicial</label><input type="date" id="dash-horas-data-inicial" /></div>
-          <div class="field"><label>Data final</label><input type="date" id="dash-horas-data-final" /></div>
-          <div class="field dash-hours-action"><label>&nbsp;</label><button type="button" class="icon-btn subtle-icon-btn" id="btn-dashboard-horas" aria-label="Atualizar horas" title="Atualizar horas"><span data-lucide="refresh-cw" aria-hidden="true"></span></button></div>
-        </div>
-        <div class="kpi-grid" style="margin-top:14px;">
-          <div class="kpi-card"><div class="kpi-label">Total de horas</div><div class="kpi-value" id="dash-horas-total">0h</div></div>
-          <div class="kpi-card"><div class="kpi-label">Dias trabalhados</div><div class="kpi-value" id="dash-dias-total">0</div></div>
-          <div class="kpi-card"><div class="kpi-label">Valor gerado</div><div class="kpi-value positive" id="dash-horas-valor">R$ 0,00</div></div>
-        </div>
-      </section>
-
-      <section class="report-charts">
+      <section class="report-charts" style="margin-bottom:18px;">
         <div class="panel-box chart-card chart-card-wide"><h3>Evolucao financeira</h3><canvas id="dash-chart-receitas-despesas" height="150"></canvas></div>
         <div class="panel-box"><h3>Custos por veiculo</h3><canvas id="dash-chart-custos-veiculo" height="150"></canvas></div>
         <div class="panel-box"><h3>Despesas por classificacao</h3><canvas id="dash-chart-despesas-classificacao" height="150"></canvas></div>
@@ -236,48 +219,45 @@ const pages = {
         <div class="panel-box"><h3>Contas a receber</h3><canvas id="dash-chart-contas-receber" height="150"></canvas></div>
       </section>
 
-      <div class="dashboard-layout">
+      <div class="dashboard-layout" style="margin-bottom:18px;">
         <section class="panel-box">
           <div class="table-toolbar">
-            <div>
-              <h3 style="margin:0;">Resumo da frota</h3>
-              <span>Status operacional dos veiculos</span>
-            </div>
+            <div><h3 style="margin:0;">Resumo da frota</h3><span>Status operacional dos veiculos</span></div>
           </div>
-
           <div class="status-summary">
-            <div class="status-line">
-              <span>Ativos</span>
-              <strong id="dashboard-veiculos-ativos">0</strong>
-            </div>
-            <div class="status-line">
-              <span>Manutencao</span>
-              <strong id="dashboard-veiculos-manutencao">0</strong>
-            </div>
-            <div class="status-line">
-              <span>Inativos</span>
-              <strong id="dashboard-veiculos-inativos">0</strong>
-            </div>
-            <div class="status-line">
-              <span>Motoristas</span>
-              <strong id="dashboard-motoristas">0</strong>
-            </div>
+            <div class="status-line"><span>Ativos</span><strong id="dashboard-veiculos-ativos">0</strong></div>
+            <div class="status-line"><span>Manutencao</span><strong id="dashboard-veiculos-manutencao">0</strong></div>
+            <div class="status-line"><span>Inativos</span><strong id="dashboard-veiculos-inativos">0</strong></div>
+            <div class="status-line"><span>Motoristas</span><strong id="dashboard-motoristas">0</strong></div>
           </div>
         </section>
-
         <section class="panel-box">
           <div class="table-toolbar">
-            <div>
-              <h3 style="margin:0;">Financeiro por classificacao</h3>
-              <span>Maiores valores cadastrados</span>
-            </div>
+            <div><h3 style="margin:0;">Financeiro por classificacao</h3><span>Maiores valores no periodo</span></div>
           </div>
-
-          <div id="dashboard-classificacoes" class="ranking-list">
-            <p class="empty-row">Carregando...</p>
-          </div>
+          <div id="dashboard-classificacoes" class="ranking-list"><p class="empty-row">Carregando...</p></div>
         </section>
       </div>
+
+      <section class="panel-box" style="margin-bottom:18px;">
+        <div class="table-toolbar">
+          <div>
+            <h3 style="margin:0;">Horas por maquina</h3>
+            <span>Horas e valor gerado por veiculo no periodo</span>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="field"><label>Veiculo</label><select id="dash-horas-veiculo"><option value="">Todas as maquinas</option></select></div>
+          <div class="field"><label>Data inicial</label><input type="date" id="dash-horas-data-inicial" /></div>
+          <div class="field"><label>Data final</label><input type="date" id="dash-horas-data-final" /></div>
+          <div class="field dash-hours-action"><label>&nbsp;</label><button type="button" class="icon-btn subtle-icon-btn" id="btn-dashboard-horas" aria-label="Atualizar horas" title="Atualizar"><span data-lucide="refresh-cw" aria-hidden="true"></span></button></div>
+        </div>
+        <div class="kpi-grid" style="margin-top:14px;">
+          <div class="kpi-card"><div class="kpi-label">Total de horas</div><div class="kpi-value" id="dash-horas-total">0h</div></div>
+          <div class="kpi-card"><div class="kpi-label">Dias trabalhados</div><div class="kpi-value" id="dash-dias-total">0</div></div>
+          <div class="kpi-card"><div class="kpi-label">Valor gerado</div><div class="kpi-value positive" id="dash-horas-valor">R$ 0,00</div></div>
+        </div>
+      </section>
 
       <section class="panel-box">
         <div class="table-toolbar">
@@ -286,23 +266,10 @@ const pages = {
             <span id="dashboard-total-lancamentos">0 registros</span>
           </div>
         </div>
-
         <div class="table-wrap">
           <table class="data-table">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Classificacao</th>
-                <th>Veiculo</th>
-                <th>Descricao</th>
-                <th>Valor</th>
-              </tr>
-            </thead>
-            <tbody id="dashboard-ultimos-lancamentos">
-              <tr>
-                <td colspan="5" class="empty-row">Carregando...</td>
-              </tr>
-            </tbody>
+            <thead><tr><th>Data</th><th>Classificacao</th><th>Veiculo</th><th>Descricao</th><th>Valor</th></tr></thead>
+            <tbody id="dashboard-ultimos-lancamentos"><tr><td colspan="5" class="empty-row">Carregando...</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -957,27 +924,16 @@ const pages = {
         <div class="kpi-card"><div class="kpi-label">Ultimas movimentacoes</div><div class="kpi-value" id="est-ultimas">0</div></div>
       </div>
 
-      <section class="panel-box">
-        <h3 id="titulo-form-produto">Novo produto</h3>
-        <form id="form-produto" class="form-grid">
-          <div class="field"><label>Nome</label><input id="produto-nome" required /></div>
-          <div class="field"><label>Categoria</label><input id="produto-categoria" /></div>
-          <div class="field"><label>Unidade</label><input id="produto-unidade" value="un" /></div>
-          <div class="field"><label>Quantidade atual</label><input type="number" step="0.001" id="produto-quantidade" /></div>
-          <div class="field"><label>Valor custo</label><input type="number" step="0.01" id="produto-valor" /></div>
-          <div class="field"><label>Estoque minimo</label><input type="number" step="0.001" id="produto-minimo" /></div>
-          <div class="field full"><label>Observacao</label><input id="produto-observacao" /></div>
-          <div class="field full btn-row"><button class="primary-btn" type="submit">Salvar produto</button><button class="ghost-btn" type="button" id="btn-cancelar-produto" style="display:none;">Cancelar</button></div>
-        </form>
-        <p id="mensagem-produto" class="mensagem"></p>
-      </section>
-
-      <section class="panel-box filter-launcher">
+      <section class="panel-box filter-launcher" style="margin-bottom:18px;">
         <div>
-          <h3>Produtos</h3>
-          <p>Filtre os produtos sem ocupar a area de trabalho.</p>
+          <h3 style="margin:0;">Produtos em estoque</h3>
+          <p style="margin:4px 0 0;">Cadastre produtos, registre entradas e saidas.</p>
         </div>
-        ${botaoFiltros("painel-filtros-estoque")}
+        <div class="estoque-actions">
+          <button class="primary-btn" id="btn-novo-produto" type="button">+ Novo produto</button>
+          <button class="ghost-btn" id="btn-movimentar-estoque" type="button">Movimentar</button>
+          ${botaoFiltros("painel-filtros-estoque")}
+        </div>
       </section>
 
       ${popupFiltros("painel-filtros-estoque", "Filtros de estoque", "Busque produtos por nome, categoria ou alerta de estoque baixo.", `
@@ -985,27 +941,86 @@ const pages = {
           <div class="field"><label>Nome</label><input id="filtro-produto-nome" /></div>
           <div class="field"><label>Categoria</label><input id="filtro-produto-categoria" /></div>
           <div class="field"><label>Somente baixo</label><select id="filtro-produto-baixo"><option value="">Todos</option><option value="true">Sim</option></select></div>
-          <div class="field btn-row"><button class="ghost-btn" id="btn-filtrar-estoque" type="button">Filtrar</button><button class="ghost-btn" id="btn-limpar-estoque" type="button">Limpar</button></div>
+          <div class="field btn-row">
+            <button class="primary-btn" id="btn-filtrar-estoque" type="button">Filtrar</button>
+            <button class="ghost-btn" id="btn-limpar-estoque" type="button">Limpar</button>
+          </div>
         </div>
       `)}
 
-      <section class="panel-box"><h3>Produtos</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>Categoria</th><th>Qtd.</th><th>Custo</th><th>Total</th><th>Minimo</th><th>Acoes</th></tr></thead><tbody id="tabela-produtos"></tbody></table></div></section>
-
-      <section class="panel-box">
-        <h3>Movimentar estoque</h3>
-        <form id="form-movimentacao" class="form-grid">
-          <div class="field"><label>Produto</label><select id="mov-produto-id"></select></div>
-          <div class="field"><label>Tipo</label><select id="mov-tipo"><option>Entrada</option><option>Saida</option><option>Ajuste</option></select></div>
-          <div class="field"><label>Quantidade</label><input type="number" step="0.001" id="mov-quantidade" required /></div>
-          <div class="field"><label>Valor unitario</label><input type="number" step="0.01" id="mov-valor" /></div>
-          <div class="field"><label>Data</label><input type="date" id="mov-data" required /></div>
-          <div class="field"><label>Observacao</label><input id="mov-observacao" /></div>
-          <div class="field full"><button class="primary-btn" type="submit">Registrar movimentacao</button></div>
-        </form>
-        <p id="mensagem-movimentacao" class="mensagem"></p>
+      <section class="panel-box" style="margin-bottom:18px;">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Nome</th><th>Categoria</th><th>Qtd.</th><th>Custo unit.</th><th>Total</th><th>Minimo</th><th>Acoes</th></tr></thead>
+            <tbody id="tabela-produtos"></tbody>
+          </table>
+        </div>
       </section>
 
-      <section class="panel-box"><h3>Historico de movimentacoes</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Valor unitario</th><th>Observacao</th></tr></thead><tbody id="tabela-movimentacoes"></tbody></table></div></section>
+      <section class="panel-box">
+        <div class="table-toolbar" style="margin-bottom:14px;">
+          <div><h3 style="margin:0;">Historico de movimentacoes</h3><span>Entradas, saidas e ajustes registrados</span></div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Valor unit.</th><th>Observacao</th></tr></thead>
+            <tbody id="tabela-movimentacoes"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Modal: cadastrar / editar produto -->
+      <div class="modal-overlay estoque-modal-overlay" id="modal-produto" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="titulo-form-produto">
+        <section class="modal-content estoque-modal-content">
+          <div class="estoque-modal-header">
+            <div>
+              <h3 id="titulo-form-produto">Novo produto</h3>
+              <p>Preencha os dados do produto e salve.</p>
+            </div>
+            <button class="ghost-btn" id="btn-fechar-modal-produto" type="button">Fechar</button>
+          </div>
+          <form id="form-produto" class="form-grid">
+            <div class="field"><label>Nome *</label><input id="produto-nome" required placeholder="Ex: Oleo lubrificante 15W-40" /></div>
+            <div class="field"><label>Categoria</label><input id="produto-categoria" placeholder="Ex: Lubrificantes" /></div>
+            <div class="field"><label>Unidade de medida</label><input id="produto-unidade" value="un" placeholder="un, L, kg..." /></div>
+            <div class="field"><label>Quantidade atual</label><input type="number" step="0.001" id="produto-quantidade" placeholder="0" /></div>
+            <div class="field"><label>Valor de custo (unit.)</label><input type="number" step="0.01" id="produto-valor" placeholder="0,00" /></div>
+            <div class="field"><label>Estoque minimo</label><input type="number" step="0.001" id="produto-minimo" placeholder="0" /></div>
+            <div class="field full"><label>Observacao</label><input id="produto-observacao" placeholder="Informacoes adicionais..." /></div>
+            <div class="field full btn-row">
+              <button class="primary-btn" type="submit">Salvar produto</button>
+              <button class="ghost-btn" type="button" id="btn-cancelar-produto">Cancelar</button>
+            </div>
+          </form>
+          <p id="mensagem-produto" class="mensagem"></p>
+        </section>
+      </div>
+
+      <!-- Modal: movimentar estoque -->
+      <div class="modal-overlay estoque-modal-overlay" id="modal-movimentacao" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-mov">
+        <section class="modal-content estoque-modal-content">
+          <div class="estoque-modal-header">
+            <div>
+              <h3 id="titulo-modal-mov">Movimentar estoque</h3>
+              <p>Registre entradas, saidas ou ajustes de quantidade.</p>
+            </div>
+            <button class="ghost-btn" id="btn-fechar-modal-movimentacao" type="button">Fechar</button>
+          </div>
+          <form id="form-movimentacao" class="form-grid">
+            <div class="field"><label>Produto *</label><select id="mov-produto-id"></select></div>
+            <div class="field"><label>Tipo de movimentacao</label><select id="mov-tipo"><option>Entrada</option><option>Saida</option><option>Ajuste</option></select></div>
+            <div class="field"><label>Quantidade *</label><input type="number" step="0.001" id="mov-quantidade" required placeholder="0" /></div>
+            <div class="field"><label>Valor unitario</label><input type="number" step="0.01" id="mov-valor" placeholder="0,00" /></div>
+            <div class="field"><label>Data *</label><input type="date" id="mov-data" required /></div>
+            <div class="field"><label>Observacao</label><input id="mov-observacao" placeholder="Motivo, NF, fornecedor..." /></div>
+            <div class="field full btn-row">
+              <button class="primary-btn" type="submit">Registrar movimentacao</button>
+              <button class="ghost-btn" type="button" id="btn-cancelar-movimentacao">Cancelar</button>
+            </div>
+          </form>
+          <p id="mensagem-movimentacao" class="mensagem"></p>
+        </section>
+      </div>
     `
   },
 
@@ -3729,12 +3744,32 @@ function payloadProduto() {
   };
 }
 
+function abrirModalProduto() {
+  document.getElementById("modal-produto").style.display = "flex";
+  document.body.classList.add("filter-popup-open");
+}
+
+function fecharModalProduto() {
+  document.getElementById("modal-produto").style.display = "none";
+  document.body.classList.remove("filter-popup-open");
+}
+
+function abrirModalMovimentacao() {
+  document.getElementById("modal-movimentacao").style.display = "flex";
+  document.body.classList.add("filter-popup-open");
+}
+
+function fecharModalMovimentacao() {
+  document.getElementById("modal-movimentacao").style.display = "none";
+  document.body.classList.remove("filter-popup-open");
+}
+
 function resetProduto() {
   editandoProdutoId = null;
   document.getElementById("form-produto").reset();
   document.getElementById("produto-unidade").value = "un";
-  document.getElementById("btn-cancelar-produto").style.display = "none";
   document.getElementById("titulo-form-produto").textContent = "Novo produto";
+  fecharModalProduto();
 }
 
 window.editarProduto = async (id) => {
@@ -3748,8 +3783,8 @@ window.editarProduto = async (id) => {
   document.getElementById("produto-valor").value = item.valor_custo || "";
   document.getElementById("produto-minimo").value = item.estoque_minimo || "";
   document.getElementById("produto-observacao").value = item.observacao || "";
-  document.getElementById("btn-cancelar-produto").style.display = "inline-block";
-  document.getElementById("titulo-form-produto").textContent = "Alterar produto";
+  document.getElementById("titulo-form-produto").textContent = "Editar produto";
+  abrirModalProduto();
 };
 
 window.excluirProduto = async (id) => {
@@ -3761,20 +3796,63 @@ window.excluirProduto = async (id) => {
 
 async function iniciarEstoque() {
   await carregarEstoque();
+
+  // Abrir modal de novo produto
+  document.getElementById("btn-novo-produto").addEventListener("click", () => {
+    resetProduto();
+    document.getElementById("titulo-form-produto").textContent = "Novo produto";
+    abrirModalProduto();
+  });
+
+  // Abrir modal de movimentacao
+  document.getElementById("btn-movimentar-estoque").addEventListener("click", () => {
+    document.getElementById("form-movimentacao").reset();
+    document.getElementById("mensagem-movimentacao").textContent = "";
+    abrirModalMovimentacao();
+  });
+
+  // Fechar modais pelos botoes
+  document.getElementById("btn-fechar-modal-produto").addEventListener("click", () => resetProduto());
+  document.getElementById("btn-cancelar-produto").addEventListener("click", () => resetProduto());
+  document.getElementById("btn-fechar-modal-movimentacao").addEventListener("click", () => fecharModalMovimentacao());
+  document.getElementById("btn-cancelar-movimentacao").addEventListener("click", () => fecharModalMovimentacao());
+
+  // Fechar modais clicando no overlay
+  document.getElementById("modal-produto").addEventListener("click", (e) => {
+    if (e.target === e.currentTarget) resetProduto();
+  });
+  document.getElementById("modal-movimentacao").addEventListener("click", (e) => {
+    if (e.target === e.currentTarget) fecharModalMovimentacao();
+  });
+
+  // Fechar com ESC
+  document.addEventListener("keydown", function estoqueEsc(e) {
+    if (e.key !== "Escape") return;
+    if (document.getElementById("modal-produto")?.style.display === "flex") resetProduto();
+    if (document.getElementById("modal-movimentacao")?.style.display === "flex") fecharModalMovimentacao();
+  });
+
+  // Submit: salvar produto
   document.getElementById("form-produto").addEventListener("submit", async (event) => {
     event.preventDefault();
+    const msgEl = document.getElementById("mensagem-produto");
+    msgEl.textContent = "";
     try {
       await apiSend(editandoProdutoId ? `/estoque/produtos/${editandoProdutoId}` : "/estoque/produtos", editandoProdutoId ? "PUT" : "POST", payloadProduto());
       resetProduto();
       mostrarToast("Produto salvo.", "success");
       await carregarEstoque();
     } catch (erro) {
-      document.getElementById("mensagem-produto").textContent = erro.message;
+      msgEl.textContent = erro.message;
       mostrarToast(erro.message, "error");
     }
   });
+
+  // Submit: registrar movimentacao
   document.getElementById("form-movimentacao").addEventListener("submit", async (event) => {
     event.preventDefault();
+    const msgEl = document.getElementById("mensagem-movimentacao");
+    msgEl.textContent = "";
     try {
       await apiSend("/estoque/movimentacoes", "POST", {
         produto_id: Number(document.getElementById("mov-produto-id").value),
@@ -3784,14 +3862,17 @@ async function iniciarEstoque() {
         data: document.getElementById("mov-data").value,
         observacao: document.getElementById("mov-observacao").value.trim()
       });
+      fecharModalMovimentacao();
       document.getElementById("form-movimentacao").reset();
       mostrarToast("Movimentacao registrada.", "success");
       await carregarEstoque();
     } catch (erro) {
-      document.getElementById("mensagem-movimentacao").textContent = erro.message;
+      msgEl.textContent = erro.message;
       mostrarToast(erro.message, "error");
     }
   });
+
+  // Filtros
   document.getElementById("btn-filtrar-estoque").addEventListener("click", async () => {
     await carregarEstoque();
     fecharPopupFiltros("painel-filtros-estoque");
@@ -3803,7 +3884,6 @@ async function iniciarEstoque() {
     await carregarEstoque();
     fecharPopupFiltros("painel-filtros-estoque");
   });
-  document.getElementById("btn-cancelar-produto").addEventListener("click", resetProduto);
 }
 
 function carregarConfiguracoesLocais() {
@@ -4703,6 +4783,16 @@ async function iniciarDashboard() {
   await atualizarHorasMaquinasDashboard();
   document.getElementById("btn-dashboard-horas")?.addEventListener("click", atualizarHorasMaquinasDashboard);
   document.getElementById("btn-dashboard-filtrar")?.addEventListener("click", async () => {
+    await iniciarDashboard();
+    fecharPopupFiltros("painel-filtros-dashboard");
+  });
+  document.getElementById("btn-dashboard-limpar")?.addEventListener("click", async () => {
+    const limpar = (id) => { const el = document.getElementById(id); if (el) el.value = ""; };
+    limpar("dash-data-inicial");
+    limpar("dash-data-final");
+    limpar("dash-empresa-id");
+    const sel = document.getElementById("dash-veiculo-id");
+    if (sel) sel.value = "";
     await iniciarDashboard();
     fecharPopupFiltros("painel-filtros-dashboard");
   });
