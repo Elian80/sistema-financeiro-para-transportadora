@@ -1,15 +1,45 @@
+// ============================================================
+// MOTORISTA.JS — App mobile dos motoristas
+// Arquivo JavaScript principal do app de motoristas.
+//
+// Este app roda em: https://gm7sistemas.com.br/motorista.html
+// É instalável como PWA no celular do motorista.
+//
+// FUNCIONALIDADES:
+//   - Login com credenciais criadas pelo painel master
+//   - Iniciar e finalizar viagens (km inicial/final, origem, destino, carga)
+//   - Compartilhar localização GPS em tempo real (aparece na aba Mapa do sistema)
+//   - Histórico das últimas 50 viagens
+//
+// COMUNICAÇÃO COM O BACKEND:
+//   Todas as chamadas usam o prefixo /motorista-app/
+//   O token JWT é armazenado no localStorage com chave "mot_token"
+//   e tem validade de 30 dias (sem necessidade de relogin frequente).
+// ============================================================
+
+// URL base da API — detecta se está rodando localmente (Electron/teste)
+// ou no servidor de produção (gm7sistemas.com.br)
 const API_URL = window.location.protocol === "file:" ? "http://127.0.0.1:8001" : "";
-const TOKEN_KEY = "mot_token";
-const NOME_KEY  = "mot_nome";
 
-let gpsWatchId = null;
-let gpsEnvioTimer = null;
-let posicaoAtual = null;
-let viagemAtivaId = null;
+// Chaves de armazenamento local
+const TOKEN_KEY = "mot_token";  // token JWT do motorista
+const NOME_KEY  = "mot_nome";   // nome do motorista (para exibição rápida)
 
-// ---- API helpers ----
+// Estado global do GPS e da viagem ativa
+let gpsWatchId = null;      // ID do watchPosition do browser (para parar o GPS)
+let gpsEnvioTimer = null;   // Intervalo de envio de localização (10s)
+let posicaoAtual = null;    // Último objeto GeolocationPosition recebido
+let viagemAtivaId = null;   // ID da viagem em andamento (null = sem viagem)
+
+// ============================================================
+// UTILITÁRIOS DE API
+// ============================================================
+
+// Retorna o token JWT salvo no localStorage
 function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
 
+// Função genérica de chamada à API REST do backend
+// Automaticamente inclui o token JWT no header Authorization
 async function api(method, path, body) {
   const opts = {
     method,
@@ -22,7 +52,11 @@ async function api(method, path, body) {
   return data;
 }
 
-// ---- Toast ----
+// ============================================================
+// TOAST — Notificações temporárias na tela
+// Exibidas na parte inferior por 3,2 segundos
+// Tipos: "ok" (verde), "erro" (vermelho)
+// ============================================================
 function toast(msg, tipo = "ok") {
   const el = document.getElementById("toast");
   el.textContent = msg;
@@ -32,7 +66,12 @@ function toast(msg, tipo = "ok") {
   el._t = setTimeout(() => { el.hidden = true; }, 3200);
 }
 
-// ---- Login ----
+// ============================================================
+// AUTENTICAÇÃO — Login e Logout
+// ============================================================
+
+// Submissão do formulário de login
+// Chama POST /motorista-app/login e salva o token no localStorage
 document.getElementById("form-login").addEventListener("submit", async (e) => {
   e.preventDefault();
   const errEl = document.getElementById("login-erro");
@@ -42,6 +81,7 @@ document.getElementById("form-login").addEventListener("submit", async (e) => {
       email: document.getElementById("login-email").value.trim(),
       senha: document.getElementById("login-senha").value,
     });
+    // Salva token e nome para uso imediato e persistência entre sessões
     localStorage.setItem(TOKEN_KEY, res.access_token);
     localStorage.setItem(NOME_KEY, res.nome);
     await entrarNoApp();
@@ -50,6 +90,7 @@ document.getElementById("form-login").addEventListener("submit", async (e) => {
   }
 });
 
+// Botão de logout — para o GPS antes de limpar o token
 document.getElementById("btn-sair").addEventListener("click", () => {
   if (!confirm("Deseja sair do app?")) return;
   pararGps();
@@ -59,17 +100,27 @@ document.getElementById("btn-sair").addEventListener("click", () => {
   document.getElementById("tela-login").hidden = false;
 });
 
-// ---- Inicializacao ----
+// ============================================================
+// INICIALIZAÇÃO DO APP após login bem-sucedido
+// ============================================================
+
 async function entrarNoApp() {
+  // Alterna visibilidade das telas
   document.getElementById("tela-login").hidden = true;
   document.getElementById("tela-app").hidden = false;
+
+  // Exibe nome e inicial do motorista no cabeçalho
   const nome = localStorage.getItem(NOME_KEY) || "Motorista";
   document.getElementById("header-nome").textContent = nome;
   document.getElementById("header-avatar").textContent = nome[0].toUpperCase();
+
+  // Carrega estado atual (viagem ativa?) e lista de veículos
   await carregarEstado();
+  // Carrega histórico de viagens
   await carregarHistorico();
 }
 
+// Consulta GET /motorista-app/me para verificar se há viagem em andamento
 async function carregarEstado() {
   try {
     const me = await api("GET", "/motorista-app/me");
@@ -80,6 +131,8 @@ async function carregarEstado() {
   }
 }
 
+// Preenche o select de veículos no formulário de nova viagem
+// Usa a mesma rota /veiculos do painel financeiro (requer token de motorista)
 async function carregarVeiculos() {
   try {
     const res = await fetch(API_URL + "/veiculos", {
@@ -93,6 +146,7 @@ async function carregarVeiculos() {
   } catch (_) {}
 }
 
+// Busca e exibe as últimas 50 viagens do motorista (GET /motorista-app/viagens)
 async function carregarHistorico() {
   const lista = document.getElementById("lista-viagens");
   try {
@@ -116,7 +170,10 @@ async function carregarHistorico() {
   }
 }
 
-// ---- Viagem Ativa ----
+// ============================================================
+// VIAGEM ATIVA — Renderização do card de estado da viagem
+// Controla quais botões e informações são exibidos
+// ============================================================
 function renderizarViagemAtiva(viagem) {
   viagemAtivaId = viagem ? viagem.id : null;
   const titulo = document.getElementById("viagem-titulo");
@@ -125,6 +182,7 @@ function renderizarViagemAtiva(viagem) {
   const btnFin = document.getElementById("btn-finalizar-viagem");
 
   if (viagem) {
+    // Há viagem ativa: mostra detalhes e botão de finalizar
     titulo.textContent = "Viagem em andamento";
     document.getElementById("vi-origem").textContent  = viagem.origem || "-";
     document.getElementById("vi-destino").textContent = viagem.destino || "-";
@@ -136,6 +194,7 @@ function renderizarViagemAtiva(viagem) {
     btnIni.hidden = true;
     btnFin.hidden = false;
   } else {
+    // Sem viagem: mostra botão de iniciar
     titulo.textContent = "Nenhuma viagem ativa";
     info.hidden = true;
     btnIni.hidden = false;
@@ -143,14 +202,22 @@ function renderizarViagemAtiva(viagem) {
   }
 }
 
-// ---- Iniciar Viagem ----
+// ============================================================
+// FORMULÁRIO: INICIAR VIAGEM
+// ============================================================
+
+// Botão "+ Iniciar viagem" → abre o formulário inline
 document.getElementById("btn-iniciar-viagem").addEventListener("click", () => {
   document.getElementById("form-iniciar-container").hidden = false;
   document.getElementById("nv-origem").focus();
 });
+
+// Botão Cancelar do formulário de nova viagem
 document.getElementById("btn-cancelar-iniciar").addEventListener("click", () => {
   document.getElementById("form-iniciar-container").hidden = true;
 });
+
+// Submissão do formulário → POST /motorista-app/viagem/iniciar
 document.getElementById("form-iniciar-viagem").addEventListener("submit", async (e) => {
   e.preventDefault();
   const errEl = document.getElementById("nv-erro");
@@ -168,6 +235,7 @@ document.getElementById("form-iniciar-viagem").addEventListener("submit", async 
     document.getElementById("form-iniciar-container").hidden = true;
     document.getElementById("form-iniciar-viagem").reset();
     toast("Viagem iniciada!", "ok");
+    // Recarrega estado e histórico para refletir a nova viagem
     await carregarEstado();
     await carregarHistorico();
   } catch (err) {
@@ -175,14 +243,23 @@ document.getElementById("form-iniciar-viagem").addEventListener("submit", async 
   }
 });
 
-// ---- Finalizar Viagem ----
+// ============================================================
+// FORMULÁRIO: FINALIZAR VIAGEM
+// ============================================================
+
+// Botão "Finalizar viagem" → abre o formulário de km final
 document.getElementById("btn-finalizar-viagem").addEventListener("click", () => {
   document.getElementById("form-finalizar-container").hidden = false;
   document.getElementById("fv-km").focus();
 });
+
+// Botão Cancelar do formulário de finalização
 document.getElementById("btn-cancelar-finalizar").addEventListener("click", () => {
   document.getElementById("form-finalizar-container").hidden = true;
 });
+
+// Submissão → PUT /motorista-app/viagem/{id}/finalizar
+// Ao finalizar, o GPS é parado automaticamente
 document.getElementById("form-finalizar-viagem").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!viagemAtivaId) return;
@@ -195,7 +272,7 @@ document.getElementById("form-finalizar-viagem").addEventListener("submit", asyn
     });
     document.getElementById("form-finalizar-container").hidden = true;
     document.getElementById("form-finalizar-viagem").reset();
-    pararGps();
+    pararGps(); // encerra o compartilhamento de localização
     toast(`Viagem finalizada! Total: ${res.km_total} km`, "ok");
     await carregarEstado();
     await carregarHistorico();
@@ -204,10 +281,23 @@ document.getElementById("form-finalizar-viagem").addEventListener("submit", asyn
   }
 });
 
-// ---- GPS ----
+// ============================================================
+// GPS — Compartilhamento de localização em tempo real
+//
+// Quando ativo:
+//   - navigator.geolocation.watchPosition monitora o dispositivo
+//   - A cada 10 segundos, envia lat/lng/velocidade para o backend:
+//       POST /motorista-app/localizacao  (aparece na aba Mapa)
+//       POST /motorista-app/viagem/{id}/ponto (salva na rota da viagem)
+//
+// O motorista aparece como "online" no mapa do painel financeiro
+// enquanto o timestamp da última posição for menor que 5 minutos.
+// ============================================================
+
 const toggleGps = document.getElementById("toggle-gps");
 const badgeGps  = document.getElementById("header-status-gps");
 
+// Toggle GPS ligado/desligado
 toggleGps.addEventListener("change", () => {
   if (toggleGps.checked) iniciarGps();
   else pararGps();
@@ -221,9 +311,12 @@ function iniciarGps() {
   }
   badgeGps.textContent = "GPS on";
   badgeGps.className = "gps-badge on";
+
+  // watchPosition: recebe atualizações contínuas de posição do dispositivo
   gpsWatchId = navigator.geolocation.watchPosition(
     (pos) => {
       posicaoAtual = pos;
+      // Atualiza exibição na tela
       const lat = pos.coords.latitude.toFixed(6);
       const lng = pos.coords.longitude.toFixed(6);
       const vel = pos.coords.speed != null ? Math.round(pos.coords.speed * 3.6) + " km/h" : "";
@@ -236,12 +329,16 @@ function iniciarGps() {
     },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
   );
+
+  // Envia imediatamente e depois a cada 10 segundos
   enviarLocalizacao();
   gpsEnvioTimer = setInterval(enviarLocalizacao, 10000);
 }
 
 function pararGps() {
+  // Cancela o watchPosition do browser
   if (gpsWatchId != null) navigator.geolocation.clearWatch(gpsWatchId);
+  // Cancela o timer de envio periódico
   clearInterval(gpsEnvioTimer);
   gpsWatchId = null;
   gpsEnvioTimer = null;
@@ -253,17 +350,21 @@ function pararGps() {
   toggleGps.checked = false;
 }
 
+// Envia a posição atual para o backend
+// Chamado a cada 10 segundos pelo setInterval em iniciarGps()
 async function enviarLocalizacao() {
-  if (!posicaoAtual) return;
+  if (!posicaoAtual) return; // ainda não recebeu sinal do GPS
   const c = posicaoAtual.coords;
   const payload = {
     lat: c.latitude,
     lng: c.longitude,
-    velocidade: c.speed != null ? c.speed * 3.6 : null,
-    heading: c.heading,
+    velocidade: c.speed != null ? c.speed * 3.6 : null, // converte m/s → km/h
+    heading: c.heading,  // direção em graus (0=Norte, 90=Leste, etc.)
   };
   try {
+    // Atualiza posição na tabela motorista_localizacoes (aparece na aba Mapa)
     await api("POST", "/motorista-app/localizacao", payload);
+    // Se houver viagem ativa, adiciona ponto ao trajeto da viagem
     if (viagemAtivaId) {
       await api("POST", `/motorista-app/viagem/${viagemAtivaId}/ponto`, {
         lat: c.latitude,
@@ -272,10 +373,15 @@ async function enviarLocalizacao() {
         ts: new Date().toISOString(),
       });
     }
-  } catch (_) {}
+  } catch (_) {
+    // Falhas de envio são silenciosas para não interromper a experiência
+  }
 }
 
-// ---- Boot ----
+// ============================================================
+// BOOT — Inicialização ao carregar a página
+// Se já existe um token salvo, entra direto no app sem pedir login
+// ============================================================
 if (token()) {
   entrarNoApp();
 }

@@ -3953,6 +3953,23 @@ function payloadProduto() {
   };
 }
 
+// =========================================================
+// ESTOQUE — Painéis inline (sem popup ou janela flutuante)
+//
+// Os botões "Novo produto" e "Movimentar" abrem painéis
+// diretamente na página, logo abaixo da barra de ações,
+// dentro do div#estoque-inline-container.
+//
+// Comportamento:
+//   - Clicar no mesmo botão novamente fecha o painel (toggle)
+//   - Abrir um painel fecha o outro automaticamente
+//   - ESC também fecha o painel aberto
+//   - dataset.aberto rastreia qual painel está visível ("produto" | "movimentacao")
+//
+// O painel de edição de linha (editarProduto) usa mecanismo diferente:
+//   injeta uma <tr> diretamente abaixo da linha editada na tabela.
+// =========================================================
+
 function fecharPainelEstoque() {
   const container = document.getElementById("estoque-inline-container");
   if (container) { container.innerHTML = ""; delete container.dataset.aberto; }
@@ -4465,6 +4482,22 @@ async function renderizarAdminAuditoria() {
     </tr>
   `).join("") || `<tr><td colspan="6" class="empty-row">Nenhum log encontrado.</td></tr>`;
 }
+
+// =========================================================
+// ADMIN — Acessos do App Motorista
+//
+// Permite ao usuário master criar e gerenciar credenciais
+// de login para o app mobile dos motoristas (motorista.html).
+//
+// Fluxo:
+//   1. Clicar "+ Novo acesso" → abre formulário inline
+//   2. Preencher nome, email, senha e vincular a um Motorista cadastrado
+//   3. Copiar o link do app e enviar para o motorista via WhatsApp/email
+//   4. Desativar/excluir o acesso quando necessário
+//
+// API usada:
+//   GET/POST/PUT/DELETE /motorista-acessos  (admin_routes.py)
+// =========================================================
 
 async function renderizarMotoristaAcessos() {
   const tabela = document.getElementById("tabela-motorista-acessos");
@@ -5246,7 +5279,24 @@ function renderizarUltimosLancamentosDashboard(lancamentos) {
 }
 
 // =========================================================
-// MAPA EM TEMPO REAL
+// MAPA EM TEMPO REAL — Rastreamento de motoristas
+//
+// Exibe no mapa Leaflet (OpenStreetMap) a posição atual de
+// cada motorista que está com o GPS ativo no app mobile.
+//
+// Atualização automática:
+//   - A função atualizarMapaMotoristas() é chamada a cada 10s via setInterval
+//   - Consome GET /mapa/motoristas (rota protegida, token de usuário admin)
+//   - Motorista é considerado "online" se enviou GPS há menos de 5 minutos
+//
+// Marcadores no mapa:
+//   - mapaMarkers: Map<motorista_acesso_id, L.Marker>
+//   - Marcadores existentes são atualizados em vez de recriados (performance)
+//   - Marcadores de motoristas que saíram do resultado são removidos
+//
+// Lista lateral:
+//   - Exibe nome, velocidade e destino da viagem ativa de cada motorista
+//   - Clicar foca o mapa no marcador do motorista e abre popup
 // =========================================================
 function pararAtualizacaoMapa() {
   if (mapaAtualizacaoTimer) {

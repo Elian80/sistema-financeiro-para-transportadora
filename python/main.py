@@ -2898,10 +2898,29 @@ def excluir_folha_pagamento(folha_id: int):
 
 
 # =========================================================
-# MOTORISTA APP
+# MOTORISTA APP — API exclusiva para o app mobile dos motoristas
+#
+# Todas as rotas /motorista-app/* são públicas no middleware
+# global (não estão em ROTAS_PROTEGIDAS), pois usam um token
+# JWT diferente ("motorista_access"). A validação é feita
+# manualmente via _obter_motorista_acesso() em cada endpoint.
+#
+# Fluxo completo de uso pelo motorista:
+#   1. POST /motorista-app/login         → obtém token (validade 30 dias)
+#   2. GET  /motorista-app/me            → carrega estado inicial (viagem ativa?)
+#   3. POST /motorista-app/viagem/iniciar → cria viagem com km inicial
+#   4. POST /motorista-app/localizacao   → envia GPS a cada 10s (aba mapa)
+#   5. POST /motorista-app/viagem/{id}/ponto → salva ponto na rota da viagem
+#   6. PUT  /motorista-app/viagem/{id}/finalizar → fecha viagem com km final
+#   7. GET  /motorista-app/viagens       → histórico de todas as viagens
 # =========================================================
 
 def _obter_motorista_acesso(request: Request, db) -> MotoristaAcesso:
+    """
+    Valida o token JWT de motorista e retorna o MotoristaAcesso correspondente.
+    Usado como guard em todos os endpoints /motorista-app/* que exigem login.
+    Lança HTTP 401 se o token for inválido ou o acesso estiver desativado.
+    """
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Autenticacao obrigatoria.")
@@ -2920,6 +2939,11 @@ def _obter_motorista_acesso(request: Request, db) -> MotoristaAcesso:
 
 @app.post("/motorista-app/login")
 def motorista_login(dados: dict, request: Request):
+    """
+    Autenticação do motorista no app mobile.
+    Retorna um token JWT com validade de 30 dias e dados básicos do perfil.
+    Usa a mesma chave secreta do sistema, mas com type='motorista_access'.
+    """
     email = (dados.get("email") or "").strip().lower()
     senha = dados.get("senha") or ""
     if not email or not senha:
@@ -2932,6 +2956,7 @@ def motorista_login(dados: dict, request: Request):
         if not _ver(senha, acesso.senha_hash):
             raise HTTPException(status_code=401, detail="Credenciais invalidas.")
         token = criar_motorista_token(acesso.id, acesso.empresa_id)
+        # Busca dados do cadastro do motorista vinculado (CNH, telefone, cargo)
         motorista = db.get(Motorista, acesso.motorista_id) if acesso.motorista_id else None
         return {
             "access_token": token,
@@ -2944,9 +2969,15 @@ def motorista_login(dados: dict, request: Request):
 
 @app.get("/motorista-app/me")
 def motorista_me(request: Request):
+    """
+    Retorna perfil do motorista logado e a viagem ativa (se houver).
+    Chamado ao abrir o app para restaurar estado sem novo login.
+    A viagem_ativa == null indica que nenhuma viagem está em andamento.
+    """
     with sessao_db() as db:
         acesso = _obter_motorista_acesso(request, db)
         motorista = db.get(Motorista, acesso.motorista_id) if acesso.motorista_id else None
+        # Um motorista só pode ter UMA viagem "em_andamento" por vez
         viagem_ativa = db.query(Viagem).filter(
             Viagem.motorista_acesso_id == acesso.id,
             Viagem.status == "em_andamento"
@@ -2973,8 +3004,14 @@ def motorista_me(request: Request):
 
 @app.post("/motorista-app/viagem/iniciar")
 def iniciar_viagem(dados: dict, request: Request):
+    """
+    Registra o início de uma viagem.
+    Bloqueia se já houver uma viagem em andamento para o mesmo motorista.
+    A rota começa como array JSON vazio e é preenchida via /ponto.
+    """
     with sessao_db() as db:
         acesso = _obter_motorista_acesso(request, db)
+        # Garante que só existe uma viagem ativa por vez
         existente = db.query(Viagem).filter(
             Viagem.motorista_acesso_id == acesso.id,
             Viagem.status == "em_andamento"
@@ -2991,7 +3028,7 @@ def iniciar_viagem(dados: dict, request: Request):
             km_inicial=float(dados["km_inicial"]) if dados.get("km_inicial") else None,
             observacao=(dados.get("observacao") or "").strip(),
             status="em_andamento",
-            rota="[]",
+            rota="[]",  # será preenchido via POST /ponto a cada 10 segundos
         )
         db.add(viagem)
         db.commit()
@@ -3001,11 +3038,15 @@ def iniciar_viagem(dados: dict, request: Request):
 
 @app.put("/motorista-app/viagem/{viagem_id}/finalizar")
 def finalizar_viagem(viagem_id: int, dados: dict, request: Request):
+    """
+    Finaliza a viagem, registrando km final e calculando km total percorrido.
+    Após finalizar, o motorista pode iniciar uma nova viagem.
+    """
     with sessao_db() as db:
         acesso = _obter_motorista_acesso(request, db)
         viagem = db.query(Viagem).filter(
             Viagem.id == viagem_id,
-            Viagem.motorista_acesso_id == acesso.id
+            Viagem.motorista_acesso_id == acesso.id  # garante que o motorista só finaliza a própria viagem
         ).first()
         if not viagem:
             raise HTTPException(status_code=404, detail="Viagem nao encontrada.")
@@ -3023,6 +3064,12 @@ def finalizar_viagem(viagem_id: int, dados: dict, request: Request):
 
 @app.post("/motorista-app/viagem/{viagem_id}/ponto")
 def adicionar_ponto_rota(viagem_id: int, dados: dict, request: Request):
+    """
+    Adiciona um ponto GPS à rota da viagem ativa.
+    Chamado a cada ~10 segundos pelo app mobile enquanto o GPS estiver ativo.
+    O campo Viagem.rota é um JSON array que cresce durante a viagem
+    e fica disponível para exibir o trajeto completo no mapa.
+    """
     with sessao_db() as db:
         acesso = _obter_motorista_acesso(request, db)
         viagem = db.query(Viagem).filter(
@@ -3040,7 +3087,7 @@ def adicionar_ponto_rota(viagem_id: int, dados: dict, request: Request):
             "lat": float(dados.get("lat", 0)),
             "lng": float(dados.get("lng", 0)),
             "velocidade": float(dados.get("velocidade") or 0),
-            "ts": dados.get("ts", ""),
+            "ts": dados.get("ts", ""),  # timestamp ISO 8601 do dispositivo
         })
         viagem.rota = json.dumps(rota)
         db.commit()
@@ -3049,6 +3096,18 @@ def adicionar_ponto_rota(viagem_id: int, dados: dict, request: Request):
 
 @app.post("/motorista-app/localizacao")
 def atualizar_localizacao_motorista(dados: dict, request: Request):
+    """
+    Atualiza a posição atual do motorista na tabela motorista_localizacoes.
+    Faz UPSERT: se já existe registro para o motorista, atualiza; senão, cria.
+    Isso garante que a tabela tenha sempre apenas UM registro por motorista
+    (a posição mais recente), sem crescimento ilimitado.
+
+    O app mobile chama este endpoint a cada 10 segundos enquanto o GPS está ativo.
+    A aba Mapa do painel financeiro consome este endpoint via GET /mapa/motoristas.
+
+    Regra de "online": motorista é considerado online se o timestamp
+    desta tabela for de menos de 5 minutos atrás (ver /mapa/motoristas).
+    """
     with sessao_db() as db:
         acesso = _obter_motorista_acesso(request, db)
         from datetime import datetime, timezone
@@ -3060,14 +3119,16 @@ def atualizar_localizacao_motorista(dados: dict, request: Request):
             Viagem.status == "em_andamento"
         ).first()
         if loc:
+            # Atualiza registro existente (upsert manual)
             loc.lat = float(dados.get("lat", 0))
             loc.lng = float(dados.get("lng", 0))
             loc.velocidade = float(dados.get("velocidade") or 0)
-            loc.heading = float(dados.get("heading") or 0)
+            loc.heading = float(dados.get("heading") or 0)  # direção em graus (0=Norte)
             loc.viagem_id = viagem_ativa.id if viagem_ativa else None
             loc.nome = acesso.nome
             loc.timestamp = datetime.now(timezone.utc)
         else:
+            # Primeira vez que o motorista envia GPS — cria registro
             loc = MotoristaLocalizacao(
                 empresa_id=acesso.empresa_id,
                 motorista_acesso_id=acesso.id,
@@ -3085,6 +3146,11 @@ def atualizar_localizacao_motorista(dados: dict, request: Request):
 
 @app.get("/motorista-app/viagens")
 def listar_viagens_motorista(request: Request):
+    """
+    Retorna o histórico das últimas 50 viagens do motorista logado.
+    Inclui km_total calculado (km_final - km_inicial) para exibição no app.
+    Ordenado da mais recente para a mais antiga.
+    """
     with sessao_db() as db:
         acesso = _obter_motorista_acesso(request, db)
         viagens = db.query(Viagem).filter(
@@ -3109,7 +3175,15 @@ def listar_viagens_motorista(request: Request):
 
 
 # =========================================================
-# MAPA — localizacoes em tempo real (app financeiro)
+# MAPA — Posições em tempo real consumidas pelo painel financeiro
+#
+# Esta rota é acessada pela aba "Mapa" do app financeiro.
+# Requer token de usuário administrativo (está em ROTAS_PROTEGIDAS).
+# Retorna apenas motoristas da empresa do usuário logado.
+#
+# Regra de status "online":
+#   - timestamp < 5 minutos atrás  → online = True  (GPS ativo)
+#   - timestamp >= 5 minutos atrás → online = False (GPS pausado ou app fechado)
 # =========================================================
 
 @app.get("/mapa/motoristas")

@@ -370,19 +370,36 @@ def excluir_audit_log(log_id: int, request: Request, db: Session = Depends(get_d
 
 
 # =========================================================
-# MOTORISTA ACESSOS
+# MOTORISTA ACESSOS — Gerenciamento pelo Painel Master
+#
+# Estas rotas permitem que usuários master/admin/gestor criem,
+# atualizem e excluam credenciais de acesso para o app mobile
+# dos motoristas (motorista.html).
+#
+# Fluxo de uso:
+#   1. Admin cria um MotoristaAcesso com email + senha
+#   2. Opcionalmente vincula a um Motorista já cadastrado (motorista_id)
+#   3. Envia o link do app e as credenciais para o motorista
+#   4. Motorista faz login em /motorista-app/login e recebe token JWT
+#
+# Diferença de segurança:
+#   - Usuário master vê acessos de TODAS as empresas
+#   - Admin/gestor vê apenas os da própria empresa
 # =========================================================
 
 @router.get("/motorista-acessos")
 def listar_motorista_acessos(db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    """Lista todos os acessos do app motorista visíveis para o usuário logado."""
     if usuario.perfil not in {"master", "admin", "gestor"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
     q = db.query(MotoristaAcesso)
+    # Master vê todas as empresas; admin/gestor vê só a própria
     if usuario.perfil != "master":
         q = q.filter(MotoristaAcesso.empresa_id == usuario.empresa_id)
     acessos = q.order_by(MotoristaAcesso.nome).all()
     result = []
     for a in acessos:
+        # Busca nome do motorista vinculado (se existir) para exibição na tabela
         mot = db.get(Motorista, a.motorista_id) if a.motorista_id else None
         result.append({
             "id": a.id,
@@ -399,12 +416,14 @@ def listar_motorista_acessos(db: Session = Depends(get_db), usuario: Usuario = D
 
 @router.post("/motorista-acessos")
 def criar_motorista_acesso(dados: dict, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    """Cria credencial de acesso ao app mobile para um motorista."""
     if usuario.perfil not in {"master", "admin", "gestor"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
     email = (dados.get("email") or "").strip().lower()
     senha = dados.get("senha") or ""
     nome = (dados.get("nome") or "").strip()
     motorista_id = dados.get("motorista_id") or None
+    # Master pode especificar empresa; outros herdam a própria empresa
     empresa_id = usuario.empresa_id if usuario.perfil != "master" else int(dados.get("empresa_id", usuario.empresa_id))
     if not email or not senha or not nome:
         raise HTTPException(status_code=400, detail="Nome, email e senha sao obrigatorios.")
@@ -429,6 +448,7 @@ def criar_motorista_acesso(dados: dict, request: Request, db: Session = Depends(
 
 @router.put("/motorista-acessos/{acesso_id}")
 def atualizar_motorista_acesso(acesso_id: int, dados: dict, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    """Atualiza nome, vínculo com motorista, status ativo/inativo ou senha."""
     if usuario.perfil not in {"master", "admin", "gestor"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
     acesso = db.get(MotoristaAcesso, acesso_id)
@@ -441,6 +461,7 @@ def atualizar_motorista_acesso(acesso_id: int, dados: dict, request: Request, db
     if "motorista_id" in dados:
         acesso.motorista_id = int(dados["motorista_id"]) if dados["motorista_id"] else None
     if "ativo" in dados:
+        # Desativar impede login imediato no app mobile sem excluir o cadastro
         acesso.ativo = bool(dados["ativo"])
     if dados.get("senha"):
         validar_senha_forte(dados["senha"])
@@ -452,6 +473,7 @@ def atualizar_motorista_acesso(acesso_id: int, dados: dict, request: Request, db
 
 @router.delete("/motorista-acessos/{acesso_id}")
 def excluir_motorista_acesso(acesso_id: int, request: Request, db: Session = Depends(get_db), usuario: Usuario = Depends(get_current_user)):
+    """Remove definitivamente o acesso. Use desativação se quiser manter histórico."""
     if usuario.perfil not in {"master", "admin", "gestor"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente.")
     acesso = db.get(MotoristaAcesso, acesso_id)
