@@ -1,3 +1,34 @@
+"""
+main.py — API principal do Sistema Financeiro (FastAPI + SQLAlchemy)
+
+Arquitetura:
+  - Framework web: FastAPI (async, documentação automática OpenAPI)
+  - ORM: SQLAlchemy (PostgreSQL em produção, SQLite em desenvolvimento)
+  - Autenticação: JWT via middleware HTTP (vide backend/auth.py)
+  - Multitenancy: dados filtrados por empresa_id em todas as queries
+  - Validação: Pydantic models (schemas de entrada com validação automática)
+
+Módulos/domínios cobertos:
+  - Classificações / Plano de Contas
+  - Lançamentos Financeiros (com vínculo opcional de estoque)
+  - Contas a Receber
+  - Ativos e Passivos (Patrimônio)
+  - Estoque (produtos e movimentações)
+  - Veículos da frota
+  - Motoristas e Folha de Pagamento
+  - App Mobile de Motoristas (viagens + GPS em tempo real)
+  - Relatórios financeiros (PDF/Excel)
+  - Mapa ao vivo dos motoristas (Leaflet)
+
+Inicialização:
+  uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+
+Variáveis de ambiente necessárias:
+  DATABASE_URL  — ex: postgresql+psycopg://user:pass@host/db
+  JWT_SECRET_KEY — chave secreta para assinar tokens
+  CORS_ORIGINS   — origens permitidas (separadas por vírgula)
+"""
+
 from pathlib import Path
 from typing import Optional
 from datetime import date, datetime
@@ -318,6 +349,15 @@ def normalizar_texto(valor: str) -> str:
 # Esses modelos validam o que chega do frontend.
 
 class LancamentoIn(BaseModel):
+    """Schema de entrada para criação e edição de lançamentos financeiros.
+
+    Campos obrigatórios: classificacao, descricao, valor, data
+    Campos opcionais padrão: veiculo_id, empresa_id, obra_servico
+    Campos de combustível: kilometragem, litros, numero_nf, data_nf
+    Campos de estoque: estoque_item_id, estoque_quantidade
+      - Quando estoque_item_id é informado, o sistema registra automaticamente
+        uma saída no estoque e vincula ao lançamento para rastreabilidade.
+    """
     classificacao: str = Field(..., min_length=1)
     descricao: str = Field(..., min_length=1)
     valor: float
@@ -329,6 +369,9 @@ class LancamentoIn(BaseModel):
     litros: Optional[float] = None
     numero_nf: str = ""
     data_nf: Optional[date] = None
+    # Vínculo com estoque: ao informar, registra saída automática
+    estoque_item_id: Optional[int] = None
+    estoque_quantidade: Optional[float] = None
 
     @field_validator("classificacao", "descricao", "obra_servico", "numero_nf")
     @classmethod
@@ -339,6 +382,16 @@ class LancamentoIn(BaseModel):
     @classmethod
     def validar_valor(cls, value: float) -> float:
         return normalizar_numero_decimal(value)
+
+    @field_validator("estoque_quantidade", mode="before")
+    @classmethod
+    def validar_estoque_quantidade(cls, value: float) -> float:
+        if value is None:
+            return value
+        valor = normalizar_numero_decimal(value)
+        if valor < 0:
+            raise ValueError("Quantidade de estoque nao pode ser negativa.")
+        return valor
 
 
 class PlanoContaIn(BaseModel):
@@ -765,6 +818,12 @@ def motorista_para_dict(m: Motorista) -> dict:
 
 
 def lancamento_para_dict(l: Lancamento) -> dict:
+    """Converte um registro Lancamento do ORM para dicionário JSON.
+
+    Extrai os campos extras do JSON armazenado em 'dados', incluindo
+    os campos de estoque vinculado (estoque_item_id, estoque_quantidade,
+    estoque_item_nome) para exibição no frontend.
+    """
     ex = json.loads(l.dados or "{}")
     criado = str(l.created_at) if l.created_at else agora_iso()
     classificacao = l.classificacao or ""
@@ -784,6 +843,10 @@ def lancamento_para_dict(l: Lancamento) -> dict:
         "litros": ex.get("litros"),
         "numero_nf": ex.get("numero_nf", ""),
         "data_nf": ex.get("data_nf", ""),
+        # Campos de vínculo com estoque (None quando não vinculado)
+        "estoque_item_id": ex.get("estoque_item_id"),
+        "estoque_quantidade": ex.get("estoque_quantidade"),
+        "estoque_item_nome": ex.get("estoque_item_nome", ""),
     }
 
 
@@ -1313,9 +1376,21 @@ def listar_lancamentos(
 
 @app.post("/lancamentos")
 def criar_lancamento(dados: LancamentoIn):
+    """Cria um novo lançamento financeiro.
+
+    Se estoque_item_id e estoque_quantidade forem informados:
+      1. Valida se o produto existe e pertence à empresa
+      2. Valida se há quantidade suficiente no estoque
+      3. Registra saída automática no módulo de estoque
+      4. Vincula o ID do lançamento na observação da movimentação
+
+    Tudo é feito em uma única transação — se qualquer passo falhar,
+    nada é gravado no banco.
+    """
     if dados.classificacao not in listar_classificacoes_ativas():
         raise HTTPException(status_code=400, detail="Classificacao invalida.")
     eid = obter_empresa()
+
     extras = {
         "veiculo_id": dados.veiculo_id,
         "empresa_id": dados.empresa_id,
@@ -1324,8 +1399,45 @@ def criar_lancamento(dados: LancamentoIn):
         "litros": dados.litros,
         "numero_nf": dados.numero_nf,
         "data_nf": str(dados.data_nf) if dados.data_nf else "",
+        "estoque_item_id": dados.estoque_item_id,
+        "estoque_quantidade": dados.estoque_quantidade,
+        "estoque_item_nome": "",
     }
+
     with sessao_db() as db:
+        # Processar saída de estoque dentro da mesma transação
+        if dados.estoque_item_id and dados.estoque_quantidade:
+            qtd_saida = float(dados.estoque_quantidade)
+            ep = db.query(EstoqueProduto).filter(
+                EstoqueProduto.empresa_id == eid,
+                EstoqueProduto.id == dados.estoque_item_id,
+            ).first()
+            if not ep:
+                raise HTTPException(status_code=404, detail="Produto de estoque nao encontrado.")
+            disponivel = float(ep.quantidade or 0)
+            if qtd_saida > disponivel:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Estoque insuficiente. Disponivel: {disponivel:.3f}, solicitado: {qtd_saida:.3f}.",
+                )
+            extras["estoque_item_nome"] = ep.nome
+            ep.quantidade = disponivel - qtd_saida
+
+            # Registrar movimentação de saída (lancamento_id será atualizado após commit)
+            extras_mov = {
+                "valor_unitario": 0.0,
+                "data": str(dados.data),
+                "observacao": f"Saida vinculada ao lancamento financeiro.",
+            }
+            mov = EstoqueMovimentacao(
+                empresa_id=eid,
+                produto_id=dados.estoque_item_id,
+                tipo="Saida",
+                quantidade=qtd_saida,
+                dados=json.dumps(extras_mov, ensure_ascii=False),
+            )
+            db.add(mov)
+
         l = Lancamento(
             empresa_id=eid,
             data=dados.data,
@@ -1337,12 +1449,30 @@ def criar_lancamento(dados: LancamentoIn):
         )
         db.add(l)
         db.commit()
+
+        # Após commit, atualizar a observação da movimentação com o ID do lançamento
+        if dados.estoque_item_id and dados.estoque_quantidade and mov:
+            ex_mov = json.loads(mov.dados)
+            ex_mov["observacao"] = f"Saida vinculada ao lancamento #{l.id}."
+            mov.dados = json.dumps(ex_mov, ensure_ascii=False)
+            db.commit()
+
         db.refresh(l)
         return lancamento_para_dict(l)
 
 
 @app.put("/lancamentos/{lancamento_id}")
 def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
+    """Atualiza um lançamento existente.
+
+    Tratamento do vínculo com estoque:
+      - Se o lançamento anterior tinha estoque vinculado: a quantidade é
+        devolvida ao estoque (estorno automático) antes de aplicar o novo vínculo.
+      - Se o novo envio tem estoque_item_id: aplica nova saída após estorno.
+      - Se o novo envio não tem estoque: apenas estorna o anterior (se houver).
+
+    Tudo ocorre em uma única transação.
+    """
     if dados.classificacao not in listar_classificacoes_ativas():
         raise HTTPException(status_code=400, detail="Classificacao invalida.")
     eid = obter_empresa()
@@ -1350,6 +1480,33 @@ def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
         l = db.query(Lancamento).filter(Lancamento.empresa_id == eid, Lancamento.id == lancamento_id).first()
         if not l:
             raise HTTPException(status_code=404, detail="Lancamento nao encontrado.")
+
+        ex_anterior = json.loads(l.dados or "{}")
+        estoque_anterior_id = ex_anterior.get("estoque_item_id")
+        estoque_anterior_qtd = ex_anterior.get("estoque_quantidade")
+
+        # Estornar saída anterior se havia vínculo com estoque
+        if estoque_anterior_id and estoque_anterior_qtd:
+            ep_anterior = db.query(EstoqueProduto).filter(
+                EstoqueProduto.empresa_id == eid,
+                EstoqueProduto.id == estoque_anterior_id,
+            ).first()
+            if ep_anterior:
+                ep_anterior.quantidade = float(ep_anterior.quantidade or 0) + float(estoque_anterior_qtd)
+                ex_estorno = {
+                    "valor_unitario": 0.0,
+                    "data": str(dados.data),
+                    "observacao": f"Estorno de saida do lancamento #{lancamento_id} (edicao).",
+                }
+                mov_estorno = EstoqueMovimentacao(
+                    empresa_id=eid,
+                    produto_id=estoque_anterior_id,
+                    tipo="Entrada",
+                    quantidade=float(estoque_anterior_qtd),
+                    dados=json.dumps(ex_estorno, ensure_ascii=False),
+                )
+                db.add(mov_estorno)
+
         extras = {
             "veiculo_id": dados.veiculo_id,
             "empresa_id": dados.empresa_id,
@@ -1358,7 +1515,42 @@ def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
             "litros": dados.litros,
             "numero_nf": dados.numero_nf,
             "data_nf": str(dados.data_nf) if dados.data_nf else "",
+            "estoque_item_id": dados.estoque_item_id,
+            "estoque_quantidade": dados.estoque_quantidade,
+            "estoque_item_nome": "",
         }
+
+        # Aplicar novo vínculo com estoque (se informado)
+        if dados.estoque_item_id and dados.estoque_quantidade:
+            qtd_saida = float(dados.estoque_quantidade)
+            ep_novo = db.query(EstoqueProduto).filter(
+                EstoqueProduto.empresa_id == eid,
+                EstoqueProduto.id == dados.estoque_item_id,
+            ).first()
+            if not ep_novo:
+                raise HTTPException(status_code=404, detail="Produto de estoque nao encontrado.")
+            disponivel = float(ep_novo.quantidade or 0)
+            if qtd_saida > disponivel:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Estoque insuficiente. Disponivel: {disponivel:.3f}, solicitado: {qtd_saida:.3f}.",
+                )
+            extras["estoque_item_nome"] = ep_novo.nome
+            ep_novo.quantidade = disponivel - qtd_saida
+            ex_saida = {
+                "valor_unitario": 0.0,
+                "data": str(dados.data),
+                "observacao": f"Saida vinculada ao lancamento #{lancamento_id} (edicao).",
+            }
+            mov_saida = EstoqueMovimentacao(
+                empresa_id=eid,
+                produto_id=dados.estoque_item_id,
+                tipo="Saida",
+                quantidade=qtd_saida,
+                dados=json.dumps(ex_saida, ensure_ascii=False),
+            )
+            db.add(mov_saida)
+
         l.data = dados.data
         l.classificacao = dados.classificacao
         l.descricao = dados.descricao
@@ -1677,6 +1869,32 @@ def excluir_passivo(passivo_id: int):
         db.delete(p)
         db.commit()
     return {"mensagem": "Passivo excluido com sucesso."}
+
+
+@app.get("/estoque/produtos/busca")
+def buscar_produtos_estoque_autocomplete(q: str = ""):
+    """Busca rápida de produtos para o autocomplete do campo de vínculo em lançamentos.
+
+    Retorna lista compacta: id, nome, quantidade_atual, unidade_medida, estoque_minimo.
+    Filtra por nome (case-insensitive) se 'q' for informado.
+    Usado pelo frontend para preencher o campo de vínculo com estoque.
+    """
+    eid = obter_empresa()
+    with sessao_db() as db:
+        query = db.query(EstoqueProduto).filter(EstoqueProduto.empresa_id == eid)
+        if q.strip():
+            query = query.filter(EstoqueProduto.nome.ilike(f"%{q.strip()}%"))
+        produtos = query.order_by(EstoqueProduto.nome).limit(20).all()
+        return [
+            {
+                "id": ep.id,
+                "nome": ep.nome,
+                "quantidade_atual": float(ep.quantidade or 0),
+                "unidade_medida": json.loads(ep.dados or "{}").get("unidade_medida", "un"),
+                "estoque_minimo": float(json.loads(ep.dados or "{}").get("estoque_minimo", 0)),
+            }
+            for ep in produtos
+        ]
 
 
 @app.get("/estoque/produtos")

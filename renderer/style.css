@@ -3529,3 +3529,141 @@ body[data-theme="light"] .mapa-driver-card {
   }
 }
 
+/* =========================================================
+   COMPONENTE: VÍNCULO DE ESTOQUE EM LANÇAMENTOS
+   Estilos para o autocomplete e badge de seleção de produto
+   ========================================================= */
+
+.estoque-busca-container {
+  position: relative;
+  width: 100%;
+}
+
+.estoque-busca-container input[type="text"] {
+  width: 100%;
+}
+
+/* Lista de sugestões do autocomplete */
+.estoque-sugestoes {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface, #1e2330);
+  border: 1px solid var(--border, #2d3448);
+  border-radius: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.estoque-sugestoes .sugestao-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+
+.estoque-sugestoes .sugestao-item:hover {
+  background: var(--hover, rgba(255,255,255,0.06));
+}
+
+.estoque-sugestoes .sugestao-item strong {
+  color: var(--text-primary, #e8eaf6);
+}
+
+.estoque-sugestoes .sugestao-qtd {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #8892aa);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.estoque-sugestoes .sem-resultado {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #8892aa);
+  text-align: center;
+}
+
+/* Badge exibido após selecionar um produto */
+.estoque-item-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(99, 179, 237, 0.1);
+  border: 1px solid rgba(99, 179, 237, 0.3);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  flex-wrap: wrap;
+}
+
+.estoque-item-badge #estoque-item-nome {
+  font-weight: 600;
+  color: var(--text-primary, #e8eaf6);
+}
+
+.estoque-qtd-badge {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #8892aa);
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+}
+
+/* Botão de limpar seleção de estoque */
+.estoque-limpar-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #8892aa);
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  margin-left: auto;
+}
+
+.estoque-limpar-btn:hover {
+  color: var(--danger, #f87171);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* Aviso de quantidade inválida */
+.estoque-aviso {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--danger, #f87171);
+}
+
+/* Tag de estoque na tabela de lançamentos */
+.estoque-tag {
+  display: inline-block;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  background: rgba(99, 179, 237, 0.12);
+  border: 1px solid rgba(99, 179, 237, 0.25);
+  border-radius: 10px;
+  color: #90cdf4;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.sem-estoque {
+  color: var(--text-secondary, #8892aa);
+  font-size: 0.85rem;
+}
+

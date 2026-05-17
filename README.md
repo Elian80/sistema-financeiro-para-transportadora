@@ -104,3 +104,123 @@ Nao envie `.env`, `node_modules/`, `python/data/`, `backups/`, `tools/` nem logs
 - Auditoria de seguranca: `docs/SECURITY_AUDIT.md`
 - Testes de seguranca: `docs/SECURITY_TESTS.md`
 - Relatorio de implementacao: `docs/IMPLEMENTATION_REPORT.md`
+
+---
+
+## Arquitetura Tecnica
+
+```
+Financeiro/
+├── python/                  ← Backend Python
+│   ├── main.py              ← API FastAPI principal
+│   ├── backend/
+│   │   ├── models.py        ← Modelos SQLAlchemy (todas as tabelas)
+│   │   ├── database.py      ← Engine, sessão, garantir_colunas_runtime
+│   │   ├── auth.py          ← Login JWT com rate limiting
+│   │   ├── security.py      ← bcrypt, hash de senhas
+│   │   ├── admin_routes.py  ← CRUD de empresas e usuarios
+│   │   ├── dependencies.py  ← Validacao de token e perfis RBAC
+│   │   ├── settings.py      ← Variaveis de ambiente
+│   │   └── migrations/      ← Alembic (migrations de banco)
+│   └── data/                ← JSON legado (migrar para banco)
+│
+└── renderer/                ← Frontend (HTML/CSS/JS Vanilla PWA)
+    ├── index.html           ← App principal (painel admin)
+    ├── login.html           ← Tela de login
+    ├── motorista.html       ← App mobile motoristas
+    ├── app.js               ← Logica completa do frontend
+    ├── style.css            ← Estilos do painel
+    ├── login.js / login.css ← Login
+    ├── motorista.js         ← App mobile
+    ├── pwa.js / sw.js       ← Service Worker PWA
+    └── manifest.webmanifest ← Manifesto PWA
+```
+
+## Fluxo Geral da Aplicacao
+
+```
+[Browser / PWA]
+      |
+      | HTTP + Bearer JWT
+      v
+[FastAPI - main.py]
+      |
+      |-- Middleware: valida token JWT
+      |-- Router: direciona para o endpoint correto
+      |-- Pydantic: valida dados de entrada
+      |
+      v
+[SQLAlchemy ORM]
+      |
+      v
+[PostgreSQL / SQLite]
+```
+
+## Tabelas do Banco de Dados
+
+| Tabela | Descricao |
+|--------|-----------|
+| `empresas` | Tenants do sistema (multiempresa) |
+| `usuarios` | Usuarios do painel com perfil de acesso |
+| `veiculos` | Frota de veiculos |
+| `motoristas` | Motoristas cadastrados |
+| `lancamentos` | Lancamentos financeiros (nucleo do sistema) |
+| `contas_receber` | Contratos e contas a receber |
+| `ativos` | Ativos patrimoniais |
+| `passivos` | Passivos/dividas |
+| `estoque_produtos` | Produtos em estoque com quantidade atual |
+| `estoque_movimentacoes` | Historico de entradas e saidas de estoque |
+| `plano_contas` | Classificacoes personalizadas |
+| `motorista_acessos` | Credenciais do app mobile dos motoristas |
+| `viagens` | Viagens com rota GPS |
+| `motorista_localizacoes` | Localizacao ao vivo (uma linha por motorista) |
+| `audit_logs` | Auditoria de operacoes sensiveis |
+
+## Perfis de Acesso (RBAC)
+
+| Perfil | Acesso |
+|--------|--------|
+| `master` | Total — todas as empresas |
+| `admin` | Total na propria empresa + usuarios |
+| `gestor` | Total na propria empresa |
+| `financeiro` | Lancamentos, contas, relatorios, folha |
+| `operador` | Veiculos, motoristas, estoque, lancamentos |
+| `visualizador` | Somente leitura |
+
+## Endpoints da API
+
+| Metodo | Endpoint | Descricao |
+|--------|----------|-----------|
+| POST | `/auth/login` | Login — retorna JWT |
+| GET | `/auth/me` | Usuario logado |
+| GET/POST/PUT/DELETE | `/lancamentos` | Lancamentos financeiros |
+| GET/POST/PUT/DELETE | `/contas-receber` | Contas a receber |
+| GET/POST/PUT/DELETE | `/estoque/produtos` | Produtos do estoque |
+| GET | `/estoque/produtos/busca?q=` | Busca rapida (autocomplete) |
+| POST | `/estoque/movimentacoes` | Entrada/saida manual de estoque |
+| GET/POST/PUT/DELETE | `/veiculos` | Veiculos da frota |
+| GET/POST/PUT/DELETE | `/motoristas` | Motoristas |
+| GET/POST/DELETE | `/folha-pagamento` | Folha de pagamento |
+| GET | `/relatorios/*` | Relatorios financeiros |
+| GET | `/mapa/motoristas` | Posicoes ao vivo |
+
+## Funcionalidade: Vinculo de Estoque em Lancamentos
+
+Ao criar ou editar um lancamento financeiro, e possivel vincular um item do estoque como saida:
+
+- Campo de busca com autocomplete por nome do produto
+- Validacao de estoque disponivel (client-side e server-side)
+- Saida automatica registrada no modulo de estoque
+- Historico rastreaavel com referencia ao lancamento (#ID)
+- Ao editar: a saida anterior e estornada e a nova e aplicada
+- Coluna "Estoque" exibida na tabela de lancamentos
+
+## Seguranca
+
+- Senhas com hash bcrypt
+- Tokens JWT com secret key (definir `JWT_SECRET_KEY` em producao)
+- Rate limiting: 5 tentativas de login por minuto por IP+email
+- Auditoria completa em `audit_logs`
+- CORS restrito as origens configuradas
+- Security headers: CSP, X-Frame-Options, X-Content-Type-Options
+- Validacao Pydantic em todos os endpoints

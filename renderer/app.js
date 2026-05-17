@@ -489,6 +489,30 @@ const pages = {
               </div>
             </div>
 
+            <div class="field full" id="bloco-estoque-vinculo">
+              <label for="estoque-busca">Vincular item do estoque como saida (opcional)</label>
+              <div class="estoque-busca-container">
+                <input
+                  type="text"
+                  id="estoque-busca"
+                  placeholder="Digite o nome do produto..."
+                  autocomplete="off"
+                />
+                <ul id="estoque-sugestoes" class="estoque-sugestoes" style="display:none;"></ul>
+              </div>
+              <input type="hidden" id="estoque-item-id" />
+              <div id="estoque-item-selecionado" class="estoque-item-badge" style="display:none;">
+                <span id="estoque-item-nome"></span>
+                <span id="estoque-item-disponivel" class="estoque-qtd-badge"></span>
+                <button type="button" class="estoque-limpar-btn" id="btn-limpar-estoque" title="Remover vinculo">&#10005;</button>
+              </div>
+              <div class="field" id="campo-estoque-quantidade" style="display:none; margin-top:8px;">
+                <label for="estoque-quantidade">Quantidade a dar saida</label>
+                <input type="number" id="estoque-quantidade" step="0.001" min="0.001" placeholder="0" />
+                <span id="estoque-quantidade-aviso" class="estoque-aviso" style="display:none;"></span>
+              </div>
+            </div>
+
             <div class="field full btn-row">
               <button type="submit" class="primary-btn" id="btn-salvar-lancamento">Salvar lancamento</button>
               <button type="button" class="ghost-btn" id="btn-cancelar-edicao-lancamento" style="display:none;">Cancelar edicao</button>
@@ -581,13 +605,14 @@ const pages = {
                 <th>Classificacao</th>
                 <th>Veiculo</th>
                 <th>Descricao</th>
+                <th>Estoque</th>
                 <th>Valor</th>
                 <th>Acoes</th>
               </tr>
             </thead>
             <tbody id="tabela-lancamentos">
               <tr>
-                <td colspan="7" class="empty-row">Nenhum lancamento encontrado.</td>
+                <td colspan="8" class="empty-row">Nenhum lancamento encontrado.</td>
               </tr>
             </tbody>
           </table>
@@ -615,15 +640,16 @@ const pages = {
                   <th>ID</th>
                   <th>Data</th>
                   <th>Classificacao</th>
-                <th>Veiculo</th>
+                  <th>Veiculo</th>
                   <th>Descricao</th>
+                  <th>Estoque</th>
                   <th>Valor</th>
                   <th>Acoes</th>
                 </tr>
               </thead>
               <tbody id="tabela-lancamentos-modal">
                 <tr>
-                  <td colspan="7" class="empty-row">Nenhum lancamento encontrado.</td>
+                  <td colspan="8" class="empty-row">Nenhum lancamento encontrado.</td>
                 </tr>
               </tbody>
             </table>
@@ -2904,6 +2930,188 @@ function alternarCamposCombustivel() {
   campos.style.display = classificacaoEhCombustivel(classificacao) ? "block" : "none";
 }
 
+// =============================================================
+// MÓDULO DE VÍNCULO DE ESTOQUE EM LANÇAMENTOS
+// =============================================================
+
+// Cache de produtos do estoque carregados para o autocomplete
+let cacheProdutosEstoqueLancamento = [];
+
+/**
+ * Carrega todos os produtos do estoque da empresa atual.
+ * Armazena em cache para evitar múltiplas requisições durante a sessão.
+ */
+async function carregarProdutosEstoqueLancamento() {
+  try {
+    cacheProdutosEstoqueLancamento = await apiGet("/estoque/produtos/busca");
+  } catch {
+    cacheProdutosEstoqueLancamento = [];
+  }
+}
+
+/**
+ * Preenche o campo de busca de estoque ao editar um lançamento que já
+ * possui um item de estoque vinculado. Restaura nome e quantidade exibida.
+ */
+function preencherEstoqueLancamento(item) {
+  const inputBusca = document.getElementById("estoque-busca");
+  const hiddenId = document.getElementById("estoque-item-id");
+  const divSelecionado = document.getElementById("estoque-item-selecionado");
+  const spanNome = document.getElementById("estoque-item-nome");
+  const spanDisponivel = document.getElementById("estoque-item-disponivel");
+  const campoQtd = document.getElementById("campo-estoque-quantidade");
+  const inputQtd = document.getElementById("estoque-quantidade");
+
+  if (!item.estoque_item_id || !inputBusca) return;
+
+  hiddenId.value = item.estoque_item_id;
+  inputBusca.value = item.estoque_item_nome || "";
+  spanNome.textContent = item.estoque_item_nome || "";
+  spanDisponivel.textContent = `Vinculado: ${item.estoque_quantidade || 0}`;
+  divSelecionado.style.display = "flex";
+  campoQtd.style.display = "block";
+  if (inputQtd) inputQtd.value = item.estoque_quantidade || "";
+}
+
+/**
+ * Limpa todos os campos do vínculo de estoque (busca, selecionado, quantidade).
+ * Chamado ao resetar o formulário ou ao clicar no botão ✕.
+ */
+function limparSelecaoEstoque() {
+  const inputBusca = document.getElementById("estoque-busca");
+  const hiddenId = document.getElementById("estoque-item-id");
+  const divSelecionado = document.getElementById("estoque-item-selecionado");
+  const campoQtd = document.getElementById("campo-estoque-quantidade");
+  const inputQtd = document.getElementById("estoque-quantidade");
+  const aviso = document.getElementById("estoque-quantidade-aviso");
+
+  if (inputBusca) inputBusca.value = "";
+  if (hiddenId) hiddenId.value = "";
+  if (divSelecionado) divSelecionado.style.display = "none";
+  if (campoQtd) campoQtd.style.display = "none";
+  if (inputQtd) inputQtd.value = "";
+  if (aviso) aviso.style.display = "none";
+  document.getElementById("estoque-sugestoes").style.display = "none";
+}
+
+/**
+ * Seleciona um produto do autocomplete, exibindo nome, quantidade disponível
+ * e o campo de quantidade a ser dado como saída.
+ */
+function selecionarItemEstoque(id, nome, quantidadeDisponivel, unidadeMedida) {
+  document.getElementById("estoque-item-id").value = id;
+  document.getElementById("estoque-busca").value = nome;
+  document.getElementById("estoque-item-nome").textContent = nome;
+  document.getElementById("estoque-item-disponivel").textContent =
+    `Disponivel: ${quantidadeDisponivel} ${unidadeMedida}`;
+  document.getElementById("estoque-item-selecionado").style.display = "flex";
+  document.getElementById("campo-estoque-quantidade").style.display = "block";
+  document.getElementById("estoque-sugestoes").style.display = "none";
+
+  // Armazenar disponível para validação local
+  const inputQtd = document.getElementById("estoque-quantidade");
+  if (inputQtd) {
+    inputQtd.dataset.disponivel = quantidadeDisponivel;
+    inputQtd.max = quantidadeDisponivel;
+  }
+}
+
+/**
+ * Valida se a quantidade solicitada não excede o estoque disponível.
+ * Exibe aviso visual e impede o envio se inválido.
+ * Retorna true se válido, false se deve bloquear o submit.
+ */
+function validarQuantidadeEstoque() {
+  const hiddenId = document.getElementById("estoque-item-id");
+  const inputQtd = document.getElementById("estoque-quantidade");
+  const aviso = document.getElementById("estoque-quantidade-aviso");
+
+  if (!hiddenId?.value || !inputQtd?.value) return true;
+
+  const solicitado = normalizarNumero(inputQtd.value);
+  const disponivel = parseFloat(inputQtd.dataset.disponivel || 999999);
+
+  if (solicitado <= 0) {
+    aviso.textContent = "A quantidade deve ser maior que zero.";
+    aviso.style.display = "block";
+    return false;
+  }
+
+  if (solicitado > disponivel) {
+    aviso.textContent = `Quantidade insuficiente. Disponivel: ${disponivel}`;
+    aviso.style.display = "block";
+    return false;
+  }
+
+  if (aviso) aviso.style.display = "none";
+  return true;
+}
+
+/**
+ * Inicializa o comportamento de autocomplete do campo de busca de estoque.
+ * Filtra os produtos em cache conforme o usuário digita (debounce 300ms).
+ */
+function iniciarBuscaEstoque() {
+  const inputBusca = document.getElementById("estoque-busca");
+  const listaSugestoes = document.getElementById("estoque-sugestoes");
+  const btnLimpar = document.getElementById("btn-limpar-estoque");
+
+  if (!inputBusca || !listaSugestoes) return;
+
+  let debounceTimer = null;
+
+  inputBusca.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const termo = inputBusca.value.trim().toLowerCase();
+
+      // Limpar hidden se usuário apagar o texto manualmente
+      if (!termo) {
+        limparSelecaoEstoque();
+        return;
+      }
+
+      const filtrados = cacheProdutosEstoqueLancamento.filter(p =>
+        p.nome.toLowerCase().includes(termo)
+      );
+
+      if (!filtrados.length) {
+        listaSugestoes.innerHTML = `<li class="sem-resultado">Nenhum produto encontrado.</li>`;
+      } else {
+        listaSugestoes.innerHTML = filtrados.map(p => `
+          <li
+            class="sugestao-item"
+            onclick="selecionarItemEstoque(${p.id}, '${p.nome.replace(/'/g, "\\'")}', ${p.quantidade_atual}, '${p.unidade_medida}')"
+          >
+            <strong>${p.nome}</strong>
+            <span class="sugestao-qtd">${p.quantidade_atual} ${p.unidade_medida}</span>
+          </li>
+        `).join("");
+      }
+
+      listaSugestoes.style.display = "block";
+    }, 300);
+  });
+
+  // Fechar sugestões ao clicar fora
+  document.addEventListener("click", (e) => {
+    if (!inputBusca.contains(e.target) && !listaSugestoes.contains(e.target)) {
+      listaSugestoes.style.display = "none";
+    }
+  });
+
+  // Botão de limpar seleção
+  if (btnLimpar) {
+    btnLimpar.addEventListener("click", limparSelecaoEstoque);
+  }
+
+  // Validação em tempo real da quantidade
+  const inputQtd = document.getElementById("estoque-quantidade");
+  if (inputQtd) {
+    inputQtd.addEventListener("input", validarQuantidadeEstoque);
+  }
+}
+
 function preencherFormLancamento(item) {
   document.getElementById("classificacao").value = item.classificacao;
   document.getElementById("descricao").value = item.descricao;
@@ -2918,6 +3126,12 @@ function preencherFormLancamento(item) {
   document.getElementById("data-nf").value = item.data_nf || "";
   alternarCamposCombustivel();
 
+  // Preencher vínculo de estoque se houver item vinculado ao lançamento
+  limparSelecaoEstoque();
+  if (item.estoque_item_id) {
+    preencherEstoqueLancamento(item);
+  }
+
   document.getElementById("titulo-form-lancamento").textContent = "Alterar lancamento";
   document.getElementById("btn-salvar-lancamento").textContent = "Salvar alteracao";
   document.getElementById("btn-cancelar-edicao-lancamento").style.display = "inline-block";
@@ -2930,6 +3144,8 @@ function resetFormLancamento() {
   document.getElementById("btn-salvar-lancamento").textContent = "Salvar lancamento";
   document.getElementById("btn-cancelar-edicao-lancamento").style.display = "none";
   alternarCamposCombustivel();
+  // Limpar campos de vínculo de estoque ao resetar formulário
+  limparSelecaoEstoque();
 }
 
 function atualizarTotalizadores(lancamentos) {
@@ -3025,7 +3241,7 @@ function renderizarTabela(lancamentos) {
   if (!lancamentos.length) {
     tabelaLancamentos.innerHTML = `
       <tr>
-        <td colspan="7" class="empty-row">Nenhum lancamento encontrado.</td>
+        <td colspan="8" class="empty-row">Nenhum lancamento encontrado.</td>
       </tr>
     `;
     totalRegistros.textContent = "0 registros";
@@ -3033,13 +3249,19 @@ function renderizarTabela(lancamentos) {
     return;
   }
 
-  tabelaLancamentos.innerHTML = lancamentos.map((item) => `
+  tabelaLancamentos.innerHTML = lancamentos.map((item) => {
+    // Exibir badge de estoque vinculado quando houver item de estoque no lançamento
+    const estoqueInfo = item.estoque_item_nome
+      ? `<span class="estoque-tag" title="Saida: ${item.estoque_quantidade} ${item.estoque_item_nome}">${item.estoque_item_nome} (${item.estoque_quantidade})</span>`
+      : `<span class="sem-estoque">—</span>`;
+    return `
     <tr>
       <td>${item.id}</td>
       <td>${item.data}</td>
       <td>${item.classificacao}</td>
       <td>${nomeVeiculoPorId(item.veiculo_id)}</td>
       <td>${item.descricao}</td>
+      <td>${estoqueInfo}</td>
       <td>${formatarValor(item.valor)}</td>
       <td>
         <div class="action-row">
@@ -3048,7 +3270,8 @@ function renderizarTabela(lancamentos) {
         </div>
       </td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
 
   totalRegistros.textContent = `${lancamentos.length} registro(s)`;
   copiarTabelaLancamentosParaModal();
@@ -3094,6 +3317,8 @@ async function carregarLancamentos() {
 async function iniciarModuloLancamentos() {
   await carregarClassificacoes();
   await carregarVeiculosLancamento();
+  // Carregar produtos para o autocomplete de vínculo de estoque
+  await carregarProdutosEstoqueLancamento();
   await carregarLancamentos();
 
   const form = document.getElementById("form-lancamento");
@@ -3108,6 +3333,19 @@ async function iniciarModuloLancamentos() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+
+    // Validar estoque antes de enviar (validação client-side)
+    if (!validarQuantidadeEstoque()) {
+      mostrarToast("Verifique a quantidade de estoque informada.", "error");
+      return;
+    }
+
+    const estoqueItemId = document.getElementById("estoque-item-id")?.value
+      ? Number(document.getElementById("estoque-item-id").value)
+      : null;
+    const estoqueQuantidade = document.getElementById("estoque-quantidade")?.value
+      ? normalizarNumero(document.getElementById("estoque-quantidade").value)
+      : null;
 
     const payload = {
       classificacao: document.getElementById("classificacao").value,
@@ -3128,7 +3366,10 @@ async function iniciarModuloLancamentos() {
         ? normalizarNumero(document.getElementById("litros").value)
         : null,
       numero_nf: document.getElementById("numero-nf").value.trim(),
-      data_nf: document.getElementById("data-nf").value || null
+      data_nf: document.getElementById("data-nf").value || null,
+      // Campos de vínculo com estoque (null quando não vinculado)
+      estoque_item_id: estoqueItemId,
+      estoque_quantidade: estoqueQuantidade,
     };
 
     const url = editandoLancamentoId ? `/lancamentos/${editandoLancamentoId}` : "/lancamentos";
@@ -3141,6 +3382,8 @@ async function iniciarModuloLancamentos() {
         : "Lancamento salvo com sucesso.";
       mostrarToast(mensagem.textContent, "success");
       resetFormLancamento();
+      // Recarregar cache de estoque após movimentação
+      await carregarProdutosEstoqueLancamento();
       await carregarLancamentos();
     } catch (erro) {
       mensagem.textContent = erro.message;
@@ -3166,6 +3409,8 @@ async function iniciarModuloLancamentos() {
   btnCancelarEdicao.addEventListener("click", resetFormLancamento);
 
   iniciarAcoesConferenciaLancamentos();
+  // Ativar autocomplete do campo de vínculo com estoque
+  iniciarBuscaEstoque();
 }
 
 // =========================================================
