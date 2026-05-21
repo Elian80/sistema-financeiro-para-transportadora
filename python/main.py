@@ -1,54 +1,111 @@
 """
-main.py — API principal do Sistema Financeiro (FastAPI + SQLAlchemy)
+===============================================================================
+main.py — API PRINCIPAL DO SISTEMA FINANCEIRO PARA TRANSPORTADORAS
+===============================================================================
 
-Arquitetura:
-  - Framework web: FastAPI (async, documentação automática OpenAPI)
-  - ORM: SQLAlchemy (PostgreSQL em produção, SQLite em desenvolvimento)
-  - Autenticação: JWT via middleware HTTP (vide backend/auth.py)
-  - Multitenancy: dados filtrados por empresa_id em todas as queries
-  - Validação: Pydantic models (schemas de entrada com validação automática)
+VISÃO GERAL
+-----------
+Este é o arquivo central do backend. Ele define todos os endpoints HTTP,
+middlewares, helpers e lógica de negócio do sistema financeiro.
 
-Módulos/domínios cobertos:
-  - Classificações / Plano de Contas
-  - Lançamentos Financeiros (com vínculo opcional de estoque)
-  - Contas a Receber
-  - Ativos e Passivos (Patrimônio)
-  - Estoque (produtos e movimentações)
-  - Veículos da frota
-  - Motoristas e Folha de Pagamento
-  - App Mobile de Motoristas (viagens + GPS em tempo real)
-  - Relatórios financeiros (PDF/Excel)
-  - Mapa ao vivo dos motoristas (Leaflet)
+TECNOLOGIAS
+-----------
+  - Framework web : FastAPI (assíncrono, documentação OpenAPI automática)
+  - ORM           : SQLAlchemy (PostgreSQL em produção, SQLite em dev)
+  - Autenticação  : JWT via middleware HTTP (vide backend/auth.py e backend/security.py)
+  - Multitenancy  : todos os dados são filtrados por empresa_id em cada query
+  - Validação     : Pydantic v2 (schemas de entrada com validação automática)
 
-Inicialização:
+ARQUITETURA MULTITENANCY
+------------------------
+  Cada empresa (transportadora) possui seus próprios dados isolados.
+  O campo empresa_id presente em todos os modelos garante isso.
+  O middleware `aplicar_seguranca` extrai o empresa_id do token JWT
+  e o armazena em uma ContextVar (EMPRESA_ATUAL_ID) disponível para
+  todos os helpers durante o processamento do request.
+
+CAMPO "dados" (Text/JSON)
+-------------------------
+  Vários modelos (Lancamento, ContaReceber, Ativo, Passivo, Motorista, etc.)
+  possuem um campo `dados` do tipo Text que armazena JSON arbitrário.
+  Isso permite adicionar novos campos ao modelo sem alterar o schema do banco.
+  O padrão de leitura é: ex = json.loads(model.dados or "{}").
+
+FLUXO DE AUTENTICAÇÃO
+---------------------
+  Usuários administrativos:
+    - Login via POST /auth/login → token JWT "access"
+    - Middleware aplica_seguranca valida o token em ROTAS_PROTEGIDAS
+    - Perfis disponíveis: master, admin, gestor, financeiro, operador, visualizador
+    - Perfil "master" acessa apenas o painel de gerenciamento de empresas
+
+  Motoristas (app mobile):
+    - Login via POST /motorista-app/login → token JWT "motorista_access"
+    - Validação manual em cada endpoint via _obter_motorista_acesso()
+    - Endpoints em /motorista-app/* NÃO estão em ROTAS_PROTEGIDAS
+
+MÓDULOS/DOMÍNIOS COBERTOS
+--------------------------
+  1.  Classificações e Plano de Contas personalizável por empresa
+  2.  Lançamentos financeiros (com vínculo opcional ao estoque)
+  3.  Contas a Receber (fretes, horas de máquina, bonificações)
+  4.  Ativos e Passivos (patrimônio líquido)
+  5.  Estoque (produtos, movimentações, saídas vinculadas a lançamentos)
+  6.  Veículos da frota
+  7.  Motoristas (cadastro + dados trabalhistas)
+  8.  Folha de Pagamento com cálculo automático de INSS (tabela 2026)
+  9.  Localizações de motoristas via JSON (legacy) e via banco (app mobile)
+  10. Relatórios financeiros (resumo, por período, veículo, classificação)
+  11. Exportação de relatórios em PDF (geração manual) e Excel (OOXML)
+  12. App mobile PWA para motoristas (viagens, pontos GPS, histórico)
+  13. Mapa ao vivo das posições dos motoristas (consumido pelo painel)
+
+INICIALIZAÇÃO
+-------------
   uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 
-Variáveis de ambiente necessárias:
-  DATABASE_URL  — ex: postgresql+psycopg://user:pass@host/db
-  JWT_SECRET_KEY — chave secreta para assinar tokens
-  CORS_ORIGINS   — origens permitidas (separadas por vírgula)
+VARIÁVEIS DE AMBIENTE NECESSÁRIAS
+----------------------------------
+  DATABASE_URL   — ex: postgresql+psycopg://user:pass@host/db
+  JWT_SECRET_KEY — chave secreta para assinar e validar tokens JWT
+  CORS_ORIGINS   — origens permitidas no CORS (separadas por vírgula)
+===============================================================================
 """
 
+# =========================================================
+# IMPORTS E CONFIGURAÇÃO INICIAL
+# =========================================================
+# Bibliotecas da stdlib Python usadas ao longo do arquivo.
 from pathlib import Path
 from typing import Optional
 from datetime import date, datetime
-from contextvars import ContextVar
+from contextvars import ContextVar   # usada para armazenar empresa_id por request
+from contextlib import contextmanager
 import io
 import json
 import math
 import unicodedata
 import zipfile
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape  # escapa strings para XML (relatório Excel)
 
+# FastAPI: framework web assíncrono e seus utilitários de resposta/exceção.
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+
+# Pydantic v2: validação e serialização dos dados recebidos do frontend.
 from pydantic import BaseModel, Field, field_validator
 
-from backend.admin_routes import router as admin_router
-from backend.auth import router as auth_router
+# Routers externos — auth e admin são definidos em módulos separados
+# e montados nesta aplicação para manter o código organizado.
+from backend.admin_routes import router as admin_router   # gerenciamento de empresas (perfil master)
+from backend.auth import router as auth_router            # login/logout de usuários administrativos
+
+# Camada de banco de dados: engine SQLAlchemy, sessão, modelos ORM e migração runtime.
 from backend.database import Base, SessionLocal, engine, garantir_colunas_runtime
-from backend.dependencies import usuario_pode_escrever
+from backend.dependencies import usuario_pode_escrever    # helper de permissão por domínio
+
+# Modelos ORM — mapeados para tabelas do PostgreSQL via SQLAlchemy declarativo.
 from backend.models import (
     Ativo,
     ContaReceber,
@@ -56,33 +113,42 @@ from backend.models import (
     EstoqueProduto,
     Lancamento,
     Motorista,
-    MotoristaAcesso,
-    MotoristaLocalizacao,
+    MotoristaAcesso,      # credenciais de acesso ao app mobile
+    MotoristaLocalizacao, # posição GPS em tempo real (tabela com um registro por motorista)
     Passivo,
     PlanoConta,
     Usuario,
     Veiculo,
-    Viagem,
+    Viagem,               # viagens registradas pelo app mobile do motorista
 )
-from contextlib import contextmanager
+
+# Funções de segurança: criação/decodificação de tokens JWT e hash de senha.
+# Existem dois tipos de token:
+#   - "access"          → usuários administrativos (decodificar_token)
+#   - "motorista_access"→ motoristas no app mobile (decodificar_motorista_token)
 from backend.security import criar_motorista_token, decodificar_motorista_token, decodificar_token, gerar_hash_senha, verificar_senha
+
+# Configurações centralizadas (DATABASE_URL, JWT_SECRET_KEY, CORS_ORIGINS, etc.)
 from backend.settings import settings
 
 # =========================================================
-# CRIACAO DA API
+# CRIAÇÃO DA INSTÂNCIA DO FASTAPI
 # =========================================================
-# Aqui iniciamos o FastAPI, que sera o backend do sistema.
+# Em produção a documentação interativa (/docs e /redoc) é desabilitada
+# para não expor a estrutura da API publicamente.
 app = FastAPI(
     docs_url=None if settings.is_production else "/docs",
     redoc_url=None if settings.is_production else "/redoc",
 )
 
 # =========================================================
-# CORS
+# CORS — Cross-Origin Resource Sharing
 # =========================================================
-# Permite que o frontend Electron converse com a API.
-# Como nao estamos usando login por token/cookie no backend ainda,
-# deixamos allow_credentials=False para evitar conflito com "*".
+# Permite que o frontend (SPA Electron/browser) se comunique com a API
+# mesmo estando em origens diferentes (ex: file:// ou localhost:3000).
+# allow_credentials=False é necessário quando allow_origins usa "*";
+# credenciais (cookies/Authorization) são passadas via header explícito.
+# As origens permitidas são configuradas em CORS_ORIGINS (settings.py).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -92,6 +158,14 @@ app.add_middleware(
 )
 
 
+# =========================================================
+# MIDDLEWARE DE SEGURANÇA — ROTAS E DOMÍNIOS PROTEGIDOS
+# =========================================================
+
+# Prefixos de rotas que exigem token JWT de usuário administrativo.
+# Qualquer path que comece com um desses prefixos será interceptado
+# pelo middleware `aplicar_seguranca` abaixo.
+# Rotas públicas (login, app mobile, arquivos estáticos) ficam FORA desta lista.
 ROTAS_PROTEGIDAS = (
     "/classificacoes",
     "/plano-contas",
@@ -108,6 +182,11 @@ ROTAS_PROTEGIDAS = (
     "/mapa",
 )
 
+# Mapeamento de prefixo de rota para nome de "domínio" de permissão.
+# Usado pelo middleware para verificar se o perfil do usuário pode
+# escrever (POST/PUT/DELETE) naquele domínio específico.
+# A função usuario_pode_escrever() em backend/dependencies.py consulta
+# este nome para checar as permissões configuradas para o perfil.
 DOMINIOS_LEGADOS = {
     "/veiculos": "veiculos",
     "/motoristas": "motoristas",
@@ -121,8 +200,32 @@ DOMINIOS_LEGADOS = {
 }
 
 
+# =========================================================
+# MIDDLEWARE GLOBAL DE SEGURANÇA
+# =========================================================
 @app.middleware("http")
 async def aplicar_seguranca(request: Request, call_next):
+    """Middleware HTTP que protege as rotas administrativas com JWT.
+
+    Fluxo de execução para rotas protegidas (ROTAS_PROTEGIDAS):
+      1. Extrai o token do header Authorization: Bearer <token>
+      2. Decodifica e valida o token JWT de usuário administrativo
+      3. Carrega o Usuario do banco e verifica se está ativo
+      4. Bloqueia o perfil "master" (acessa apenas /admin)
+      5. Para métodos de escrita (POST/PUT/DELETE), verifica se o perfil
+         do usuário tem permissão no domínio da rota (DOMINIOS_LEGADOS)
+      6. Armazena o usuario em request.state.usuario (disponível nos endpoints)
+      7. Define EMPRESA_ATUAL_ID via ContextVar para isolar dados da empresa
+
+    Após o processamento (todas as rotas):
+      - Adiciona headers de segurança HTTP (CSP, X-Frame-Options, etc.)
+      - Reseta a ContextVar de empresa para evitar vazamento entre requests
+
+    Casos de erro:
+      - 401: token ausente, inválido ou usuário inativo
+      - 403: perfil master tentando acessar rota operacional,
+             ou perfil sem permissão de escrita no domínio
+    """
     caminho = request.url.path
     if caminho.startswith(ROTAS_PROTEGIDAS):
         authorization = request.headers.get("Authorization", "")
@@ -133,16 +236,21 @@ async def aplicar_seguranca(request: Request, call_next):
         token_empresa = None
         try:
             payload = decodificar_token(token)
+            # Carrega o usuário pelo ID contido no campo "sub" do payload JWT
             usuario = db.get(Usuario, int(payload.get("sub")))
             if not usuario or usuario.status != "ativo":
                 return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Usuario inativo ou inexistente."})
+            # Perfil master é restrito ao painel de administração de empresas
             if usuario.perfil == "master":
                 return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Usuario master acessa apenas o painel de gerenciamento."})
+            # Verifica permissão de escrita apenas para métodos que modificam dados
             if request.method not in {"GET", "HEAD", "OPTIONS"}:
                 dominio = next((valor for prefixo, valor in DOMINIOS_LEGADOS.items() if caminho.startswith(prefixo)), "")
                 if dominio and not usuario_pode_escrever(usuario, dominio):
                     return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Permissao insuficiente."})
+            # Disponibiliza o usuário para os endpoints via request.state
             request.state.usuario = usuario
+            # Define a empresa ativa na ContextVar — isolamento multitenancy por request
             token_empresa = EMPRESA_ATUAL_ID.set(usuario.empresa_id)
         except Exception:
             return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Token invalido."})
@@ -154,45 +262,82 @@ async def aplicar_seguranca(request: Request, call_next):
     try:
         response = await call_next(request)
     finally:
+        # Reseta a ContextVar independente de sucesso ou exceção
         if token_empresa is not None:
             EMPRESA_ATUAL_ID.reset(token_empresa)
+
+    # Headers de segurança HTTP aplicados a TODAS as respostas
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
     response.headers["Permissions-Policy"] = "geolocation=(self), microphone=(), camera=()"
+    # CSP: permite tiles do OpenStreetMap (mapa), estilos inline e scripts de CDN conhecidos
     response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; style-src 'self' 'unsafe-inline' https://unpkg.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com"
     return response
 
 
+# =========================================================
+# STARTUP — INICIALIZAÇÃO DO BANCO DE DADOS
+# =========================================================
 @app.on_event("startup")
 def inicializar_banco():
+    """Executado automaticamente quando a API sobe (uvicorn start).
+
+    Cria todas as tabelas que ainda não existem no banco (CREATE TABLE IF NOT EXISTS).
+    A função garantir_colunas_runtime() adiciona colunas novas em tabelas existentes
+    sem precisar de migrations formais (Alembic), mantendo compatibilidade com
+    bancos antigos que não possuem as colunas mais recentes.
+    """
     Base.metadata.create_all(bind=engine)
     garantir_colunas_runtime()
 
 
+# Registra os routers externos na aplicação principal.
+# auth_router: endpoints de autenticação (/auth/login, /auth/logout, etc.)
+# admin_router: painel de gerenciamento de empresas (perfil master)
 app.include_router(auth_router)
 app.include_router(admin_router)
 
+# ContextVar que armazena o empresa_id do usuário logado durante cada request.
+# Definida aqui (após os routers) para estar disponível em todo o arquivo.
+# O middleware aplicar_seguranca define o valor; obter_empresa() o lê.
 EMPRESA_ATUAL_ID: ContextVar[int | None] = ContextVar("empresa_atual_id", default=None)
 
 # =========================================================
-# CAMINHOS DOS ARQUIVOS
+# CAMINHOS DOS ARQUIVOS DE DADOS
 # =========================================================
+# DATA_DIR: pasta onde ficam os arquivos JSON persistidos no servidor.
+# A maioria dos dados está no PostgreSQL, mas localizações e folha de
+# pagamento ainda usam arquivos JSON por razões de compatibilidade.
 DATA_DIR = Path(__file__).parent / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)  # cria a pasta se não existir
+
+# FRONTEND_DIR: raiz dos arquivos estáticos servidos pelo FastAPI
+# (app.js, motorista.html, index.html, etc.) no diretório renderer/
 FRONTEND_DIR = Path(__file__).parent.parent / "renderer"
 
-# Apenas localizacoes e folha permanecem em JSON.
+# Arquivos JSON legados — usados apenas para estas duas funcionalidades.
+# Para empresas diferentes da empresa 1, os arquivos ficam em subpastas
+# separadas por empresa_id (ver _caminho_empresa() abaixo).
 ARQUIVO_FOLHA_PAGAMENTO = DATA_DIR / "folha_pagamento.json"
 ARQUIVO_LOCALIZACOES_MOTORISTAS = DATA_DIR / "localizacoes_motoristas.json"
 
 
 # =========================================================
-# HELPERS SQLALCHEMY
+# HELPERS DE BANCO DE DADOS (SQLAlchemy)
 # =========================================================
 
 @contextmanager
 def sessao_db():
+    """Gerenciador de contexto para sessões do SQLAlchemy.
+
+    Uso padrão em todos os endpoints:
+        with sessao_db() as db:
+            registros = db.query(Modelo).filter(...).all()
+
+    Garante que a sessão seja fechada mesmo em caso de exceção,
+    evitando vazamento de conexões no pool do banco de dados.
+    """
     db = SessionLocal()
     try:
         yield db
@@ -201,14 +346,29 @@ def sessao_db():
 
 
 def obter_empresa() -> int:
+    """Retorna o empresa_id do usuário logado no request atual.
+
+    Lê o valor da ContextVar EMPRESA_ATUAL_ID que foi definida
+    pelo middleware aplicar_seguranca ao validar o token JWT.
+    Deve ser chamada apenas dentro de endpoints protegidos.
+    """
     return EMPRESA_ATUAL_ID.get()
 
 
 # =========================================================
-# HELPERS JSON (apenas para localizacoes e folha)
+# HELPERS JSON (localizações de motoristas e folha de pagamento)
 # =========================================================
+# Estas funções gerenciam os dois módulos que ainda persistem dados
+# em arquivos JSON em vez do banco de dados PostgreSQL.
+# O isolamento multitenancy é feito por subpasta: data/empresas/<id>/
 
 def _caminho_empresa(caminho: Path) -> Path:
+    """Retorna o caminho do arquivo JSON isolado para a empresa atual.
+
+    Empresa 1 (padrão): usa o caminho original em DATA_DIR.
+    Outras empresas: usa DATA_DIR/empresas/<empresa_id>/<nome_do_arquivo>.
+    Cria a subpasta automaticamente se não existir.
+    """
     empresa_id = EMPRESA_ATUAL_ID.get()
     if not empresa_id or empresa_id == 1:
         return caminho
@@ -218,6 +378,11 @@ def _caminho_empresa(caminho: Path) -> Path:
 
 
 def ler_json_loc(caminho: Path) -> list:
+    """Lê um arquivo JSON de localizações, retornando lista vazia em caso de erro.
+
+    Trata silenciosamente arquivos inexistentes ou corrompidos para não
+    interromper o fluxo do endpoint que chama esta função.
+    """
     caminho = _caminho_empresa(caminho)
     if not caminho.exists():
         return []
@@ -229,32 +394,56 @@ def ler_json_loc(caminho: Path) -> list:
 
 
 def salvar_json_loc(caminho: Path, dados: list) -> None:
+    """Persiste uma lista de dicionários em arquivo JSON com indentação legível."""
     caminho = _caminho_empresa(caminho)
     caminho.parent.mkdir(parents=True, exist_ok=True)
     caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def ler_json_folha() -> list:
+    """Atalho para ler o arquivo JSON da folha de pagamento da empresa atual."""
     return ler_json_loc(ARQUIVO_FOLHA_PAGAMENTO)
 
 
 def salvar_json_folha(dados: list) -> None:
+    """Atalho para gravar o arquivo JSON da folha de pagamento da empresa atual."""
     salvar_json_loc(ARQUIVO_FOLHA_PAGAMENTO, dados)
 
 
 def proximo_id_lista(lista: list) -> int:
+    """Gera o próximo ID sequencial para registros em listas JSON.
+
+    Equivalente a um AUTO_INCREMENT simples: retorna o maior id
+    existente + 1, ou 1 se a lista estiver vazia.
+    Usado exclusivamente para folha de pagamento (dados em JSON).
+    """
     if not lista:
         return 1
     return max(item.get("id", 0) for item in lista) + 1
 
 
 def buscar_id_lista(lista: list, item_id: int):
+    """Localiza um item pelo campo 'id' em uma lista de dicionários JSON.
+
+    Retorna None se não encontrado — padrão next() com default.
+    Usado para buscar registros de folha de pagamento no arquivo JSON.
+    """
     return next((x for x in lista if x.get("id") == item_id), None)
 
+
 # =========================================================
-# CLASSIFICACOES
+# CLASSIFICAÇÕES E PLANO DE CONTAS BASE
 # =========================================================
-# Lista base vinda da planilha para usar nos lancamentos.
+# CLASSIFICACOES é a lista global de categorias financeiras disponíveis
+# para todos os lançamentos. Divide-se em 4 grupos principais:
+#   1.x → Custos dos serviços (combustível, manutenção, pneus, etc.)
+#   2.x → Despesas administrativas (bancárias, multas, outras)
+#   3.x → Receitas (serviços prestados, outras receitas)
+#   4.x → Investimentos (compra/melhoria de bens, estoque)
+#
+# Empresas podem adicionar classificações personalizadas via Plano de Contas
+# (tabela plano_contas do banco), que são mescladas com esta lista base
+# na função listar_classificacoes_ativas().
 CLASSIFICACOES = [
     "1.1 COMBUSTIVEL",
     "1.2 IMPOSTO S/ NF",
@@ -328,28 +517,48 @@ PLANO_CONTAS_BASE = [
     },
 ]
 
+# Reconstrói CLASSIFICACOES a partir do PLANO_CONTAS_BASE para garantir
+# que ambas as estruturas estejam sempre sincronizadas.
+# A primeira definição literal acima é sobrescrita por esta list comprehension.
 CLASSIFICACOES = [
     item
     for grupo in PLANO_CONTAS_BASE
     for item in grupo["itens"]
 ]
 
+# Conjunto de status válidos para veículos — usado na validação do VeiculoIn.
 STATUS_VEICULO_VALIDOS = {"Ativo", "Manutencao", "Inativo"}
 
 
 def normalizar_texto(valor: str) -> str:
+    """Remove acentos e converte para minúsculas para comparações case-insensitive.
+
+    Usado principalmente para validar tipos de veículo sem distinção de acento
+    (ex: "Caminhão" e "Caminhao" são tratados como iguais).
+    Algoritmo: normalização Unicode NFD + remoção de marcas de acento (categoria Mn).
+    """
     texto = str(valor or "").strip().lower()
     texto = unicodedata.normalize("NFD", texto)
     return "".join(caractere for caractere in texto if unicodedata.category(caractere) != "Mn")
 
 
 # =========================================================
-# MODELOS DE ENTRADA
+# MODELOS PYDANTIC DE ENTRADA (schemas de validação)
 # =========================================================
-# Esses modelos validam o que chega do frontend.
+# Cada classe BaseModel abaixo corresponde ao corpo JSON esperado
+# pelo frontend nos endpoints POST/PUT. O Pydantic v2 valida e
+# converte os dados automaticamente antes de chegar à função do endpoint.
+#
+# Padrão geral:
+#   - Campos obrigatórios: Field(...) sem default
+#   - Campos opcionais: com default (None, "", 0, etc.)
+#   - @field_validator: limpeza de espaços, normalização e regras de negócio
+#   - Os validators "limpar_*" removem espaços extras de strings (strip)
 
 class LancamentoIn(BaseModel):
     """Schema de entrada para criação e edição de lançamentos financeiros.
+
+    Chamado pelo frontend (app.js) ao salvar um lançamento no módulo financeiro.
 
     Campos obrigatórios: classificacao, descricao, valor, data
     Campos opcionais padrão: veiculo_id, empresa_id, obra_servico
@@ -357,6 +566,7 @@ class LancamentoIn(BaseModel):
     Campos de estoque: estoque_item_id, estoque_quantidade
       - Quando estoque_item_id é informado, o sistema registra automaticamente
         uma saída no estoque e vincula ao lançamento para rastreabilidade.
+      - O vínculo é transacional: ou ambos são criados ou nenhum.
     """
     classificacao: str = Field(..., min_length=1)
     descricao: str = Field(..., min_length=1)
@@ -395,6 +605,11 @@ class LancamentoIn(BaseModel):
 
 
 class PlanoContaIn(BaseModel):
+    """Schema para criar/editar uma classificação personalizada no Plano de Contas.
+
+    Complementa o PLANO_CONTAS_BASE com categorias específicas da empresa.
+    Chamado pelo frontend ao cadastrar novas classificações contábeis.
+    """
     nome: str = Field(..., min_length=1)
 
     @field_validator("nome")
@@ -404,6 +619,14 @@ class PlanoContaIn(BaseModel):
 
 
 class ContaReceberIn(BaseModel):
+    """Schema de entrada para contas a receber (fretes, serviços, horas de máquina).
+
+    Suporta dois modos de cálculo de valor:
+      - Modo valor fixo: usa o campo `valor` diretamente
+      - Modo horas: valor = valor_hora_unitario × quantidade_horas (se ambos > 0)
+    O campo `bonificacao` soma ao valor calculado; `descontos` subtrai.
+    O campo `desconto_classificacao` deve ser uma classificação de despesa (grupo 2.x).
+    """
     data_inicio: date
     contrato: str = ""
     cte_ticket: str = ""
@@ -453,6 +676,12 @@ class ContaReceberIn(BaseModel):
 
 
 class ContaReceberStatusIn(BaseModel):
+    """Schema mínimo para alterar apenas o status de pagamento de uma conta a receber.
+
+    Usado pelo endpoint PATCH /contas-receber/{id}/status, chamado pelo frontend
+    quando o usuário marca um frete como recebido sem editar os outros campos.
+    Ao marcar como "recebido", o backend registra automaticamente a data de hoje.
+    """
     status_pagamento: str
 
     @field_validator("status_pagamento")
@@ -465,6 +694,12 @@ class ContaReceberStatusIn(BaseModel):
 
 
 class VeiculoIn(BaseModel):
+    """Schema de entrada para cadastro e edição de veículos da frota.
+
+    O campo `placa` é normalizado para maiúsculas automaticamente.
+    O campo `tipo` aceita variações com/sem acento (ex: "Caminhão" = "Caminhao").
+    O campo `foto` armazena a imagem como string base64 ou URL.
+    """
     nome: str = Field(..., min_length=1)
     marca: str = ""
     modelo: str = ""
@@ -510,6 +745,15 @@ class VeiculoIn(BaseModel):
 
 
 class MotoristaIn(BaseModel):
+    """Schema de entrada para cadastro e edição de motoristas.
+
+    Os campos de dados trabalhistas (salario_base, inss_percentual, etc.) são
+    armazenados no campo JSON 'dados' do modelo Motorista no banco, pois foram
+    adicionados após a criação inicial da tabela e não possuem colunas próprias.
+
+    Os percentuais de INSS e IRRF aqui são informativos (exibição no recibo).
+    O cálculo real do INSS usa a tabela progressiva em calcular_inss().
+    """
     nome: str = Field(..., min_length=1)
     telefone: str = ""
     cnh: str = ""
@@ -524,10 +768,10 @@ class MotoristaIn(BaseModel):
     empregador: str = ""
     empregador_cnpj: str = ""
     salario_base: float = 0
-    carga_horaria_mensal: float = 220
+    carga_horaria_mensal: float = 220  # padrão CLT: 220 horas/mês
     valor_hora_extra: float = 0
-    inss_percentual: float = 0
-    irrf_percentual: float = 0
+    inss_percentual: float = 0        # percentual informativo para exibição
+    irrf_percentual: float = 0        # percentual informativo para exibição
     vale_refeicao: float = 0
     convenio_medico: float = 0
     outros_descontos_padrao: float = 0
@@ -557,13 +801,20 @@ class MotoristaIn(BaseModel):
 
 
 class LocalizacaoMotoristaIn(BaseModel):
+    """Schema para atualização da posição GPS de um motorista (sistema legacy JSON).
+
+    Usado pelo endpoint POST /localizacoes-motoristas, chamado pelo painel
+    administrativo quando um usuário registra manualmente a posição de um motorista.
+    Para o app mobile, usar LocalizacaoMotoristaMobileIn (com token).
+    As coordenadas são validadas pelos ranges geográficos padrão.
+    """
     motorista_id: int
-    latitude: float = Field(..., ge=-90, le=90)
-    longitude: float = Field(..., ge=-180, le=180)
+    latitude: float = Field(..., ge=-90, le=90)    # validado pelo Pydantic
+    longitude: float = Field(..., ge=-180, le=180)  # validado pelo Pydantic
     velocidade: float = 0
-    direcao: float = 0
-    precisao: float = 0
-    bateria: Optional[float] = None
+    direcao: float = 0    # em graus (0-360, 0=Norte)
+    precisao: float = 0   # precisão do GPS em metros
+    bateria: Optional[float] = None  # nível da bateria do dispositivo (0-100)
 
     @field_validator("velocidade", "direcao", "precisao", "bateria", mode="before")
     @classmethod
@@ -573,6 +824,12 @@ class LocalizacaoMotoristaIn(BaseModel):
 
 
 class MotoristaMobileLoginIn(BaseModel):
+    """Schema de login para o app mobile legado (token simples "teste:empresa:id").
+
+    Este endpoint (/motorista-mobile/login) é o login legado sem hash de senha.
+    O app mobile moderno usa POST /motorista-app/login com senha hasheada.
+    O campo empresa_id é opcional para suportar motoristas sem empresa definida.
+    """
     usuario: str
     senha: str
     empresa_id: Optional[int] = None
@@ -580,11 +837,24 @@ class MotoristaMobileLoginIn(BaseModel):
 
 
 class LocalizacaoMotoristaMobileIn(LocalizacaoMotoristaIn):
+    """Schema para atualização de posição GPS via app mobile legado.
+
+    Estende LocalizacaoMotoristaIn adicionando o token de autenticação mobile
+    e o empresa_id (necessários pois o endpoint é público no middleware).
+    """
     token: str
     empresa_id: Optional[int] = None
 
 
 class FolhaPagamentoItemIn(BaseModel):
+    """Schema para um item (motorista) dentro de uma folha de pagamento.
+
+    Cada item representa o cálculo salarial de um motorista no período.
+    Os campos de base (base_inss, base_fgts, etc.) são calculados pelo backend
+    em calcular_item_folha() e podem ser enviados pelo frontend para auditoria.
+    O campo desconto_inss_manual permite sobrescrever o cálculo automático da
+    tabela progressiva TABELA_INSS_2026 quando o contador fez ajuste manual.
+    """
     motorista_id: int
     horas_normais: float = 0
     valor_hora: float = 0
@@ -642,10 +912,20 @@ class FolhaPagamentoItemIn(BaseModel):
 
 
 class FolhaPagamentoIn(BaseModel):
-    periodo: str = Field(..., min_length=1)
+    """Schema para criar uma folha de pagamento completa com múltiplos motoristas.
+
+    Quando gerar_lancamento=True (padrão), o backend cria automaticamente um
+    lançamento financeiro na classificação "1.5 SALARIO + ENCAGOS FOLHA PGTO"
+    com o valor do salário líquido total, vinculando à folha pelo folha_pagamento_id
+    armazenado no campo 'dados' do lançamento.
+
+    O campo opcoes_recibo é um dict livre com preferências de impressão do recibo
+    (ex: exibir FGTS, mostrar banco, etc.) definidas pelo frontend.
+    """
+    periodo: str = Field(..., min_length=1)  # ex: "2026-05" ou "Janeiro/2026"
     data_pagamento: date
     descricao: str = "Folha de pagamento"
-    gerar_lancamento: bool = True
+    gerar_lancamento: bool = True  # se True, gera lançamento automático na aba financeira
     opcoes_recibo: dict = Field(default_factory=dict)
     itens: list[FolhaPagamentoItemIn]
 
@@ -656,8 +936,16 @@ class FolhaPagamentoIn(BaseModel):
 
 
 class AtivoIn(BaseModel):
+    """Schema para cadastro de ativos patrimoniais (veículos, máquinas, imóveis, etc.).
+
+    Ativos são bens de propriedade da empresa que compõem o patrimônio líquido.
+    O campo veiculo_id vincula o ativo a um veículo cadastrado na frota,
+    permitindo rastrear o valor patrimonial de cada caminhão/máquina.
+    Campos extras (tipo, data_aquisicao, veiculo_id, observacao, status) são
+    serializados no campo JSON 'dados' do modelo Ativo no banco.
+    """
     nome: str = Field(..., min_length=1)
-    tipo: str = Field(..., min_length=1)
+    tipo: str = Field(..., min_length=1)  # Veiculo, Maquina, Equipamento, Imovel, Outro
     valor: float = 0
     data_aquisicao: Optional[date] = None
     veiculo_id: Optional[int] = None
@@ -687,14 +975,21 @@ class AtivoIn(BaseModel):
 
 
 class PassivoIn(BaseModel):
+    """Schema para cadastro de passivos (dívidas, financiamentos, empréstimos).
+
+    Passivos representam obrigações financeiras da empresa.
+    O saldo_devedor é calculado automaticamente como valor_total - valor_pago
+    e retornado no passivo_para_dict() — não é armazenado diretamente.
+    Todos os campos extras são serializados no campo JSON 'dados' do modelo.
+    """
     nome: str = Field(..., min_length=1)
-    tipo: str = Field(..., min_length=1)
+    tipo: str = Field(..., min_length=1)  # Financiamento, Emprestimo, Divida, etc.
     valor_total: float = 0
     valor_pago: float = 0
     data_inicio: Optional[date] = None
     data_vencimento: Optional[date] = None
     observacao: str = ""
-    status: str = "Pendente"
+    status: str = "Pendente"  # Pendente ou Pago
 
     @field_validator("nome", "tipo", "observacao", "status")
     @classmethod
@@ -719,12 +1014,20 @@ class PassivoIn(BaseModel):
 
 
 class ProdutoEstoqueIn(BaseModel):
+    """Schema para cadastro de produtos no módulo de estoque.
+
+    O campo estoque_baixo é calculado dinamicamente em produto_estoque_para_dict()
+    comparando quantidade_atual com estoque_minimo — não é enviado pelo frontend.
+    O campo valor_total_estoque = quantidade_atual * valor_custo também é calculado.
+    Campos extras (unidade_medida, valor_custo, estoque_minimo, observacao) são
+    serializados no campo JSON 'dados' do modelo EstoqueProduto no banco.
+    """
     nome: str = Field(..., min_length=1)
     categoria: str = ""
-    unidade_medida: str = "un"
+    unidade_medida: str = "un"  # ex: "un", "L", "kg", "cx"
     quantidade_atual: float = 0
-    valor_custo: float = 0
-    estoque_minimo: float = 0
+    valor_custo: float = 0      # custo unitário atual (atualizado nas entradas)
+    estoque_minimo: float = 0   # alerta quando quantidade <= estoque_minimo
     observacao: str = ""
 
     @field_validator("nome", "categoria", "unidade_medida", "observacao")
@@ -742,10 +1045,20 @@ class ProdutoEstoqueIn(BaseModel):
 
 
 class MovimentacaoEstoqueIn(BaseModel):
+    """Schema para registrar entradas, saídas ou ajustes de estoque.
+
+    Tipos válidos: "Entrada", "Saida", "Ajuste"
+    - Entrada: soma a quantidade ao estoque e atualiza valor_custo se informado
+    - Saida: subtrai a quantidade (valida se há saldo suficiente)
+    - Ajuste: substitui a quantidade atual pelo valor informado (inventário)
+
+    Nota: saídas vinculadas a lançamentos financeiros são criadas automaticamente
+    em criar_lancamento() / atualizar_lancamento() e não passam por este schema.
+    """
     produto_id: int
     tipo_movimentacao: str = Field(..., min_length=1)
     quantidade: float
-    valor_unitario: float = 0
+    valor_unitario: float = 0  # atualiza o custo médio do produto nas entradas
     data: date
     observacao: str = ""
 
@@ -771,10 +1084,20 @@ class MovimentacaoEstoqueIn(BaseModel):
 
 
 # =========================================================
-# CONVERSORES: modelo SQLAlchemy -> dict (formato frontend)
+# CONVERSORES: modelo ORM SQLAlchemy -> dict JSON (formato do frontend)
 # =========================================================
+# Cada função *_para_dict() converte um objeto ORM para o dicionário
+# que será serializado como JSON e retornado para o frontend (app.js).
+#
+# Padrão de leitura do campo 'dados' (JSON flexível):
+#   ex = json.loads(model.dados or "{}")
+#   campo = ex.get("campo", valor_padrao)
+#
+# Este padrão garante compatibilidade com registros antigos que não
+# possuem o campo no JSON (retorna o valor_padrao ao invés de KeyError).
 
 def veiculo_para_dict(v: Veiculo) -> dict:
+    """Converte um Veiculo ORM para dict JSON enviado ao frontend."""
     return {
         "id": v.id,
         "nome": v.nome,
@@ -790,6 +1113,12 @@ def veiculo_para_dict(v: Veiculo) -> dict:
 
 
 def motorista_para_dict(m: Motorista) -> dict:
+    """Converte um Motorista ORM para dict JSON.
+
+    Os campos trabalhistas (salario_base, inss_percentual, banco, etc.) ficam
+    no campo JSON 'dados' e são extraídos aqui com valores padrão seguros.
+    O campo admissao é convertido de date para string ISO (ou "" se None).
+    """
     ex = json.loads(m.dados or "{}")
     return {
         "id": m.id,
@@ -851,6 +1180,11 @@ def lancamento_para_dict(l: Lancamento) -> dict:
 
 
 def conta_receber_para_dict(c: ContaReceber) -> dict:
+    """Converte uma ContaReceber ORM para dict JSON.
+
+    Calcula e adiciona o campo valor_total_receber (valor + bonificacao - descontos)
+    via calcular_total_conta_receber() — este campo não é armazenado no banco.
+    """
     ex = json.loads(c.dados or "{}")
     conta = {
         "id": c.id,
@@ -876,6 +1210,7 @@ def conta_receber_para_dict(c: ContaReceber) -> dict:
 
 
 def ativo_para_dict(a: Ativo) -> dict:
+    """Converte um Ativo ORM para dict JSON com campos extras do JSON 'dados'."""
     ex = json.loads(a.dados or "{}")
     criado = str(a.created_at) if a.created_at else agora_iso()
     return {
@@ -893,6 +1228,10 @@ def ativo_para_dict(a: Ativo) -> dict:
 
 
 def passivo_para_dict(p: Passivo) -> dict:
+    """Converte um Passivo ORM para dict JSON calculando o saldo_devedor.
+
+    saldo_devedor = max(valor_total - valor_pago, 0) — nunca retorna negativo.
+    """
     ex = json.loads(p.dados or "{}")
     criado = str(p.created_at) if p.created_at else agora_iso()
     valor_total = float(ex.get("valor_total", p.valor or 0))
@@ -914,6 +1253,12 @@ def passivo_para_dict(p: Passivo) -> dict:
 
 
 def produto_estoque_para_dict(ep: EstoqueProduto) -> dict:
+    """Converte um EstoqueProduto ORM para dict JSON.
+
+    Calcula valor_total_estoque (quantidade * custo) e o flag estoque_baixo
+    (True quando quantidade <= estoque_minimo) — ambos são campos calculados,
+    não armazenados no banco.
+    """
     ex = json.loads(ep.dados or "{}")
     criado = str(ep.created_at) if ep.created_at else agora_iso()
     quantidade = float(ep.quantidade or 0)
@@ -936,6 +1281,7 @@ def produto_estoque_para_dict(ep: EstoqueProduto) -> dict:
 
 
 def movimentacao_para_dict(em: EstoqueMovimentacao) -> dict:
+    """Converte uma EstoqueMovimentacao ORM para dict JSON do frontend."""
     ex = json.loads(em.dados or "{}")
     return {
         "id": em.id,
@@ -949,11 +1295,24 @@ def movimentacao_para_dict(em: EstoqueMovimentacao) -> dict:
     }
 
 
+# =========================================================
+# HELPERS UTILITÁRIOS DE DATA, NÚMERO E CLASSIFICAÇÃO
+# =========================================================
+
 def agora_iso() -> str:
+    """Retorna o timestamp atual como string ISO 8601 sem microsegundos.
+    Usado como valor padrão para created_at/updated_at quando o banco retorna None.
+    """
     return datetime.now().replace(microsecond=0).isoformat()
 
 
 def minutos_desde_iso(valor: str) -> float:
+    """Calcula quantos minutos se passaram desde um timestamp ISO 8601.
+
+    Retorna 999999 (valor sentinela) quando o timestamp é inválido ou ausente,
+    garantindo que motoristas sem sinal apareçam como "offline" no mapa.
+    Usado em normalizar_localizacao_motorista() para determinar status "online".
+    """
     if not valor:
         return 999999
     try:
@@ -964,14 +1323,25 @@ def minutos_desde_iso(valor: str) -> float:
 
 
 def normalizar_numero_decimal(valor) -> float:
+    """Converte entrada do usuário para float, aceitando formatos BR e EN.
+
+    Aceita: 1234.56, 1.234,56, R$ 1.234,56, etc.
+    Lógica:
+      - Se contém vírgula: remove pontos de milhar e substitui vírgula por ponto
+      - Se múltiplos pontos: remove todos (formato "1.234.567")
+      - None ou "" retornam 0.0
+    Chamado pelos @field_validator dos schemas Pydantic.
+    """
     if valor is None or valor == "":
         return 0.0
     if isinstance(valor, (int, float)):
         return float(valor)
     texto = str(valor).strip().replace("R$", "").replace(" ", "")
     if "," in texto:
+        # Formato brasileiro: 1.234,56 -> 1234.56
         texto = texto.replace(".", "").replace(",", ".")
     elif texto.count(".") > 1:
+        # Formato com separador de milhar apenas: 1.234.567 -> 1234567
         texto = texto.replace(".", "")
     try:
         return float(texto)
@@ -980,6 +1350,14 @@ def normalizar_numero_decimal(valor) -> float:
 
 
 def obter_grupo_financeiro(classificacao: str) -> str:
+    """Determina o grupo financeiro de uma classificação pelo prefixo numérico.
+
+    Regra de negócio baseada na estrutura do PLANO_CONTAS_BASE:
+      1.x → CUSTOS OPERACIONAIS  (combustível, manutenção, salários)
+      2.x → DESPESAS ADMINISTRATIVAS (bancárias, multas, taxas)
+      3.x → FATURAMENTO           (receitas de serviços)
+      4.x → INVESTIMENTOS         (compra de bens, estoque)
+    """
     codigo = str(classificacao or "").strip()
     if codigo.startswith("1."):
         return "CUSTOS OPERACIONAIS"
@@ -992,35 +1370,50 @@ def obter_grupo_financeiro(classificacao: str) -> str:
     return "OUTROS"
 
 
+# Predicados de classificação — usados em filtros de relatório e na geração
+# do campo tipo_financeiro armazenado no banco junto ao lançamento.
 def eh_receita(classificacao: str) -> bool:
+    """Retorna True se a classificação pertence ao grupo 3.x (Receitas/Faturamento)."""
     return obter_grupo_financeiro(classificacao) == "FATURAMENTO"
 
 
 def eh_faturamento(classificacao: str) -> bool:
+    """Alias de eh_receita() para compatibilidade com código legado."""
     return eh_receita(classificacao)
 
 
 def eh_custo(classificacao: str) -> bool:
+    """Retorna True se a classificação pertence ao grupo 1.x (Custos Operacionais)."""
     return obter_grupo_financeiro(classificacao) == "CUSTOS OPERACIONAIS"
 
 
 def eh_custo_operacional(classificacao: str) -> bool:
+    """Alias de eh_custo() para compatibilidade com código legado."""
     return eh_custo(classificacao)
 
 
 def eh_despesa(classificacao: str) -> bool:
+    """Retorna True se a classificação pertence ao grupo 2.x (Despesas Administrativas)."""
     return obter_grupo_financeiro(classificacao) == "DESPESAS ADMINISTRATIVAS"
 
 
 def eh_despesa_administrativa(classificacao: str) -> bool:
+    """Alias de eh_despesa() para compatibilidade com código legado."""
     return eh_despesa(classificacao)
 
 
 def eh_investimento(classificacao: str) -> bool:
+    """Retorna True se a classificação pertence ao grupo 4.x (Investimentos)."""
     return obter_grupo_financeiro(classificacao) == "INVESTIMENTOS"
 
 
 def inferir_tipo_financeiro(classificacao: str) -> str:
+    """Retorna o tipo financeiro como string para armazenar no campo tipo_financeiro do banco.
+
+    Valores possíveis: "receita", "custo", "despesa", "investimento", "outro".
+    Este campo é redundante com a classificação, mas facilita filtros rápidos
+    no banco sem precisar analisar o prefixo numérico da classificação toda vez.
+    """
     if eh_receita(classificacao):
         return "receita"
     if eh_custo(classificacao):
@@ -1033,18 +1426,40 @@ def inferir_tipo_financeiro(classificacao: str) -> str:
 
 
 def arredondar_moeda(valor: float) -> float:
+    """Arredonda um valor para 2 casas decimais (padrão monetário BRL).
+    Converte None/falsy para 0.0 antes de arredondar.
+    """
     return round(float(valor or 0), 2)
 
 
+# =========================================================
+# CÁLCULO DE FOLHA DE PAGAMENTO — INSS PROGRESSIVO 2026
+# =========================================================
+
+# Tabela de faixas do INSS 2026 (cálculo progressivo por faixa de salário).
+# Formato: (limite_superior_da_faixa, aliquota_da_faixa)
+# Cada faixa incide apenas sobre o valor que cai dentro dela, não sobre o total.
 TABELA_INSS_2026 = [
-    (1621.00, 0.075),
-    (2902.84, 0.09),
-    (4354.27, 0.12),
-    (8475.55, 0.14),
+    (1621.00, 0.075),   # até R$ 1.621,00: 7,5%
+    (2902.84, 0.09),    # de R$ 1.621,01 até R$ 2.902,84: 9%
+    (4354.27, 0.12),    # de R$ 2.902,85 até R$ 4.354,27: 12%
+    (8475.55, 0.14),    # de R$ 4.354,28 até R$ 8.475,55 (teto): 14%
 ]
 
 
 def calcular_inss(base_calculo: float) -> float:
+    """Calcula a contribuição ao INSS pela tabela progressiva de 2026.
+
+    O cálculo é progressivo (similar ao IR): cada faixa incide apenas sobre
+    a parcela do salário que se enquadra nela, não sobre o salário total.
+    Exemplo: salário de R$ 3.000,00
+      Faixa 1: R$ 1.621,00 × 7,5% = R$ 121,58
+      Faixa 2: (R$ 2.902,84 - R$ 1.621,00) × 9% = R$ 115,36
+      Faixa 3: (R$ 3.000,00 - R$ 2.902,84) × 12% = R$ 11,66
+      Total INSS: R$ 248,59
+
+    O salário é limitado ao teto do INSS (última faixa da tabela).
+    """
     base = min(float(base_calculo or 0), TABELA_INSS_2026[-1][0])
     contribuicao = 0
     limite_anterior = 0
@@ -1052,6 +1467,7 @@ def calcular_inss(base_calculo: float) -> float:
     for limite, aliquota in TABELA_INSS_2026:
         if base <= limite_anterior:
             break
+        # Calcula apenas o valor que cai dentro desta faixa
         faixa = min(base, limite) - limite_anterior
         contribuicao += faixa * aliquota
         limite_anterior = limite
@@ -1060,20 +1476,46 @@ def calcular_inss(base_calculo: float) -> float:
 
 
 def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
+    """Calcula todos os valores do holerite de um motorista para o período.
+
+    Fórmula:
+      salario_base     = salario_contratual (se horas_normais > 0, caso contrário 0)
+      valor_extras     = horas_extras × valor_hora_extra
+      total_adicionais = adicional_noturno + bonus
+      salario_bruto    = salario_base + valor_extras + total_adicionais
+      desconto_inss    = calcular_inss(salario_bruto) ou manual ou zero
+      fgts             = salario_bruto × 8%  (encargo da empresa, informativo)
+      base_irrf        = salario_bruto - desconto_inss
+      total_descontos  = inss + irrf + vale + adiantamento + outros
+      salario_liquido  = max(salario_bruto - total_descontos, 0)
+
+    O salario_contratual pode ser sobrescrito pelo item; caso não informado,
+    usa o salario_base cadastrado no perfil do motorista.
+
+    Args:
+        item: dados do item da folha enviados pelo frontend
+        motorista: dict com dados do motorista (resultado de motorista_para_dict)
+
+    Returns:
+        dict completo com todos os valores calculados, pronto para salvar no JSON.
+    """
     salario_contratual = float(item.salario_contratual or motorista.get("salario_base", 0) or 0)
+    # Salário base só é computado se houver horas normais trabalhadas
     salario_base = salario_contratual if item.horas_normais > 0 else 0
     valor_extras = item.horas_extras * item.valor_hora_extra
     total_adicionais = item.adicional_noturno + item.bonus
     salario_bruto = salario_base + valor_extras + total_adicionais
     base_inss = salario_bruto
+    # Três modos de cálculo do INSS:
     if not item.aplicar_inss:
-        desconto_inss = 0
+        desconto_inss = 0                        # isento (MEI, autônomo, etc.)
     elif item.desconto_inss_manual:
-        desconto_inss = item.desconto_inss
+        desconto_inss = item.desconto_inss       # valor inserido manualmente pelo usuário
     else:
-        desconto_inss = calcular_inss(base_inss)
+        desconto_inss = calcular_inss(base_inss) # tabela progressiva 2026
     base_fgts = salario_bruto
-    fgts = base_fgts * 0.08
+    fgts = base_fgts * 0.08  # 8% de FGTS (encargo do empregador, informativo no recibo)
+    # Base IRRF é o salário bruto deduzido o INSS (antes de aplicar alíquota do IR)
     base_irrf = max(salario_bruto - desconto_inss, 0)
     total_descontos = (
         desconto_inss
@@ -1082,6 +1524,7 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
         + item.desconto_adiantamento
         + item.outros_descontos
     )
+    # Garantia: salário líquido nunca negativo (caso descontos superem o bruto)
     salario_liquido = max(salario_bruto - total_descontos, 0)
 
     return {
@@ -1119,8 +1562,15 @@ def calcular_item_folha(item: FolhaPagamentoItemIn, motorista: dict) -> dict:
 
 
 def listar_classificacoes_ativas():
+    """Retorna a lista completa de classificações disponíveis para a empresa atual.
+
+    Mescla as classificações globais do PLANO_CONTAS_BASE com as classificações
+    personalizadas da empresa (tabela plano_contas do banco).
+    Evita duplicatas ao adicionar apenas nomes que ainda não existem na lista base.
+    Usado para validar o campo 'classificacao' nos lançamentos e contas a receber.
+    """
     empresa_id = EMPRESA_ATUAL_ID.get()
-    nomes = list(CLASSIFICACOES)
+    nomes = list(CLASSIFICACOES)  # copia da lista global
     with sessao_db() as db:
         registros = db.query(PlanoConta).filter(PlanoConta.empresa_id == empresa_id).all()
         for r in registros:
@@ -1130,10 +1580,24 @@ def listar_classificacoes_ativas():
 
 
 def classificacao_eh_despesa(nome: str) -> bool:
+    """Alias de eh_despesa() para leitura semântica nas validações de conta a receber."""
     return eh_despesa(nome)
 
 
+# =========================================================
+# NORMALIZADORES DE COMPATIBILIDADE (registros legados)
+# =========================================================
+# Estas funções garantem que registros antigos (salvos antes de campos serem
+# adicionados) sejam retornados com o mesmo formato que registros novos.
+# Aplicadas ao ler dados do banco quando o campo 'dados' JSON pode estar
+# incompleto ou no formato antigo.
+
 def normalizar_lancamento_antigo(item: dict) -> dict:
+    """Normaliza um lançamento lido do banco para o formato atual da API.
+
+    Preenche campos ausentes com valores padrão e infere tipo_financeiro
+    a partir da classificação quando não está armazenado explicitamente.
+    """
     criado = item.get("created_at") or agora_iso()
     classificacao = item.get("classificacao", "")
     return {
@@ -1156,6 +1620,7 @@ def normalizar_lancamento_antigo(item: dict) -> dict:
 
 
 def normalizar_conta_receber_antiga(item: dict) -> dict:
+    """Normaliza uma conta a receber antiga, calculando valor_total_receber."""
     conta = {
         "id": item.get("id"),
         "data_inicio": str(item.get("data_inicio", "")),
@@ -1180,6 +1645,7 @@ def normalizar_conta_receber_antiga(item: dict) -> dict:
 
 
 def normalizar_ativo_antigo(item: dict) -> dict:
+    """Normaliza um ativo antigo preenchendo campos ausentes com padrões."""
     criado = item.get("created_at") or agora_iso()
     return {
         "id": item.get("id"),
@@ -1196,6 +1662,7 @@ def normalizar_ativo_antigo(item: dict) -> dict:
 
 
 def normalizar_passivo_antigo(item: dict) -> dict:
+    """Normaliza um passivo antigo calculando saldo_devedor com proteção de negativos."""
     criado = item.get("created_at") or agora_iso()
     valor_total = float(item.get("valor_total") or 0)
     valor_pago = float(item.get("valor_pago") or 0)
@@ -1216,6 +1683,7 @@ def normalizar_passivo_antigo(item: dict) -> dict:
 
 
 def normalizar_produto_estoque_antigo(item: dict) -> dict:
+    """Normaliza um produto de estoque antigo calculando campos derivados."""
     criado = item.get("created_at") or agora_iso()
     quantidade = float(item.get("quantidade_atual") or 0)
     valor_custo = float(item.get("valor_custo") or 0)
@@ -1255,19 +1723,36 @@ def normalizar_veiculo_antigo(item: dict) -> dict:
 
 
 # =========================================================
-# ROTAS GERAIS
+# ENDPOINTS DE CLASSIFICAÇÕES
 # =========================================================
+# Chamados pelo frontend ao carregar os selects de classificação
+# nos formulários de lançamento e conta a receber.
+# Protegidos pelo middleware (prefixo /classificacoes em ROTAS_PROTEGIDAS).
 
 @app.get("/classificacoes")
 def listar_classificacoes():
-    """
-    Retorna a lista de classificacoes usadas nos lancamentos.
+    """Retorna a lista completa de classificações ativas para a empresa logada.
+
+    Inclui as classificações globais (PLANO_CONTAS_BASE) mais as personalizadas
+    cadastradas pela empresa na tabela plano_contas.
+    Chamado pelo frontend ao abrir qualquer formulário de lançamento.
     """
     return listar_classificacoes_ativas()
 
 
+# =========================================================
+# ENDPOINTS DE PLANO DE CONTAS
+# =========================================================
+# Gerenciam as classificações personalizadas por empresa (tabela plano_contas).
+# As classificações da lista base (CLASSIFICACOES) não podem ser editadas aqui.
+
 @app.get("/plano-contas")
 def listar_plano_contas():
+    """Lista apenas as classificações personalizadas da empresa (não inclui a lista base).
+
+    Retorna id e nome de cada item cadastrado na tabela plano_contas.
+    Usado pelo frontend na tela de gerenciamento de plano de contas.
+    """
     empresa_id = obter_empresa()
     with sessao_db() as db:
         registros = db.query(PlanoConta).filter(PlanoConta.empresa_id == empresa_id).order_by(PlanoConta.nome).all()
@@ -1276,6 +1761,12 @@ def listar_plano_contas():
 
 @app.get("/plano-contas/estrutura")
 def listar_estrutura_plano_contas():
+    """Retorna a estrutura completa do plano de contas.
+
+    Combina os grupos fixos do PLANO_CONTAS_BASE com as classificações
+    personalizadas da empresa. Usado pelo frontend para montar a árvore
+    hierárquica de contas na tela de configuração.
+    """
     return {
         "grupos": PLANO_CONTAS_BASE,
         "personalizadas": listar_plano_contas(),
@@ -1284,7 +1775,15 @@ def listar_estrutura_plano_contas():
 
 @app.post("/plano-contas")
 def criar_plano_conta(dados: PlanoContaIn):
+    """Cria uma nova classificação personalizada para a empresa.
+
+    Valida:
+      - Nome não pode duplicar classificações da lista base (case-insensitive)
+      - Nome não pode duplicar classificações já cadastradas pela empresa
+    Chamado pelo frontend na tela de plano de contas ao adicionar nova categoria.
+    """
     empresa_id = obter_empresa()
+    # Impede duplicar nomes que já existem na lista global imutável
     if any(n.lower() == dados.nome.lower() for n in CLASSIFICACOES):
         raise HTTPException(status_code=400, detail="Esta classificacao ja existe na lista base.")
     with sessao_db() as db:
@@ -1303,6 +1802,11 @@ def criar_plano_conta(dados: PlanoContaIn):
 
 @app.put("/plano-contas/{plano_conta_id}")
 def atualizar_plano_conta(plano_conta_id: int, dados: PlanoContaIn):
+    """Renomeia uma classificação personalizada da empresa.
+
+    Valida duplicatas tanto na lista base quanto entre as personalizadas,
+    excluindo o próprio registro da comparação de duplicatas.
+    """
     empresa_id = obter_empresa()
     if any(n.lower() == dados.nome.lower() for n in CLASSIFICACOES):
         raise HTTPException(status_code=400, detail="Esta classificacao ja existe na lista base.")
@@ -1312,6 +1816,7 @@ def atualizar_plano_conta(plano_conta_id: int, dados: PlanoContaIn):
         ).first()
         if not registro:
             raise HTTPException(status_code=404, detail="Classificacao nao encontrada.")
+        # Verifica duplicata excluindo o próprio registro (id != plano_conta_id)
         duplicado = db.query(PlanoConta).filter(
             PlanoConta.empresa_id == empresa_id,
             PlanoConta.id != plano_conta_id,
@@ -1326,6 +1831,11 @@ def atualizar_plano_conta(plano_conta_id: int, dados: PlanoContaIn):
 
 @app.delete("/plano-contas/{plano_conta_id}")
 def excluir_plano_conta(plano_conta_id: int):
+    """Remove uma classificação personalizada da empresa.
+
+    Nota: não valida se há lançamentos usando esta classificação.
+    Os lançamentos existentes manterão a classificação como texto livre.
+    """
     empresa_id = obter_empresa()
     with sessao_db() as db:
         registro = db.query(PlanoConta).filter(
@@ -1339,8 +1849,12 @@ def excluir_plano_conta(plano_conta_id: int):
 
 
 # =========================================================
-# LANCAMENTOS
+# ENDPOINTS DE LANÇAMENTOS FINANCEIROS
 # =========================================================
+# CRUD completo de lançamentos. Protegido pelo middleware.
+# Lançamentos são o núcleo do sistema: registram todas as
+# receitas, custos, despesas e investimentos da empresa.
+# Podem ser vinculados a veículos, obras/serviços e itens de estoque.
 
 @app.get("/lancamentos")
 def listar_lancamentos(
@@ -1352,6 +1866,16 @@ def listar_lancamentos(
     empresa_id: Optional[int] = None,
     obra_servico: Optional[str] = None,
 ):
+    """Lista lançamentos da empresa com filtros opcionais.
+
+    Filtros aplicados no banco (eficientes): classificacao, data_inicial,
+    data_final, descricao.
+    Filtros aplicados em Python (pós-query, campos no JSON 'dados'):
+    veiculo_id, empresa_id, obra_servico — necessário pois estes campos
+    ficam no campo JSON 'dados', que não é indexado para filtro direto no SQL.
+    Retorna em ordem decrescente de data.
+    Chamado pelo frontend ao carregar a aba de lançamentos e relatórios.
+    """
     eid = obter_empresa()
     with sessao_db() as db:
         q = db.query(Lancamento).filter(Lancamento.empresa_id == eid)
@@ -1364,6 +1888,7 @@ def listar_lancamentos(
         if descricao:
             q = q.filter(Lancamento.descricao.ilike(f"%{descricao.strip()}%"))
         result = [lancamento_para_dict(l) for l in q.order_by(Lancamento.data.desc()).all()]
+    # Filtros em Python para campos dentro do JSON 'dados'
     if veiculo_id:
         result = [r for r in result if r.get("veiculo_id") == veiculo_id]
     if empresa_id:
@@ -1564,6 +2089,12 @@ def atualizar_lancamento(lancamento_id: int, dados: LancamentoIn):
 
 @app.delete("/lancamentos/{lancamento_id}")
 def excluir_lancamento(lancamento_id: int):
+    """Remove um lançamento financeiro.
+
+    Nota: NÃO estorna automaticamente saídas de estoque vinculadas ao lançamento.
+    Para estorno de estoque em exclusão, usar o endpoint PUT antes de excluir,
+    ou implementar estorno direto aqui caso necessário no futuro.
+    """
     eid = obter_empresa()
     with sessao_db() as db:
         l = db.query(Lancamento).filter(Lancamento.empresa_id == eid, Lancamento.id == lancamento_id).first()
@@ -1575,14 +2106,22 @@ def excluir_lancamento(lancamento_id: int):
 
 
 # =========================================================
-# VEICULOS
+# ENDPOINTS DE CONTAS A RECEBER
 # =========================================================
-
-# =========================================================
-# CONTAS A RECEBER
-# =========================================================
+# Registra fretes, serviços e horas de máquina a receber.
+# Separado dos lançamentos pois possui status de pagamento,
+# tomador, origem/destino e cálculo por hora (valor_hora × horas).
+# Protegido pelo middleware (prefixo /contas-receber em ROTAS_PROTEGIDAS).
 
 def calcular_total_conta_receber(item: dict) -> float:
+    """Calcula o valor total líquido de uma conta a receber.
+
+    Lógica:
+      - Se valor_hora_unitario > 0 E quantidade_horas > 0: usa cálculo por hora
+      - Caso contrário: usa o campo `valor` diretamente
+      - Soma bonificacao e subtrai descontos ao final
+    Resultado arredondado para 2 casas decimais.
+    """
     valor_hora_unitario = normalizar_numero_decimal(item.get("valor_hora_unitario"))
     quantidade_horas = normalizar_numero_decimal(item.get("quantidade_horas"))
     valor = valor_hora_unitario * quantidade_horas if valor_hora_unitario > 0 and quantidade_horas > 0 else normalizar_numero_decimal(item.get("valor"))
@@ -1592,6 +2131,12 @@ def calcular_total_conta_receber(item: dict) -> float:
 
 
 def calcular_valor_base_conta_receber(dados: ContaReceberIn) -> float:
+    """Calcula o valor base a armazenar na coluna 'valor' do banco.
+
+    Prioriza o cálculo por hora quando ambos os campos estão preenchidos.
+    Este é o valor armazenado na coluna valor — bonificacao e descontos
+    ficam no JSON 'dados' e são aplicados em calcular_total_conta_receber().
+    """
     if dados.valor_hora_unitario > 0 and dados.quantidade_horas > 0:
         return arredondar_moeda(dados.valor_hora_unitario * dados.quantidade_horas)
     return float(dados.valor or 0)
@@ -1605,6 +2150,13 @@ def listar_contas_receber(
     tomador: Optional[str] = None,
     veiculo_id: Optional[int] = None,
 ):
+    """Lista contas a receber com filtros opcionais.
+
+    Filtros no banco: data_inicial, data_final, contrato.
+    Filtros em Python (campos no JSON 'dados'): tomador, veiculo_id.
+    Retorna em ordem decrescente de data_inicio.
+    Cada item inclui valor_total_receber calculado dinamicamente.
+    """
     eid = obter_empresa()
     with sessao_db() as db:
         q = db.query(ContaReceber).filter(ContaReceber.empresa_id == eid)
@@ -1629,6 +2181,12 @@ def listar_horas_maquinas(
     data_final: Optional[date] = None,
     veiculo_id: Optional[int] = None,
 ):
+    """Relatório especializado para serviços faturados por hora de máquina.
+
+    Filtra apenas contas com quantidade_horas > 0 e agrega:
+    total de horas, dias trabalhados (datas únicas) e valor total.
+    Chamado pelo frontend na aba de relatório de horas de máquina.
+    """
     contas = listar_contas_receber(data_inicial=data_inicial, data_final=data_final, veiculo_id=veiculo_id)
     contas_com_horas = [item for item in contas if float(item.get("quantidade_horas") or 0) > 0]
     dias = {item.get("data_inicio") for item in contas_com_horas if item.get("data_inicio")}
@@ -1645,6 +2203,14 @@ def listar_horas_maquinas(
 
 @app.post("/contas-receber")
 def criar_conta_receber(dados: ContaReceberIn):
+    """Cria uma nova conta a receber (frete, serviço ou hora de máquina).
+
+    Validações de negócio:
+      - desconto_classificacao, se informado, deve existir na lista ativa
+      - desconto_classificacao deve ser uma despesa (grupo 2.x), não receita
+    O campo valor no banco armazena apenas o valor base (sem bonificacao/descontos).
+    Os campos extras ficam serializados no JSON 'dados'.
+    """
     if dados.desconto_classificacao:
         if dados.desconto_classificacao not in listar_classificacoes_ativas():
             raise HTTPException(status_code=400, detail="Classificacao do desconto invalida.")
@@ -1719,6 +2285,14 @@ def atualizar_conta_receber(conta_id: int, dados: ContaReceberIn):
 
 @app.patch("/contas-receber/{conta_id}/status")
 def alterar_status_conta_receber(conta_id: int, dados: ContaReceberStatusIn):
+    """Atualiza apenas o status de pagamento de uma conta a receber.
+
+    Chamado pelo frontend quando o usuário clica em "Marcar como recebido"
+    sem precisar editar os outros campos do registro.
+    Ao marcar como "recebido", registra automaticamente a data de hoje
+    no campo data_recebimento dentro do JSON 'dados'.
+    Ao reverter para "pendente", limpa a data_recebimento.
+    """
     eid = obter_empresa()
     with sessao_db() as db:
         c = db.query(ContaReceber).filter(ContaReceber.empresa_id == eid, ContaReceber.id == conta_id).first()
@@ -1726,6 +2300,7 @@ def alterar_status_conta_receber(conta_id: int, dados: ContaReceberStatusIn):
             raise HTTPException(status_code=404, detail="Conta a receber nao encontrada.")
         c.status_pagamento = dados.status_pagamento
         ex = json.loads(c.dados or "{}")
+        # Define data_recebimento automaticamente ao marcar como recebido
         ex["data_recebimento"] = str(date.today()) if dados.status_pagamento == "recebido" else ""
         c.dados = json.dumps(ex, ensure_ascii=False)
         db.commit()
@@ -1746,11 +2321,15 @@ def excluir_conta_receber(conta_id: int):
 
 
 # =========================================================
-# ATIVOS, PASSIVOS E ESTOQUE
+# ENDPOINTS DE ATIVOS (Patrimônio Ativo)
 # =========================================================
+# Ativos são bens de propriedade da empresa (veículos, máquinas, imóveis).
+# Junto com os passivos, compõem o patrimônio líquido da empresa.
+# Protegido pelo middleware (prefixo /ativos em ROTAS_PROTEGIDAS).
 
 @app.get("/ativos")
 def listar_ativos():
+    """Lista todos os ativos da empresa ordenados por nome."""
     eid = obter_empresa()
     with sessao_db() as db:
         registros = db.query(Ativo).filter(Ativo.empresa_id == eid).order_by(Ativo.nome).all()
@@ -1810,8 +2389,15 @@ def excluir_ativo(ativo_id: int):
     return {"mensagem": "Ativo excluido com sucesso."}
 
 
+# =========================================================
+# ENDPOINTS DE PASSIVOS (Patrimônio Passivo / Dívidas)
+# =========================================================
+# Passivos são obrigações financeiras (financiamentos, empréstimos, dívidas).
+# Protegido pelo middleware (prefixo /passivos em ROTAS_PROTEGIDAS).
+
 @app.get("/passivos")
 def listar_passivos():
+    """Lista todos os passivos da empresa ordenados por data de vencimento."""
     eid = obter_empresa()
     with sessao_db() as db:
         registros = db.query(Passivo).filter(Passivo.empresa_id == eid).all()
@@ -1821,6 +2407,7 @@ def listar_passivos():
 
 
 def _extras_passivo(dados: PassivoIn) -> dict:
+    """Monta o dict de campos extras para serializar no JSON 'dados' do Passivo."""
     return {
         "tipo": dados.tipo,
         "valor_total": float(dados.valor_total or 0),
@@ -1871,6 +2458,14 @@ def excluir_passivo(passivo_id: int):
     return {"mensagem": "Passivo excluido com sucesso."}
 
 
+# =========================================================
+# ENDPOINTS DE ESTOQUE (Produtos e Movimentações)
+# =========================================================
+# Controle de estoque de insumos (peças, combustível, materiais, etc.).
+# Integrado com lançamentos: saídas de estoque podem ser vinculadas
+# a lançamentos financeiros automaticamente.
+# Protegido pelo middleware (prefixo /estoque em ROTAS_PROTEGIDAS).
+
 @app.get("/estoque/produtos/busca")
 def buscar_produtos_estoque_autocomplete(q: str = ""):
     """Busca rápida de produtos para o autocomplete do campo de vínculo em lançamentos.
@@ -1899,6 +2494,12 @@ def buscar_produtos_estoque_autocomplete(q: str = ""):
 
 @app.get("/estoque/produtos")
 def listar_produtos_estoque(nome: Optional[str] = None, categoria: Optional[str] = None, estoque_baixo: Optional[bool] = None):
+    """Lista produtos do estoque com filtros opcionais.
+
+    O filtro estoque_baixo=true retorna apenas produtos com quantidade <= mínimo.
+    Filtros nome e categoria são aplicados no banco (ILIKE).
+    estoque_baixo é aplicado em Python (campo calculado, não armazenado).
+    """
     eid = obter_empresa()
     with sessao_db() as db:
         q = db.query(EstoqueProduto).filter(EstoqueProduto.empresa_id == eid)
@@ -1978,6 +2579,16 @@ def listar_movimentacoes_estoque(produto_id: Optional[int] = None):
 
 @app.post("/estoque/movimentacoes")
 def criar_movimentacao_estoque(dados: MovimentacaoEstoqueIn):
+    """Registra uma movimentação manual de estoque (entrada, saída ou ajuste).
+
+    Efeitos na quantidade do produto:
+      - Entrada: quantidade += dados.quantidade
+      - Saida:   quantidade -= dados.quantidade (valida saldo suficiente)
+      - Ajuste:  quantidade  = dados.quantidade (substitui, para inventário)
+
+    Nas entradas, se valor_unitario for informado, atualiza o custo do produto.
+    Todas as movimentações ficam registradas no histórico (tabela estoque_movimentacoes).
+    """
     eid = obter_empresa()
     with sessao_db() as db:
         ep = db.query(EstoqueProduto).filter(EstoqueProduto.empresa_id == eid, EstoqueProduto.id == dados.produto_id).first()
@@ -1992,8 +2603,10 @@ def criar_movimentacao_estoque(dados: MovimentacaoEstoqueIn):
                 raise HTTPException(status_code=400, detail="Saida maior que o estoque disponivel.")
             ep.quantidade = atual - quantidade
         else:
+            # Ajuste: substitui a quantidade atual pelo valor do inventário
             ep.quantidade = quantidade
         ex_prod = json.loads(ep.dados or "{}")
+        # Nas entradas, atualiza o custo unitário do produto se informado
         if dados.valor_unitario:
             ex_prod["valor_custo"] = float(dados.valor_unitario)
             ep.dados = json.dumps(ex_prod, ensure_ascii=False)
@@ -2008,8 +2621,13 @@ def criar_movimentacao_estoque(dados: MovimentacaoEstoqueIn):
 
 
 # =========================================================
-# RELATORIOS FINANCEIROS
+# RELATÓRIOS FINANCEIROS
 # =========================================================
+# Endpoints que consolidam dados de lançamentos e contas a receber
+# em diferentes visões: por período, veículo, classificação, empresa.
+# Todos usam a função central montar_relatorio_completo() que carrega
+# e agrega os dados uma única vez.
+# Protegido pelo middleware (prefixo /relatorios em ROTAS_PROTEGIDAS).
 
 def filtrar_lancamentos_relatorio(
     data_inicial: Optional[date] = None,
@@ -2019,6 +2637,10 @@ def filtrar_lancamentos_relatorio(
     classificacao: Optional[str] = None,
     obra_servico: Optional[str] = None,
 ):
+    """Wrapper de listar_lancamentos() para uso interno nos relatórios.
+
+    Permite que as funções de relatório passem filtros sem replicar a assinatura.
+    """
     return listar_lancamentos(
         classificacao=classificacao,
         data_inicial=data_inicial,
@@ -2034,6 +2656,7 @@ def filtrar_contas_receber_relatorio(
     data_final: Optional[date] = None,
     veiculo_id: Optional[int] = None,
 ):
+    """Wrapper de listar_contas_receber() para uso interno nos relatórios."""
     return listar_contas_receber(
         data_inicial=data_inicial,
         data_final=data_final,
@@ -2042,6 +2665,11 @@ def filtrar_contas_receber_relatorio(
 
 
 def somar_lancamentos(lancamentos, predicado) -> float:
+    """Soma os valores dos lançamentos que satisfazem o predicado de classificação.
+
+    O predicado é uma das funções: eh_receita, eh_custo, eh_despesa, eh_investimento.
+    Usado em montar_resumo_financeiro() para calcular os totais por categoria.
+    """
     return sum(float(item.get("valor") or 0) for item in lancamentos if predicado(item.get("classificacao", "")))
 
 

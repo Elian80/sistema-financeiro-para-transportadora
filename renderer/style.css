@@ -1,37 +1,74 @@
+/* ============================================================
+   STYLE.CSS — Estilos do sistema financeiro principal
+   App SPA (Single Page Application) para gestao de transportadoras.
+   Estrutura do arquivo:
+     1. Variaveis CSS (:root) — tema dark e light
+     2. Reset e base (html, body, scrollbar)
+     3. Layout principal (app-shell, sidebar, topbar, page-content)
+     4. Navegacao (nav-btn, sidebar colapsada, mobile)
+     5. Botoes (ghost-btn, primary-btn, icon-btn, small-btn)
+     6. KPI Cards e Dashboard
+     7. Veiculos (vehicle-grid, vehicle-card, badges)
+     8. Tabelas (data-table, table-wrap, table-toolbar)
+     9. Formularios (form-grid, field, inputs)
+    10. Filtros (filter-popup, filter-launcher)
+    11. Modais (modal-overlay, modal-content)
+    12. Relatorios (report-*, DRE, charts)
+    13. Folha de pagamento (payroll-*, salary-slip)
+    14. Recibos para impressao (receipt-*)
+    15. Impressao (@media print)
+    16. Estoque (estoque-modal, estoque-popover, edit-inline)
+    17. Mapa (mapa-shell, mapa-layout, driver-marker)
+    18. Autocomplete de estoque em lancamentos
+    19. Dashboard metricas compactas
+    20. Layer SaaS/CRM visual (refinamentos de estilo)
+    21. Layer fluido responsivo (clamp, auto-fit)
+    22. Tema claro — overrides completos
+   ============================================================ */
+
+/* === VARIAVEIS GLOBAIS — Tema escuro (padrao) ===
+   Todas as variaveis CSS do sistema. Alterar aqui
+   propaga automaticamente para todos os componentes.
+   O tema claro redefine estas variaveis em body[data-theme="light"]. */
 :root {
-  --bg: #070c18;
-  --panel: #0c1524;
-  --panel-strong: #111e34;
-  --surface: rgba(255, 255, 255, 0.042);
-  --surface-hover: rgba(56, 189, 248, 0.1);
-  --line: rgba(148, 163, 184, 0.11);
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --blue: #38bdf8;
-  --blue-2: #3b82f6;
-  --green: #22c55e;
-  --red: #ef4444;
-  --amber: #f59e0b;
-  --radius-xl: 18px;
-  --radius-md: 12px;
-  --shadow: 0 20px 52px rgba(0, 0, 0, 0.4);
+  --bg: #070c18;           /* Fundo base da pagina — azul muito escuro */
+  --panel: #0c1524;        /* Fundo de sidebar, topbar e cards principais */
+  --panel-strong: #111e34; /* Fundo de elementos internos (inputs, rows destaque) */
+  --surface: rgba(255, 255, 255, 0.042);    /* Superficie levemente visivel sobre o fundo */
+  --surface-hover: rgba(56, 189, 248, 0.1); /* Superficie ao passar o mouse (azul ciano translucido) */
+  --line: rgba(148, 163, 184, 0.11);        /* Cor de bordas e separadores sutis */
+  --text: #e2e8f0;         /* Texto principal — cinza claro de alto contraste */
+  --muted: #94a3b8;        /* Texto secundario — labels, metadados, subtitulos */
+  --blue: #38bdf8;         /* Azul ciano principal — destaques, links, foco */
+  --blue-2: #3b82f6;       /* Azul escuro secundario — gradientes de botoes */
+  --green: #22c55e;        /* Verde — status positivo, receitas, aprovado */
+  --red: #ef4444;          /* Vermelho — erros, despesas, status atrasado */
+  --amber: #f59e0b;        /* Amarelo — avisos, pendentes, status de alerta */
+  --radius-xl: 18px;       /* Raio grande — sidebar, topbar, page-content */
+  --radius-md: 12px;       /* Raio medio — botoes, inputs, cards menores */
+  --shadow: 0 20px 52px rgba(0, 0, 0, 0.4); /* Sombra profunda para elevacao dos paineis */
 }
 
+/* === VARIAVEIS DO TEMA CLARO ===
+   Redefine todas as variaveis para o modo claro.
+   Ativado quando o JS adiciona data-theme="light" ao body.
+   Apenas as variaveis mudam — nenhum seletor de componente
+   precisa ser duplicado para suportar o tema claro. */
 body[data-theme="light"] {
-  --bg: #f0f4f9;
-  --panel: #ffffff;
-  --panel-strong: #ffffff;
-  --surface: rgba(15, 23, 42, 0.035);
-  --surface-hover: rgba(37, 99, 235, 0.07);
-  --line: rgba(15, 23, 42, 0.09);
-  --text: #0f172a;
-  --muted: #475569;
-  --blue: #2563eb;
-  --blue-2: #1d4ed8;
-  --green: #16a34a;
-  --red: #dc2626;
-  --amber: #d97706;
-  --shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+  --bg: #f0f4f9;           /* Fundo suave azulado em vez de preto */
+  --panel: #ffffff;        /* Paineis em branco puro */
+  --panel-strong: #ffffff; /* Elementos internos tambem em branco */
+  --surface: rgba(15, 23, 42, 0.035);   /* Superficie com opacidade sobre o fundo claro */
+  --surface-hover: rgba(37, 99, 235, 0.07); /* Hover azul discreto */
+  --line: rgba(15, 23, 42, 0.09);       /* Bordas escuras translucidas */
+  --text: #0f172a;         /* Texto quase preto para contraste no fundo claro */
+  --muted: #475569;        /* Texto secundario em cinza medio */
+  --blue: #2563eb;         /* Azul mais saturado e escuro para visibilidade no fundo claro */
+  --blue-2: #1d4ed8;       /* Azul escuro para gradientes no tema claro */
+  --green: #16a34a;        /* Verde mais escuro para legibilidade no claro */
+  --red: #dc2626;          /* Vermelho mais escuro para contraste */
+  --amber: #d97706;        /* Amarelo/laranja mais escuro */
+  --shadow: 0 4px 24px rgba(15, 23, 42, 0.08); /* Sombra suave para o tema claro */
 }
 
 * {

@@ -1,94 +1,262 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
+<!-- Declaração do tipo de documento HTML5 -->
 <html lang="pt-BR">
+<!-- lang="pt-BR": define o idioma como Português do Brasil (importante para acessibilidade e SEO) -->
+
 <head>
+  <!-- ============================================================
+       META TAGS — Configurações globais da página e do PWA
+       ============================================================ -->
+
+  <!-- Codificação UTF-8: suporta caracteres especiais do português (ç, ã, é etc.) -->
   <meta charset="UTF-8" />
+
+  <!-- Viewport responsivo: impede zoom automático em mobile e escala a página corretamente -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- theme-color: cor da barra de status e do navegador em dispositivos móveis (dark by default) -->
   <meta name="theme-color" content="#0B0F1A" />
+
+  <!-- PWA: permite instalar o app como aplicativo nativo no Android (Chrome) -->
   <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- PWA: permite instalar o app como aplicativo nativo no iOS (Safari) -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <!-- PWA: nome do app exibido embaixo do ícone na tela inicial do iOS -->
   <meta name="apple-mobile-web-app-title" content="Financeiro" />
+
+  <!-- PWA iOS: barra de status translúcida para aproveitar a tela toda no iPhone -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Título exibido na aba do navegador -->
   <title>Projeto Financeiro</title>
+
+  <!-- ============================================================
+       LINKS — Manifesto, ícones e folhas de estilo
+       ============================================================ -->
+
+  <!-- Manifesto PWA: define nome, ícones, cor e comportamento do app instalado -->
   <link rel="manifest" href="manifest.webmanifest" />
+
+  <!-- Ícone SVG para a aba do navegador (favicon) -->
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+
+  <!-- Ícone PNG exibido quando o usuário adiciona o app à tela inicial do iPhone -->
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+  <!-- CSS da biblioteca Leaflet (mapa interativo — usada na página de Mapa) -->
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+
+  <!-- Folha de estilos principal do sistema financeiro (v=31 para cache busting) -->
   <link rel="stylesheet" href="style.css?v=31" />
 </head>
+
 <body>
+  <!-- ============================================================
+       SIDEBAR BACKDROP — Fundo escurecido ao abrir o menu mobile
+       Controlado via JS: class "sidebar-open" no body mostra o backdrop.
+       O ID é usado no app.js para fechar a sidebar ao clicar fora.
+       ============================================================ -->
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
+  <!-- ============================================================
+       APP SHELL — Container principal que divide Sidebar + Main
+       Layout flex horizontal: sidebar à esquerda, conteúdo à direita.
+       ============================================================ -->
   <div class="app-shell">
+
+    <!-- ==========================================================
+         SIDEBAR — Menu lateral de navegação
+         ID "sidebar": usado pelo JS para aplicar a classe "sidebar-open" (mobile)
+         e "sidebar-collapsed" (modo recolhido no desktop).
+         ========================================================== -->
     <aside class="sidebar" id="sidebar">
+
+      <!-- Cabeçalho da sidebar: logo da empresa + botão de colapso -->
       <div class="sidebar-head">
+
+        <!-- Identidade visual / marca do sistema -->
         <div class="brand">
+          <!-- Ícone/logo da marca (letra "F" estilizada com gradiente) -->
           <div class="brand-icon">F</div>
+
+          <!-- Texto da marca: nome e subtítulo — ocultos quando sidebar está recolhida -->
           <div class="brand-copy">
             <h1>Financeiro</h1>
             <p>Gestao operacional</p>
           </div>
         </div>
-        <button class="sidebar-toggle" id="sidebar-toggle-btn" type="button" aria-label="Alternar menu lateral" title="Alternar menu">
+
+        <!-- Botão hambúrguer para recolher/expandir a sidebar no desktop.
+             ID "sidebar-toggle-btn": capturado em app.js para alternar a classe
+             "sidebar-collapsed" no body, que reduz a largura da sidebar via CSS. -->
+        <button class="sidebar-toggle" id="sidebar-toggle-btn" type="button"
+          aria-label="Alternar menu lateral" title="Alternar menu">
+          <!-- Três linhas decorativas do ícone hambúrguer -->
           <span></span>
           <span></span>
           <span></span>
         </button>
       </div>
 
+      <!-- ========================================================
+           NAVEGAÇÃO — Botões de página do SPA
+           Cada botão muda o conteúdo renderizado em #page-content via app.js.
+           - data-page: nome da função/módulo de página que o app.js chama
+           - data-short: abreviação de 2 letras exibida quando a sidebar está recolhida
+           - data-icon: nome do ícone Lucide renderizado dinamicamente pelo JS
+           - class "active": marca a página atual (gerenciada pelo app.js)
+           ======================================================== -->
       <nav class="nav">
+        <!-- Dashboard: visão geral financeira e operacional -->
         <button class="nav-btn active" data-page="dashboard" data-short="DB" data-icon="layout-dashboard">Dashboard</button>
+
+        <!-- Veículos: cadastro e gestão da frota -->
         <button class="nav-btn" data-page="veiculos" data-short="VE" data-icon="truck">Veiculos</button>
+
+        <!-- Motoristas: cadastro, folha de pagamento e controle de viagens -->
         <button class="nav-btn" data-page="motoristas" data-short="MO" data-icon="users">Motoristas</button>
+
+        <!-- Plano de Contas: estrutura contábil de receitas e despesas -->
         <button class="nav-btn" data-page="planoContas" data-short="PC" data-icon="list-tree">Plano de contas</button>
+
+        <!-- Lançamentos: registro de entradas e saídas financeiras -->
         <button class="nav-btn" data-page="lancamentos" data-short="LA" data-icon="receipt">Lancamentos</button>
+
+        <!-- Contas a Receber: controle de fretes e valores pendentes/recebidos -->
         <button class="nav-btn" data-page="contasReceber" data-short="CR" data-icon="wallet-cards">Contas a receber</button>
+
+        <!-- Relatórios: DRE, fluxo de caixa, gráficos e exportação -->
         <button class="nav-btn" data-page="relatorios" data-short="RE" data-icon="chart-no-axes-combined">Relatorios</button>
+
+        <!-- Ativos/Passivos: balanço patrimonial da transportadora -->
         <button class="nav-btn" data-page="ativosPassivos" data-short="AP" data-icon="scale">Ativos/Passivos</button>
+
+        <!-- Estoque: controle de peças, combustível e itens de manutenção -->
         <button class="nav-btn" data-page="estoque" data-short="ES" data-icon="package">Estoque</button>
+
+        <!-- Admin: configurações do sistema, usuários e permissões -->
         <button class="nav-btn" data-page="admin" data-short="AD" data-icon="shield">Admin</button>
+
+        <!-- Mapa: rastreamento GPS em tempo real dos motoristas (usa Leaflet) -->
         <button class="nav-btn" data-page="mapa" data-short="MA" data-icon="map">Mapa</button>
       </nav>
     </aside>
+    <!-- /aside.sidebar -->
 
+    <!-- ==========================================================
+         MAIN AREA — Área principal: topbar + conteúdo de página
+         ========================================================== -->
     <main class="main-area">
+
+      <!-- ========================================================
+           TOPBAR — Barra superior com título, busca e ações
+           ======================================================== -->
       <header class="topbar">
+
+        <!-- Botão hambúrguer mobile: visível apenas em telas pequenas (< 900px).
+             ID "mobile-menu-btn": o JS adiciona a classe "sidebar-open" ao body
+             para deslizar a sidebar sobre o conteúdo. -->
         <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Abrir menu lateral">
           <span></span>
           <span></span>
           <span></span>
         </button>
+
+        <!-- Título dinâmico da página atual.
+             ID "page-title": atualizado pelo app.js ao trocar de página.
+             ID "page-subtitle": exibe descrição curta da seção ativa. -->
         <div class="page-heading">
           <h2 id="page-title">Dashboard</h2>
           <p id="page-subtitle">Visao geral da operacao e do financeiro</p>
         </div>
 
+        <!-- Campo de busca global do sistema.
+             role="search": semântica de acessibilidade.
+             ID "global-search": capturado pelo app.js para filtrar conteúdo
+             da página atual em tempo real. -->
         <div class="topbar-search" role="search">
+          <!-- Ícone de lupa renderizado pela biblioteca Lucide via JS -->
           <span data-lucide="search">Buscar</span>
           <input id="global-search" type="search" placeholder="Buscar no sistema..." />
         </div>
 
+        <!-- Grupo de ações da topbar: botões de PWA, notificações, tema e usuário -->
         <div class="topbar-actions">
+
+          <!-- Botão "Instalar app" (PWA): aparece somente quando o browser dispara
+               o evento "beforeinstallprompt". Controlado por pwa.js via hidden attribute.
+               ID "install-pwa-btn": pwa.js remove o atributo hidden quando aplicável. -->
           <button class="ghost-btn install-pwa-btn" id="install-pwa-btn" type="button" hidden>Instalar app</button>
-          <button class="icon-btn notification-btn" id="notification-btn" type="button" aria-label="Notificacoes" title="Notificacoes">
+
+          <!-- Botão de notificações: exibe badge laranja via CSS (::after) quando há alertas.
+               ID "notification-btn": app.js abre painel de notificações ao clicar. -->
+          <button class="icon-btn notification-btn" id="notification-btn" type="button"
+            aria-label="Notificacoes" title="Notificacoes">
+            <!-- data-lucide="bell": Lucide renderiza o SVG de sino automaticamente -->
             <span data-lucide="bell">!</span>
           </button>
-          <button class="icon-btn settings-btn" id="settings-btn" type="button" aria-label="Configuracoes e tema" title="Configuracoes e tema">
+
+          <!-- Botão de configurações e alternância de tema (dark/light).
+               ID "settings-btn": app.js abre modal de configurações e alterna
+               o atributo data-theme no body. -->
+          <button class="icon-btn settings-btn" id="settings-btn" type="button"
+            aria-label="Configuracoes e tema" title="Configuracoes e tema">
+            <!-- Fallback de engrenagem caso o Lucide não carregue -->
             <span data-lucide="settings">&#9881;</span>
           </button>
+
+          <!-- Avatar do usuário logado: exibe a inicial do nome.
+               Conteúdo pode ser atualizado pelo app.js após login. -->
           <div class="user-avatar" title="Usuario">J</div>
+
+          <!-- Botão de logout: app.js escuta o clique para encerrar a sessão -->
           <button class="ghost-btn" id="logout-btn">Sair</button>
         </div>
       </header>
+      <!-- /header.topbar -->
 
+      <!-- ========================================================
+           PAGE CONTENT — Container dinâmico onde cada página é renderizada
+           O app.js injeta o HTML de cada módulo aqui ao trocar de página.
+           ID "page-content": seletor principal do roteador do SPA em app.js.
+           Começa vazio — o dashboard é carregado ao iniciar o app.
+           ======================================================== -->
       <section id="page-content" class="page-content"></section>
-    </main>
-  </div>
 
+    </main>
+    <!-- /main.main-area -->
+
+  </div>
+  <!-- /div.app-shell -->
+
+  <!-- ============================================================
+       SCRIPTS — Carregados no final do body para não bloquear a renderização
+       ============================================================ -->
+
+  <!-- Chart.js: biblioteca de gráficos usada nas páginas de Dashboard e Relatórios.
+       Carregada do CDN jsDelivr para maior disponibilidade. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Lucide Icons: biblioteca de ícones SVG.
+       Converte automaticamente os atributos data-lucide="nome-icone"
+       em elementos SVG inline ao chamar lucide.createIcons(). -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Leaflet.js: biblioteca de mapas interativos usada na página de Mapa
+       para exibir rastreamento GPS dos motoristas. -->
   <script src="vendor/leaflet/leaflet.js"></script>
+
+  <!-- app.js: lógica principal do SPA financeiro.
+       Gerencia roteamento de páginas, renderização dinâmica, CRUD de dados,
+       gráficos, filtros e todas as interações do sistema. (v=34 para cache busting) -->
   <script src="app.js?v=34"></script>
+
+  <!-- pwa.js: gerencia o ciclo de vida do Progressive Web App.
+       Registra o Service Worker, controla o prompt de instalação
+       e gerencia atualizações offline. (v=12 para cache busting) -->
   <script src="pwa.js?v=12"></script>
+
 </body>
 </html>
-

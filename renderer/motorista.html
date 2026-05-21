@@ -1,136 +1,398 @@
 <!DOCTYPE html>
+<!-- Declaracao do tipo de documento HTML5 -->
 <html lang="pt-BR">
+<!-- lang="pt-BR": idioma Portugues do Brasil — melhora acessibilidade e leitores de tela -->
+
 <head>
+  <!-- ============================================================
+       META TAGS — Configuracoes do app mobile do motorista (PWA)
+       ============================================================ -->
+
+  <!-- Codificacao UTF-8: garante suporte a acentos e caracteres especiais do portugues -->
   <meta charset="UTF-8" />
+
+  <!-- viewport-fit=cover: permite que o conteudo ocupe toda a area da tela,
+       incluindo a "notch" (entalhe) do iPhone e a barra de status no Android -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- Cor da barra de status do navegador mobile — combina com o tema escuro do app -->
   <meta name="theme-color" content="#0B0F1A" />
+
+  <!-- PWA: habilita instalacao como app nativo no Android (Chrome/Edge mobile) -->
   <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- PWA: habilita instalacao como app nativo no iOS (Safari) -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <!-- PWA iOS: nome exibido embaixo do icone na tela inicial do iPhone -->
   <meta name="apple-mobile-web-app-title" content="Motorista" />
+
+  <!-- PWA iOS: barra de status translucida para aproveitar a tela inteira -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Titulo exibido na aba do navegador -->
   <title>App Motorista</title>
+
+  <!-- Icone SVG para favicon e PWA -->
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+
+  <!-- Folha de estilos exclusiva do app do motorista (v=1 para cache busting).
+       Design mobile-first, independente do style.css do sistema principal. -->
   <link rel="stylesheet" href="motorista.css?v=1" />
 </head>
-<body>
 
-  <!-- LOGIN -->
+<body>
+  <!-- ============================================================
+       ESTRUTURA DO APP: duas "telas" empilhadas — apenas uma visivel por vez.
+       O JS alterna entre elas usando o atributo HTML "hidden".
+       - #tela-login: exibida antes da autenticacao
+       - #tela-app:   exibida apos o login bem-sucedido
+       ============================================================ -->
+
+  <!-- ==========================================================
+       TELA DE LOGIN — Formulario de autenticacao do motorista
+       ID "tela-login": motorista.js remove "hidden" desta tela ao iniciar
+       e adiciona "hidden" apos o login bem-sucedido.
+       class "tela": garante altura minima de 100dvh (tela cheia).
+       ========================================================== -->
   <div id="tela-login" class="tela">
+
+    <!-- Caixa centralizada verticalmente com logo, formulario e mensagem de erro -->
     <div class="login-box">
+
+      <!-- Logo e textos de boas-vindas -->
       <div class="login-logo">
+        <!-- Icone circular com a letra "M" representando o app do Motorista -->
         <div class="login-logo-icon">M</div>
         <h1>App Motorista</h1>
         <p>Acesse com suas credenciais</p>
       </div>
+
+      <!-- Formulario de login.
+           ID "form-login": motorista.js escuta o evento "submit" para autenticar
+           o motorista via API e redirecionar para a tela principal do app. -->
       <form id="form-login">
+
+        <!-- Campo de e-mail do motorista.
+             autocomplete="email": ativa sugestao do navegador para agilizar o preenchimento.
+             ID "login-email": lido pelo motorista.js no submit do formulario. -->
         <div class="field">
           <label>Email</label>
-          <input id="login-email" type="email" autocomplete="email" placeholder="seu@email.com" required />
+          <input id="login-email" type="email" autocomplete="email"
+            placeholder="seu@email.com" required />
         </div>
+
+        <!-- Campo de senha do motorista.
+             autocomplete="current-password": ativa gerenciador de senhas do navegador.
+             ID "login-senha": lido pelo motorista.js no submit do formulario. -->
         <div class="field">
           <label>Senha</label>
-          <input id="login-senha" type="password" autocomplete="current-password" placeholder="Sua senha" required />
+          <input id="login-senha" type="password" autocomplete="current-password"
+            placeholder="Sua senha" required />
         </div>
+
+        <!-- Botao de envio do formulario de login -->
         <button class="btn-primary" type="submit">Entrar</button>
+
+        <!-- Paragrafo para exibir mensagens de erro de autenticacao.
+             ID "login-erro": motorista.js insere o texto de erro aqui
+             quando o login falha (credenciais invalidas, sem conexao etc.). -->
         <p id="login-erro" class="msg-erro"></p>
       </form>
     </div>
   </div>
+  <!-- /div#tela-login -->
 
-  <!-- APP SHELL -->
+  <!-- ==========================================================
+       TELA PRINCIPAL DO APP — Exibida apos autenticacao bem-sucedida
+       ID "tela-app": motorista.js remove o atributo "hidden" deste elemento
+       apos o login e popula os dados do motorista logado.
+       hidden: atributo nativo que oculta o elemento completamente (display:none via CSS).
+       ========================================================== -->
   <div id="tela-app" class="tela" hidden>
+
+    <!-- ========================================================
+         HEADER DO APP — Informacoes do motorista logado + botao sair
+         Fixo no topo (position: sticky) para permanecer visivel ao rolar.
+         ======================================================== -->
     <header class="app-header">
+
+      <!-- Lado esquerdo: avatar e nome + indicador de status do GPS -->
       <div class="header-info">
+
+        <!-- Avatar circular com a inicial do nome do motorista.
+             ID "header-avatar": motorista.js atualiza a inicial apos o login. -->
         <div class="avatar" id="header-avatar">M</div>
+
         <div>
+          <!-- Nome completo do motorista logado.
+               ID "header-nome": preenchido pelo motorista.js apos autenticacao. -->
           <strong id="header-nome">Motorista</strong>
+
+          <!-- Badge de status do GPS: indica se o compartilhamento de localizacao esta ativo.
+               ID "header-status-gps": o JS alterna as classes "on" e "off" para mudar
+               a cor e o texto ("GPS on" / "GPS off") conforme o toggle GPS.
+               class "gps-badge off": estado inicial — GPS desligado. -->
           <span id="header-status-gps" class="gps-badge off">GPS off</span>
         </div>
       </div>
+
+      <!-- Botao de logout: motorista.js escuta o clique para encerrar sessao
+           e retornar para a tela de login (#tela-login).
+           &#x2715; = simbolo "X" (Unicode) -->
       <button class="btn-icon" id="btn-sair" title="Sair">&#x2715;</button>
     </header>
+    <!-- /header.app-header -->
 
+    <!-- ========================================================
+         CONTEUDO PRINCIPAL — Secoes em coluna unica (mobile-first)
+         ======================================================== -->
     <main class="app-main">
 
-      <!-- VIAGEM ATIVA -->
+      <!-- ======================================================
+           CARD: VIAGEM ATIVA — Estado da viagem em andamento
+           ID "card-viagem": card principal com borda azul a esquerda.
+           Exibe dados da viagem ativa ou mensagem "Nenhuma viagem ativa".
+           ====================================================== -->
       <section class="card card-viagem" id="card-viagem">
+
+        <!-- Titulo do card com icone de caminhao (emoji).
+             ID "viagem-titulo": o JS atualiza o texto conforme o estado da viagem
+             (ex: "Sao Paulo → Campinas" quando ha viagem ativa). -->
         <div class="card-title">
+          <!-- &#x1F69B; = emoji de caminhao articulado -->
           <span class="card-icon">&#x1F69B;</span>
           <span id="viagem-titulo">Nenhuma viagem ativa</span>
         </div>
+
+        <!-- Detalhes da viagem em andamento.
+             hidden: oculto por padrao — o JS remove este atributo quando
+             existe uma viagem ativa para o motorista logado. -->
         <div id="viagem-info" hidden>
+          <!-- Linha: cidade de origem da viagem.
+               ID "vi-origem": preenchido pelo motorista.js com o dado da API. -->
           <div class="viagem-detalhe"><label>Origem</label><span id="vi-origem">-</span></div>
+
+          <!-- Linha: cidade de destino da viagem.
+               ID "vi-destino": preenchido pelo motorista.js. -->
           <div class="viagem-detalhe"><label>Destino</label><span id="vi-destino">-</span></div>
+
+          <!-- Linha: tipo de carga ou servico transportado.
+               ID "vi-carga": preenchido pelo motorista.js. -->
           <div class="viagem-detalhe"><label>Carga</label><span id="vi-carga">-</span></div>
+
+          <!-- Linha: quilometragem marcada no odometro ao iniciar a viagem.
+               ID "vi-km": preenchido pelo motorista.js. -->
           <div class="viagem-detalhe"><label>KM inicial</label><span id="vi-km">-</span></div>
+
+          <!-- Linha: data e hora de inicio da viagem (formatada pelo JS).
+               ID "vi-inicio": preenchido pelo motorista.js. -->
           <div class="viagem-detalhe"><label>Inicio</label><span id="vi-inicio">-</span></div>
         </div>
+        <!-- /div#viagem-info -->
+
+        <!-- Botoes de acao da viagem.
+             ID "viagem-acoes": container dos botoes, cuja visibilidade e gerenciada pelo JS. -->
         <div id="viagem-acoes">
+
+          <!-- Botao para abrir o formulario de nova viagem.
+               ID "btn-iniciar-viagem": ao clicar, o JS exibe o #form-iniciar-container
+               e oculta este botao. Visivel quando nao ha viagem ativa. -->
           <button class="btn-primary" id="btn-iniciar-viagem">+ Iniciar viagem</button>
+
+          <!-- Botao para abrir o formulario de encerramento de viagem.
+               ID "btn-finalizar-viagem": exibido pelo JS somente quando ha viagem ativa.
+               hidden: estado inicial — oculto antes de haver viagem em andamento. -->
           <button class="btn-danger" id="btn-finalizar-viagem" hidden>Finalizar viagem</button>
         </div>
       </section>
+      <!-- /section#card-viagem -->
 
-      <!-- GPS -->
+      <!-- ======================================================
+           CARD: GPS — Toggle de compartilhamento de localizacao
+           Permite ao motorista ligar/desligar o envio de coordenadas GPS
+           para o sistema principal (visivel no mapa do admin).
+           ====================================================== -->
       <section class="card">
+        <!-- Titulo do card com icone de pin de localizacao -->
+        <!-- &#x1F4CD; = emoji de alfinete de localizacao (pin vermelho) -->
         <div class="card-title"><span class="card-icon">&#x1F4CD;</span>Compartilhar localizacao</div>
+
+        <!-- Linha com coordenadas + toggle switch -->
         <div class="gps-row">
           <div>
+            <!-- Coordenadas GPS atuais do motorista.
+                 ID "gps-coords": o JS atualiza este texto continuamente via
+                 navigator.geolocation.watchPosition() quando o GPS esta ligado.
+                 Exibe latitude/longitude ou "Aguardando sinal...". -->
             <div id="gps-coords">Aguardando sinal...</div>
+
+            <!-- Velocidade atual do veiculo (em km/h).
+                 ID "gps-velocidade": atualizado junto com as coordenadas via API Geolocation.
+                 class "gps-sub": estilo de texto secundario menor. -->
             <div id="gps-velocidade" class="gps-sub"></div>
           </div>
+
+          <!-- Toggle switch (checkbox estilizado) para ligar/desligar o GPS.
+               ID "toggle-gps": o motorista.js escuta o evento "change" para
+               iniciar ou parar o watchPosition() e atualizar o badge no header. -->
           <label class="toggle">
             <input type="checkbox" id="toggle-gps" />
+            <!-- Elemento visual do toggle (trilho + bolinha deslizante).
+                 O CSS usa :checked + .slider para animar o estado ligado/desligado. -->
             <span class="slider"></span>
           </label>
         </div>
       </section>
+      <!-- /section GPS -->
 
-      <!-- FORM INICIAR VIAGEM (inline) -->
+      <!-- ======================================================
+           CARD: FORMULARIO DE INICIO DE VIAGEM (inline)
+           Exibido quando o motorista clica em "+ Iniciar viagem".
+           ID "form-iniciar-container": o JS alterna o atributo hidden
+           para mostrar/ocultar este formulario.
+           hidden: oculto por padrao.
+           ====================================================== -->
       <section class="card" id="form-iniciar-container" hidden>
+        <!-- Titulo com icone de prancheta -->
+        <!-- &#x1F4CB; = emoji de prancheta (clipboard) -->
         <div class="card-title"><span class="card-icon">&#x1F4CB;</span>Nova viagem</div>
+
+        <!-- Formulario de inicio de viagem.
+             ID "form-iniciar-viagem": o motorista.js escuta o "submit" para
+             enviar os dados da nova viagem via API para o backend. -->
         <form id="form-iniciar-viagem">
+
+          <!-- Cidade de partida (obrigatorio).
+               ID "nv-origem": valor lido pelo JS no submit. -->
           <div class="field"><label>Origem *</label><input id="nv-origem" placeholder="Cidade de partida" required /></div>
+
+          <!-- Cidade de destino (obrigatorio).
+               ID "nv-destino": valor lido pelo JS no submit. -->
           <div class="field"><label>Destino *</label><input id="nv-destino" placeholder="Cidade de destino" required /></div>
+
+          <!-- Descricao da carga ou servico (opcional).
+               ID "nv-carga": pode ficar vazio. -->
           <div class="field"><label>Carga / Servico</label><input id="nv-carga" placeholder="Ex: Graneis, entrega..." /></div>
+
+          <!-- Quilometragem inicial do odometro (obrigatorio, numero decimal).
+               ID "nv-km": usado pelo sistema para calcular km rodados ao finalizar. -->
           <div class="field"><label>KM inicial *</label><input id="nv-km" type="number" step="0.1" placeholder="0" required /></div>
+
+          <!-- Selecao do veiculo que sera utilizado na viagem.
+               ID "nv-veiculo": as <option>s sao populadas dinamicamente pelo motorista.js
+               buscando os veiculos cadastrados e disponiveis na API. -->
           <div class="field"><label>Veiculo</label><select id="nv-veiculo"><option value="">Selecione...</option></select></div>
+
+          <!-- Observacoes opcionais (ocorrencias, instrucoes especiais etc.).
+               ID "nv-obs": salvo junto com a viagem. -->
           <div class="field"><label>Observacao</label><input id="nv-obs" placeholder="Opcional..." /></div>
+
+          <!-- Linha de botoes: confirmar envio ou cancelar o formulario -->
           <div class="btn-row">
+            <!-- Confirma e envia os dados da nova viagem para a API -->
             <button class="btn-primary" type="submit">Confirmar</button>
+
+            <!-- Cancela e fecha o formulario sem salvar.
+                 ID "btn-cancelar-iniciar": o JS escuta e oculta o form novamente. -->
             <button class="btn-ghost" type="button" id="btn-cancelar-iniciar">Cancelar</button>
           </div>
+
+          <!-- Mensagem de erro do formulario de inicio de viagem.
+               ID "nv-erro": o JS insere texto de erro de validacao ou da API aqui. -->
           <p id="nv-erro" class="msg-erro"></p>
         </form>
       </section>
+      <!-- /section#form-iniciar-container -->
 
-      <!-- FORM FINALIZAR VIAGEM -->
+      <!-- ======================================================
+           CARD: FORMULARIO DE FINALIZACAO DE VIAGEM
+           Exibido quando o motorista clica em "Finalizar viagem".
+           ID "form-finalizar-container": JS alterna o atributo hidden.
+           hidden: oculto por padrao.
+           ====================================================== -->
       <section class="card" id="form-finalizar-container" hidden>
+        <!-- Titulo com icone de bandeira de chegada -->
+        <!-- &#x1F3C1; = emoji de bandeira quadriculada (chegada) -->
         <div class="card-title"><span class="card-icon">&#x1F3C1;</span>Finalizar viagem</div>
+
+        <!-- Formulario de encerramento de viagem.
+             ID "form-finalizar-viagem": o motorista.js escuta o "submit" para
+             registrar o km final, calcular a distancia percorrida e encerrar
+             a viagem na API. -->
         <form id="form-finalizar-viagem">
+
+          <!-- Quilometragem final do odometro (obrigatorio).
+               ID "fv-km": o JS valida que este valor e maior que o km inicial.
+               A diferenca (km final - km inicial) registra os km rodados. -->
           <div class="field"><label>KM final *</label><input id="fv-km" type="number" step="0.1" placeholder="0" required /></div>
+
+          <!-- Observacoes do encerramento: ocorrencias, abastecimento etc.
+               ID "fv-obs": salvo junto com o registro de finalizacao. -->
           <div class="field"><label>Observacao</label><input id="fv-obs" placeholder="Ocorrencias, combustivel..." /></div>
+
+          <!-- Linha de botoes -->
           <div class="btn-row">
+            <!-- Botao de finalizar: estilo vermelho solido (btn-danger-fill) para indicar
+                 que esta e uma acao definitiva.
+                 class "btn-primary" define o layout; "btn-danger-fill" sobreescreve a cor. -->
             <button class="btn-danger-fill btn-primary" type="submit">Finalizar</button>
+
+            <!-- Cancela o encerramento e fecha o formulario.
+                 ID "btn-cancelar-finalizar": o JS escuta e oculta o form. -->
             <button class="btn-ghost" type="button" id="btn-cancelar-finalizar">Cancelar</button>
           </div>
+
+          <!-- Mensagem de erro do formulario de finalizacao.
+               ID "fv-erro": o JS insere erros de validacao ou da API aqui. -->
           <p id="fv-erro" class="msg-erro"></p>
         </form>
       </section>
+      <!-- /section#form-finalizar-container -->
 
-      <!-- HISTORICO -->
+      <!-- ======================================================
+           CARD: HISTORICO DE VIAGENS
+           Lista as ultimas viagens realizadas pelo motorista logado.
+           ====================================================== -->
       <section class="card">
+        <!-- Titulo com icone de calendario -->
+        <!-- &#x1F4C5; = emoji de calendario -->
         <div class="card-title"><span class="card-icon">&#x1F4C5;</span>Historico de viagens</div>
+
+        <!-- Container da lista de viagens.
+             ID "lista-viagens": o motorista.js injeta o HTML dos itens de viagem aqui
+             apos buscar os dados da API. Cada item e gerado dinamicamente com
+             origem, destino, datas, km rodados e status (ativa/finalizada).
+             Enquanto carrega, exibe "Carregando...". -->
         <div id="lista-viagens">
           <p class="vazio">Carregando...</p>
         </div>
       </section>
+      <!-- /section historico -->
 
     </main>
-  </div>
+    <!-- /main.app-main -->
 
+  </div>
+  <!-- /div#tela-app -->
+
+  <!-- ============================================================
+       TOAST — Notificacao flutuante de feedback ao usuario
+       ID "toast": o motorista.js controla sua visibilidade, texto e classe
+       para exibir mensagens de sucesso (class "ok") ou erro (class "erro").
+       hidden: oculto por padrao; o JS remove o atributo e adiciona a classe
+       correspondente ao tipo de notificacao.
+       Posicionado no centro inferior da tela via CSS (position: fixed).
+       ============================================================ -->
   <div id="toast" class="toast" hidden></div>
 
+  <!-- ============================================================
+       SCRIPT PRINCIPAL — Logica do app do motorista
+       Carregado ao final do body para garantir que o DOM esteja pronto.
+       Gerencia: autenticacao, viagens, GPS, historico e toasts.
+       (v=1 para cache busting)
+       ============================================================ -->
   <script src="motorista.js?v=1"></script>
+
 </body>
 </html>

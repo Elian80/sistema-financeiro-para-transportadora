@@ -1,25 +1,93 @@
 ﻿// =========================================================
+// app.js — Frontend principal do Sistema Financeiro para Transportadoras
+//
+// Arquitetura:
+//   SPA (Single Page Application) em JavaScript puro, sem framework.
+//   Toda navegação ocorre via loadPage(), que injeta HTML no elemento
+//   #page-content e chama a função iniciar*() correspondente.
+//
+// Autenticação:
+//   JWT armazenado em sessionStorage ("financeiro_access_token" e
+//   "financeiro_usuario"). Usuário não autenticado é redirecionado
+//   para login.html. Token expirado gera 401 e também redireciona.
+//
+// Comunicação com backend:
+//   FastAPI rodando em http://127.0.0.1:8001 (Electron/local) ou
+//   mesma origem (web). Funções apiGet, apiSend, apiPut, apiDelete
+//   centralizam todas as chamadas fetch com header Authorization.
+//
+// Multi-tenant:
+//   Usuário com perfil "master" acessa o painel admin (todas as
+//   empresas). Outros perfis visualizam apenas dados da própria empresa.
+//
+// Páginas disponíveis (objeto pages):
+//   dashboard, veiculos, motoristas, planoContas, lancamentos,
+//   contasReceber, relatorios, ativosPassivos, estoque,
+//   configuracoes, admin, mapa
+//
+// Mapa:
+//   Leaflet.js + OpenStreetMap. Atualização automática a cada 5s via
+//   setInterval. Marcadores por motorista, com popup e lista lateral.
+//
+// Estoque:
+//   Edição inline diretamente na linha da tabela (editarProduto).
+//   Painéis "Novo produto" e "Movimentar" abrem dentro da página,
+//   sem modal flutuante.
+//
+// App mobile dos motoristas:
+//   Arquivo separado (motorista.html). Acessos gerenciados pelo admin.
+//
+// Estrutura de seções neste arquivo:
+//   1. Configuração base da API e constantes
+//   2. Elementos DOM fixos (sidebar, topbar, botões globais)
+//   3. Tabela de INSS 2026 e função de cálculo progressivo
+//   4. Variáveis de estado global (edição, cache, mapa, filtros)
+//   5. Objeto pages — HTML de cada página (render)
+//   6. Funções auxiliares (formatação, normalização, escape)
+//   7. Funções de API (apiGet, apiSend, apiPut, apiDelete, authHeaders)
+//   8. Módulos de cada página (veículos, motoristas, lançamentos, etc.)
+//   9. Estoque — painéis inline e edição em linha de tabela
+//  10. Admin master (empresas, usuários, auditoria, acessos motorista)
+//  11. Relatórios e Dashboard (gráficos, KPIs, DRE)
+//  12. Mapa em tempo real (Leaflet, marcadores, lista lateral)
+//  13. Sidebar, topbar, navegação, popups de filtros
+//  14. Inicialização geral (DOMContentLoaded substituto inline)
+// =========================================================
+
+// =========================================================
 // CONFIGURACAO BASE DA API
+//
+// Em ambiente Electron (protocol === "file:"), aponta para o
+// backend local. Em produção web, usa a mesma origem (string vazia),
+// já que o front é servido pelo próprio FastAPI via StaticFiles.
 // =========================================================
 const API_URL = window.location.protocol === "file:" ? "http://127.0.0.1:8001" : "";
 
 // =========================================================
 // ELEMENTOS FIXOS DA TELA PRINCIPAL
+//
+// Referências aos nós DOM que existem em index.html durante toda
+// a sessão. São reutilizados a cada troca de página sem precisar
+// ser re-consultados, pois o shell (sidebar + topbar) nunca é
+// desmontado — apenas o conteúdo interno (#page-content) muda.
 // =========================================================
-const pageContent = document.getElementById("page-content");
-const pageTitle = document.getElementById("page-title");
-const pageSubtitle = document.getElementById("page-subtitle");
-const navButtons = document.querySelectorAll(".nav-btn");
-const logoutBtn = document.getElementById("logout-btn");
-const themeToggleBtn = document.getElementById("theme-toggle-btn");
-const settingsBtn = document.getElementById("settings-btn");
-const notificationBtn = document.getElementById("notification-btn");
-const globalSearch = document.getElementById("global-search");
-const sidebar = document.getElementById("sidebar");
-const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
-const mobileMenuBtn = document.getElementById("mobile-menu-btn");
-const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+const pageContent = document.getElementById("page-content");       // Área de conteúdo trocada a cada página
+const pageTitle = document.getElementById("page-title");           // Título exibido na topbar
+const pageSubtitle = document.getElementById("page-subtitle");     // Subtítulo exibido na topbar
+const navButtons = document.querySelectorAll(".nav-btn");          // Botões de navegação do menu lateral
+const logoutBtn = document.getElementById("logout-btn");           // Botão de encerrar sessão
+const themeToggleBtn = document.getElementById("theme-toggle-btn"); // Alternar tema claro/escuro
+const settingsBtn = document.getElementById("settings-btn");       // Atalho para a página de configurações
+const notificationBtn = document.getElementById("notification-btn"); // Botão de notificações (futuro)
+const globalSearch = document.getElementById("global-search");     // Campo de busca global de páginas
+const sidebar = document.getElementById("sidebar");                // Container do menu lateral
+const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn"); // Recolher/expandir sidebar (desktop)
+const mobileMenuBtn = document.getElementById("mobile-menu-btn");  // Abrir sidebar em tela mobile
+const sidebarBackdrop = document.getElementById("sidebar-backdrop"); // Backdrop escuro (mobile) para fechar sidebar
 
+// Tabela progressiva de INSS vigente para 2026.
+// Cada faixa define o teto salarial e a alíquota aplicada sobre
+// a parcela do salário dentro daquela faixa (modelo cascata).
 const TABELA_INSS_2026 = [
   { limite: 1621.00, aliquota: 0.075 },
   { limite: 2902.84, aliquota: 0.09 },
@@ -27,6 +95,10 @@ const TABELA_INSS_2026 = [
   { limite: 8475.55, aliquota: 0.14 },
 ];
 
+// Extrai a mensagem de erro de um objeto de resposta da API FastAPI.
+// O campo "detail" pode ser string (erro simples) ou array de objetos
+// de validação (erro 422 do Pydantic). Garante que o usuário receba
+// uma mensagem legível em vez de "[object Object]".
 function extrairMensagemErroApi(resultado, padrao = "Erro na operacao.") {
   const detalhe = resultado?.detail;
   if (Array.isArray(detalhe)) {
@@ -40,26 +112,52 @@ function extrairMensagemErroApi(resultado, padrao = "Erro na operacao.") {
 }
 
 // =========================================================
-// CONTROLES DE EDICAO
+// ESTADO GLOBAL DA APLICACAO
+//
+// Variáveis let compartilhadas entre módulos. Cada "editando*Id"
+// controla se o formulário daquela entidade está em modo de edição
+// (PUT) ou criação (POST). Quando null, o form cria um novo registro.
+//
+// cacheVeiculos: lista de veículos carregada uma vez e reutilizada
+//   em múltiplas páginas (lançamentos, contas a receber, relatórios).
+//
+// filtroPeriodoFolha: período (YYYY-MM) selecionado no histórico de
+//   folhas de pagamento. Preservado entre re-renders da seção.
+//
+// adminEmpresaFiltro: ID da empresa selecionada no painel admin para
+//   filtrar usuários e logs. String vazia = todas as empresas.
+//
+// mapaInstancia: instância Leaflet ativa. Destruída ao sair da página
+//   mapa para liberar memória e evitar vazamentos de evento.
+//
+// mapaMarkers: Map<motorista_acesso_id, L.Marker>. Mantém referências
+//   aos marcadores para atualizá-los sem recriar (performance).
+//
+// mapaAtualizacaoTimer: ID do setInterval de atualização do mapa.
+//   Armazenado para poder ser cancelado (clearInterval) ao trocar de página.
 // =========================================================
-let editandoVeiculoId = null;
-let editandoMotoristaId = null;
-let editandoLancamentoId = null;
-let editandoPlanoContaId = null;
-let editandoContaReceberId = null;
-let editandoAtivoId = null;
-let editandoPassivoId = null;
-let editandoProdutoId = null;
-let cacheVeiculos = [];
-let filtroPeriodoFolha = "";
-let adminEmpresaFiltro = "";
-let mapaInstancia = null;
-let mapaMarkers = new Map();
-let mapaAtualizacaoTimer = null;
+let editandoVeiculoId = null;        // ID do veículo em edição, ou null para novo cadastro
+let editandoMotoristaId = null;      // ID do motorista em edição
+let editandoLancamentoId = null;     // ID do lançamento em edição
+let editandoPlanoContaId = null;     // ID da classificação do plano de contas em edição
+let editandoContaReceberId = null;   // ID da conta a receber em edição
+let editandoAtivoId = null;          // ID do ativo em edição
+let editandoPassivoId = null;        // ID do passivo em edição
+let editandoProdutoId = null;        // ID do produto de estoque em edição inline
+let cacheVeiculos = [];              // Cache da lista de veículos (evita múltiplas requisições)
+let filtroPeriodoFolha = "";         // Filtro de período (YYYY-MM) do histórico de folhas
+let adminEmpresaFiltro = "";         // Empresa selecionada no painel admin para filtrar dados
+let mapaInstancia = null;            // Instância Leaflet do mapa operacional
+let mapaMarkers = new Map();         // Marcadores dos motoristas no mapa (Map por ID)
+let mapaAtualizacaoTimer = null;     // Timer do setInterval de atualização automática do mapa
 
+// Injeta o ícone Lucide e o label textual em cada botão de navegação.
+// Executada uma única vez na inicialização. Lê o atributo data-icon
+// para escolher o ícone; usa data-short ou as 2 primeiras letras como
+// fallback quando o Lucide não estiver disponível (modo offline).
 function aplicarIconesNavegacao() {
   navButtons.forEach((button) => {
-    if (button.querySelector(".nav-icon")) return;
+    if (button.querySelector(".nav-icon")) return; // Já foi processado
     const iconName = button.dataset.icon || "circle";
     const label = button.textContent.trim();
     const fallback = button.dataset.short || label.slice(0, 2).toUpperCase();
@@ -68,12 +166,26 @@ function aplicarIconesNavegacao() {
 }
 
 // =========================================================
-// DEFINICAO DAS PAGINAS DO SISTEMA
+// HELPERS DE UI — Componentes reutilizaveis de HTML
+//
+// Estas funções retornam fragmentos HTML (strings) que são embutidos
+// no render() de cada página. Não fazem requisições, apenas geram markup.
 // =========================================================
+
+// Gera o botão que abre o painel de filtros correspondente.
+// O atributo data-filter-target é lido por iniciarBotoesPopupFiltros()
+// para conectar o clique ao painel correto.
 function botaoFiltros(painelId, texto = "Filtros") {
   return `<button type="button" class="ghost-btn filter-open-btn" data-filter-target="${painelId}">${texto}</button>`;
 }
 
+// Gera o HTML completo do popup de filtros: overlay + card com cabeçalho e conteúdo.
+// O painel começa oculto (aria-hidden="true") e é aberto por abrirPopupFiltros().
+// Parâmetros:
+//   painelId  — ID único do elemento (usado para abrir/fechar)
+//   titulo    — Título exibido no cabeçalho do popup
+//   subtitulo — Texto descritivo abaixo do título
+//   conteudo  — HTML interno (campos de filtro) gerado pelo chamador
 function popupFiltros(painelId, titulo, subtitulo, conteudo) {
   return `
     <div id="${painelId}" class="filters-panel filter-popup" aria-hidden="true">
@@ -91,6 +203,9 @@ function popupFiltros(painelId, titulo, subtitulo, conteudo) {
   `;
 }
 
+// Gera um SVG minimalista de sparkline (mini gráfico de linha) para os cards KPI.
+// Os pontos são coordenadas SVG no formato "x,y x,y..." preestabelecidas por card,
+// representando uma tendência visual decorativa (não reflete dados reais em tempo real).
 function sparklineSvg(pontos = "4,32 18,22 32,28 46,14 60,18 74,8 88,12") {
   return `
     <svg class="sparkline" viewBox="0 0 92 38" aria-hidden="true">
@@ -99,11 +214,17 @@ function sparklineSvg(pontos = "4,32 18,22 32,28 46,14 60,18 74,8 88,12") {
   `;
 }
 
+// Gera o badge de tendência (ex.: "+12,3%") exibido nos cards KPI do dashboard.
+// tipo: "positive" | "negative" | "warning" — controla a cor via CSS.
 function kpiTrend(valor, tipo = "positive") {
   const texto = valor || "+0.0%";
   return `<span class="kpi-trend ${tipo}">${texto}</span>`;
 }
 
+// Calcula o desconto de INSS pelo modelo progressivo (cascata) de 2026.
+// Aplica alíquota de cada faixa apenas sobre a parcela do salário
+// que cai dentro daquela faixa, até o teto de R$ 8.475,55.
+// Retorna o valor total de desconto em reais, arredondado em 2 casas.
 function calcularInssAutomatico(baseCalculo) {
   const teto = TABELA_INSS_2026[TABELA_INSS_2026.length - 1].limite;
   const base = Math.min(Math.max(normalizarNumero(baseCalculo), 0), teto);
@@ -490,26 +611,18 @@ const pages = {
             </div>
 
             <div class="field full" id="bloco-estoque-vinculo">
-              <label for="estoque-busca">Vincular item do estoque como saida (opcional)</label>
-              <div class="estoque-busca-container">
-                <input
-                  type="text"
-                  id="estoque-busca"
-                  placeholder="Digite o nome do produto..."
-                  autocomplete="off"
-                />
-                <ul id="estoque-sugestoes" class="estoque-sugestoes" style="display:none;"></ul>
-              </div>
-              <input type="hidden" id="estoque-item-id" />
-              <div id="estoque-item-selecionado" class="estoque-item-badge" style="display:none;">
-                <span id="estoque-item-nome"></span>
-                <span id="estoque-item-disponivel" class="estoque-qtd-badge"></span>
-                <button type="button" class="estoque-limpar-btn" id="btn-limpar-estoque" title="Remover vinculo">&#10005;</button>
-              </div>
-              <div class="field" id="campo-estoque-quantidade" style="display:none; margin-top:8px;">
-                <label for="estoque-quantidade">Quantidade a dar saida</label>
-                <input type="number" id="estoque-quantidade" step="0.001" min="0.001" placeholder="0" />
-                <span id="estoque-quantidade-aviso" class="estoque-aviso" style="display:none;"></span>
+              <label>Vincular item do estoque como saida (opcional)</label>
+              <div style="display:flex; gap:12px; align-items:flex-end;">
+                <div style="flex:1;">
+                  <select id="estoque-item-id" style="width:100%;">
+                    <option value="">Nenhum</option>
+                  </select>
+                </div>
+                <div id="campo-estoque-quantidade" style="display:none; flex:0 0 180px;">
+                  <label for="estoque-quantidade" style="font-size:0.82rem;">Quantidade</label>
+                  <input type="number" id="estoque-quantidade" step="0.001" min="0.001" placeholder="0" style="width:100%;" />
+                  <span id="estoque-quantidade-aviso" class="estoque-aviso" style="display:none;"></span>
+                </div>
               </div>
             </div>
 
@@ -1349,7 +1462,14 @@ const pages = {
 
 // =========================================================
 // FUNCOES AUXILIARES GERAIS
+//
+// Funções de formatação, normalização e utilitários usados
+// em múltiplos módulos da aplicação.
 // =========================================================
+
+// Converte qualquer valor para número float, lidando com formatos BR e EN.
+// Aceita strings como "1.234,56" (BR), "1234.56" (EN), objetos Number e null/undefined.
+// Retorna 0 em vez de NaN para evitar erros em cálculos downstream.
 function normalizarNumero(valor) {
   if (valor === null || valor === undefined || valor === "") return 0;
 
@@ -1371,6 +1491,8 @@ function normalizarNumero(valor) {
   return isNaN(numero) ? 0 : numero;
 }
 
+// Formata um n\u00famero como moeda BRL (ex.: R$ 1.234,56).
+// Usa normalizarNumero internamente, ent\u00e3o aceita strings formatadas.
 function formatarValor(valor) {
   const numero = normalizarNumero(valor);
 
@@ -1380,11 +1502,15 @@ function formatarValor(valor) {
   });
 }
 
+// Formata um n\u00famero como percentual com 1 casa decimal no padr\u00e3o PT-BR (ex.: "12,3%").
+// Retorna "0,0%" para valores n\u00e3o finitos (Infinity, NaN).
 function formatarPercentual(valor) {
   if (!Number.isFinite(valor)) return "0,0%";
   return `${valor.toFixed(1).replace(".", ",")}%`;
 }
 
+// Remove acentos e converte para min\u00fasculas para compara\u00e7\u00f5es case-insensitive
+// e accent-insensitive. Usada em filtros e verifica\u00e7\u00f5es de classifica\u00e7\u00e3o.
 function normalizarTexto(texto) {
   return String(texto || "")
     .normalize("NFD")
@@ -1392,11 +1518,16 @@ function normalizarTexto(texto) {
     .toLowerCase();
 }
 
+// Heur\u00edstica simples para determinar se um lan\u00e7amento \u00e9 uma receita.
+// Verifica se a classifica\u00e7\u00e3o ou descri\u00e7\u00e3o cont\u00e9m palavras-chave de receita.
+// Usado no dashboard para separar receitas de despesas sem campo "tipo" expl\u00edcito.
 function lancamentoEhReceita(item) {
   const texto = normalizarTexto(`${item.classificacao || ""} ${item.descricao || ""}`);
   return texto.includes("receita") || texto.includes("recebimento") || texto.includes("servicos prestados");
 }
 
+// Converte data ISO (YYYY-MM-DD) para o formato visual brasileiro (DD/MM/YYYY).
+// Faz o split manual para evitar problemas de fuso hor\u00e1rio do construtor Date().
 function formatarDataCurta(dataIso) {
   if (!dataIso) return "-";
   const partes = String(dataIso).split("-");
@@ -1404,10 +1535,15 @@ function formatarDataCurta(dataIso) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
+// Verifica se uma classifica\u00e7\u00e3o se refere a combust\u00edvel (case-insensitive, sem acento).
+// Usado para exibir/ocultar os campos extras de KM, litros e NF no formul\u00e1rio de lan\u00e7amento.
 function classificacaoEhCombustivel(valor) {
   return normalizarTexto(valor).includes("combustivel");
 }
 
+// Resolve o nome de exibi\u00e7\u00e3o de um ve\u00edculo a partir do cache local.
+// Retorna "Nome (Placa)" ou "-" se n\u00e3o encontrado.
+// Evita novas requisi\u00e7\u00f5es \u00e0 API para cada linha de tabela exibida.
 function nomeVeiculoPorId(veiculoId) {
   if (!veiculoId) return "-";
   const veiculo = cacheVeiculos.find(item => item.id === Number(veiculoId));
@@ -1417,7 +1553,20 @@ function nomeVeiculoPorId(veiculoId) {
 
 // =========================================================
 // FUNCOES DE API
+//
+// Camada de abstração sobre fetch(). Todas as chamadas ao backend
+// passam por aqui, garantindo que o token JWT seja sempre enviado
+// e que erros HTTP sejam convertidos em exceções com mensagem amigável.
+//
+// Fluxo padrão de cada função:
+//   1. Monta URL completa prefixando API_URL
+//   2. Inclui header Authorization: Bearer <token> via authHeaders()
+//   3. Lança Error se response.ok === false (qualquer status >= 400)
+//   4. Redireciona para login.html em caso de 401 (token expirado)
 // =========================================================
+
+// GET genérico: busca dados do backend. Usado em todos os carregamentos
+// de listas e dados de relatório. Lança exceção em caso de erro HTTP.
 async function apiGet(url) {
   const response = await fetch(`${API_URL}${url}`, { headers: authHeaders() });
   const resultado = await response.json();
@@ -1430,6 +1579,8 @@ async function apiGet(url) {
   return resultado;
 }
 
+// DELETE genérico: remove um registro pelo ID na URL (ex.: /veiculos/5).
+// Confirmação com confirm() deve ser feita pelo chamador antes de invocar.
 async function apiDelete(url) {
   const response = await fetch(`${API_URL}${url}`, {
     method: "DELETE",
@@ -1446,6 +1597,9 @@ async function apiDelete(url) {
   return resultado;
 }
 
+// Envio genérico com corpo JSON: usado para POST, PUT e PATCH.
+// O parâmetro method permite reutilizar a mesma função para criar e editar.
+// Serializa payload como JSON e define Content-Type automaticamente.
 async function apiSend(url, method, payload) {
   const response = await fetch(`${API_URL}${url}`, {
     method,
@@ -1463,15 +1617,28 @@ async function apiSend(url, method, payload) {
   return resultado;
 }
 
+// Alias semântico para PUT: garante legibilidade nas chamadas de edição inline de estoque.
+async function apiPut(url, payload) {
+  return apiSend(url, "PUT", payload);
+}
+
+// Lê o token JWT do sessionStorage. Retorna string vazia se não autenticado.
+// sessionStorage é limpo ao fechar a aba, forçando novo login por sessão.
 function getAccessToken() {
   return sessionStorage.getItem("financeiro_access_token") || "";
 }
 
+// Monta o objeto de headers com o token JWT no formato Bearer.
+// Aceita headers adicionais via parâmetro (ex.: Content-Type para requisições com body).
+// Se não há token, retorna apenas os headers extras sem Authorization.
 function authHeaders(headers = {}) {
   const token = getAccessToken();
   return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
 }
 
+// Intercepta resposta 401 (não autorizado / token expirado).
+// Remove dados de sessão e redireciona para login.html imediatamente.
+// Chamada por apiGet, apiSend e apiDelete após cada fetch.
 function tratarNaoAutorizado(response) {
   if (response.status !== 401) return;
   sessionStorage.removeItem("financeiro_access_token");
@@ -1479,22 +1646,33 @@ function tratarNaoAutorizado(response) {
   window.location.href = "login.html";
 }
 
+// Proteção de rota: chamada na inicialização para garantir que o usuário
+// esteja autenticado antes de qualquer renderização. Redireciona se não há token.
 function exigirLogin() {
   if (!getAccessToken()) {
     window.location.href = "login.html";
   }
 }
 
+// Exibe mensagem de erro amigável dentro de um container DOM.
+// Usada como fallback quando uma seção específica falha ao carregar,
+// sem bloquear o restante da página.
 function mostrarErroAmigavel(containerId, erro) {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = `<p class="empty-row">Nao foi possivel carregar os dados. ${erro.message || ""}</p>`;
 }
 
+// Abre a URL de exportação (PDF ou Excel) em nova aba do navegador.
+// A rota do backend retorna o arquivo diretamente como resposta HTTP,
+// por isso é suficiente abrir via window.open.
 function abrirExportacao(url) {
   window.open(`${API_URL}${url}`, "_blank");
 }
 
+// Exibe uma notificação tipo "toast" flutuante na tela por 3,5 segundos.
+// Cria o container #toast-container se ainda não existir no DOM.
+// tipo: "success" (verde) | "error" (vermelho) — controlado via CSS.
 function mostrarToast(mensagem, tipo = "success") {
   let container = document.getElementById("toast-container");
   if (!container) {
@@ -1512,11 +1690,28 @@ function mostrarToast(mensagem, tipo = "success") {
 
 // =========================================================
 // MODULO DE VEICULOS
+//
+// Gerencia o CRUD completo da frota: listagem em cards visuais,
+// formulário inline de criação/edição, filtros e totalizadores.
+//
+// Fluxo de renderização:
+//   1. renderizarVeiculos() carrega a lista, aplica filtros locais e
+//      gera um card HTML por veículo com foto ou ícone de fallback.
+//   2. abrirFormVeiculo() injeta o formulário em #form-veiculo-container.
+//   3. O botão salvar chama apiSend (POST ou PUT) e re-renderiza.
+//   4. Editar e excluir são funções globais (window.*) chamadas via onclick nos cards.
+//
+// Cache: após cada carregamento, cacheVeiculos é atualizado para
+// ser reutilizado por lançamentos, contas a receber e relatórios.
 // =========================================================
+
+// Busca a lista completa de veículos da empresa no backend.
 async function carregarVeiculos() {
   return apiGet("/veiculos");
 }
 
+// Retorna o emoji correspondente ao tipo de veículo para o fallback visual
+// quando o veículo não possui foto cadastrada.
 function iconePorTipo(tipo) {
   if (tipo === "Caminhao") return "🚚";
   if (tipo === "Carro") return "🚗";
@@ -1525,6 +1720,9 @@ function iconePorTipo(tipo) {
   return "🚘";
 }
 
+// Lê um arquivo de imagem do input type="file" e retorna sua representação
+// em Base64 (data URL). Usado para armazenar a foto do veículo e logo da empresa.
+// Retorna string vazia se nenhum arquivo foi fornecido.
 function arquivoParaBase64(arquivo) {
   return new Promise((resolve, reject) => {
     if (!arquivo) {
@@ -1539,6 +1737,8 @@ function arquivoParaBase64(arquivo) {
   });
 }
 
+// Filtra a lista de veículos localmente com base nos valores atuais dos campos de filtro.
+// Executada antes de renderizar os cards, sem nova requisição ao backend.
 function aplicarFiltrosVeiculos(lista) {
   const nome = document.getElementById("filtro-veiculo-nome")?.value.trim().toLowerCase() || "";
   const placa = document.getElementById("filtro-veiculo-placa")?.value.trim().toLowerCase() || "";
@@ -1555,6 +1755,9 @@ function aplicarFiltrosVeiculos(lista) {
   });
 }
 
+// Conecta os botões "Filtrar" e "Limpar filtros" do popup de veículos.
+// Chamada por loadPage("veiculos") após o HTML ser renderizado.
+// Ao filtrar, fecha o popup e re-renderiza os cards com os filtros ativos.
 function iniciarFiltrosVeiculos() {
   const btnFiltrar = document.getElementById("btn-filtrar-veiculos");
   const btnLimpar = document.getElementById("btn-limpar-filtro-veiculos");
@@ -1578,6 +1781,8 @@ function iniciarFiltrosVeiculos() {
   }
 }
 
+// Atualiza os 4 cards KPI da página de veículos (total, ativos, manutenção, inativos)
+// com base na lista já filtrada. Chamada sempre após renderizarVeiculos().
 function atualizarTotalizadoresVeiculos(veiculos) {
   const total = document.getElementById("veiculos-total");
   const ativos = document.getElementById("veiculos-ativos");
@@ -1592,6 +1797,9 @@ function atualizarTotalizadoresVeiculos(veiculos) {
   inativos.textContent = veiculos.filter(v => v.status === "Inativo").length;
 }
 
+// Carrega veículos do backend, aplica filtros locais e gera os cards HTML.
+// Cada card exibe foto (ou ícone emoji como fallback), dados do veículo,
+// badge de status e botões de editar/excluir.
 async function renderizarVeiculos() {
   const container = document.getElementById("lista-veiculos");
   if (!container) return;
@@ -1663,6 +1871,11 @@ async function renderizarVeiculos() {
   }).join("");
 }
 
+// Injeta o formulário de veículo em #form-veiculo-container.
+// Funciona tanto para criar (editandoVeiculoId = null) quanto para editar.
+// O preview da foto é atualizado em tempo real ao selecionar arquivo.
+// O botão salvar monta o payload e chama apiSend (POST ou PUT).
+// Botão cancelar limpa o container e reseta o estado de edição.
 function abrirFormVeiculo(
   nome = "",
   marca = "",
@@ -1809,6 +2022,8 @@ function abrirFormVeiculo(
   };
 }
 
+// Exposta globalmente (window.*) para ser chamada via onclick no card do veículo.
+// Carrega os dados atuais do veículo, define o modo de edição e pré-preenche o formulário.
 window.editarVeiculoPorId = async (id) => {
   const veiculos = await carregarVeiculos();
   const veiculo = veiculos.find(item => item.id === id);
@@ -1829,6 +2044,8 @@ window.editarVeiculoPorId = async (id) => {
   );
 };
 
+// Exposta globalmente para o onclick do card. Exige confirmação antes de excluir.
+// Após exclusão bem-sucedida, re-renderiza a grade de veículos.
 window.excluirVeiculo = async (id) => {
   if (!confirm("Deseja excluir este veiculo?")) return;
 
@@ -1838,11 +2055,26 @@ window.excluirVeiculo = async (id) => {
 
 // =========================================================
 // MODULO DE MOTORISTAS
+//
+// Gerencia o cadastro de motoristas e o processamento da folha
+// de pagamento mensal com cálculo automático de INSS (progressivo),
+// IRRF, vale refeição, adiantamento e outros descontos.
+//
+// Subseções deste módulo:
+//   - CRUD de motoristas (renderizarMotoristas, abrirFormMotorista)
+//   - Cálculo de folha (calcularLinhaFolha, atualizarTotaisFolha)
+//   - Geração e impressão de recibo (renderizarReciboPagamento)
+//   - Histórico de folhas salvas (renderizarHistoricoFolha)
+//   - Modal de lançamento de folha (abrirTelaFolhaPagamento)
 // =========================================================
+
+// Busca a lista completa de motoristas da empresa no backend.
 async function carregarMotoristas() {
   return apiGet("/motoristas");
 }
 
+// Carrega motoristas e renderiza a tabela com colunas de nome, cargo,
+// salário base, telefone, CNH e botões de ação (Folha / Editar / Excluir).
 async function renderizarMotoristas() {
   const container = document.getElementById("lista-motoristas");
   if (!container) return;
@@ -1889,6 +2121,10 @@ async function renderizarMotoristas() {
   `;
 }
 
+// Injeta o formulário completo de motorista em #form-motorista-container.
+// Cobre dados pessoais, CNH, salário base, carga horária, descontos padrão
+// (INSS, IRRF, vale, convênio, outros) e dados bancários para holerite.
+// Funciona para criação (editandoMotoristaId = null) e edição.
 function abrirFormMotorista(dadosMotorista = {}) {
   const container = document.getElementById("form-motorista-container");
   if (!container) return;
@@ -2076,10 +2312,14 @@ window.excluirMotorista = async (id) => {
   await renderizarMotoristas();
 };
 
+// Busca o histórico completo de folhas de pagamento salvas no backend.
 async function carregarFolhasPagamento() {
   return apiGet("/folha-pagamento");
 }
 
+// Escapa caracteres HTML especiais para evitar XSS ao inserir dados
+// do usuário/backend diretamente em innerHTML.
+// Deve ser usada em TODOS os dados de texto não controlados exibidos via innerHTML.
 function escapeHtml(texto) {
   return String(texto ?? "")
     .replaceAll("&", "&amp;")
@@ -2089,6 +2329,12 @@ function escapeHtml(texto) {
     .replaceAll("'", "&#039;");
 }
 
+// Calcula todos os valores da linha de um motorista na folha de pagamento.
+// Lê os inputs do card do motorista (seletor via closest/querySelector),
+// aplica a lógica de INSS progressivo (calcularInssAutomatico), e
+// atualiza os campos de exibição (salário base, bruto, descontos, líquido).
+// Retorna um objeto com todos os valores calculados para uso posterior.
+// Chamada por atualizarTotaisFolha() e gerarDadosItemFolha().
 function calcularLinhaFolha(row) {
   const horasNormais = normalizarNumero(row.querySelector(".folha-horas-normais")?.value);
   const horasExtras = normalizarNumero(row.querySelector(".folha-horas-extras")?.value);
@@ -2131,6 +2377,9 @@ function calcularLinhaFolha(row) {
   return { salarioBase, valorExtras, adicionalNoturno, bonus, totalAdicionais, salarioBruto, descontoInss, fgts, totalDescontos, salarioLiquido, aplicarInss };
 }
 
+// Soma os valores calculados de todas as linhas da folha e exibe os totais
+// nos cards KPI do modal (total base, extras, bruto, descontos, líquido).
+// Chamada a cada input do usuário nos campos da folha (listener em todos os inputs).
 function atualizarTotaisFolha() {
   const totais = Array.from(document.querySelectorAll("[data-folha-motorista-id]"))
     .map(calcularLinhaFolha)
@@ -2157,6 +2406,9 @@ function atualizarTotaisFolha() {
   document.getElementById("folha-total-liquido").textContent = formatarValor(totais.salarioLiquido);
 }
 
+// Carrega e exibe o histórico de folhas salvas em tabela.
+// Suporta filtro por período (filtroPeriodoFolha, campo type="month").
+// Botões: Imprimir (abre o recibo para o primeiro motorista) e Excluir.
 async function renderizarHistoricoFolha() {
   const container = document.getElementById("historico-folha-container");
   if (!container) return;
@@ -2243,6 +2495,9 @@ async function renderizarHistoricoFolha() {
   };
 }
 
+// Coleta todos os campos de entrada de uma linha da folha e monta o objeto
+// que será enviado ao backend (POST /folha-pagamento, campo "itens").
+// Reutiliza calcularLinhaFolha() para obter os valores calculados (INSS, FGTS, etc.).
 function gerarDadosItemFolha(row) {
   const calculo = calcularLinhaFolha(row);
   return {
@@ -2272,6 +2527,10 @@ function gerarDadosItemFolha(row) {
   };
 }
 
+// Lê os checkboxes de "Dados exibidos no recibo" e retorna um objeto
+// com flags booleanas para cada seção do holerite (salário base, extras,
+// INSS, IRRF, vale, etc.). Enviado ao backend junto com a folha para
+// ser salvo e reutilizado na impressão futura.
 function obterOpcoesReciboFolha() {
   return {
     salario_base: document.getElementById("folha-mostrar-salario-base")?.checked !== false,
@@ -2287,6 +2546,11 @@ function obterOpcoesReciboFolha() {
   };
 }
 
+// Gera o HTML completo do recibo de pagamento de salário (holerite) para impressão.
+// Produz DUAS vias (empregador e empregado) em uma única página A4 horizontal.
+// A estrutura usa table para garantir alinhamento fiel ao modelo físico do holerite.
+// As seções (proventos, descontos, bases) são filtradas pelas opcoes_recibo da folha.
+// Chamada por imprimirReciboFolha() após recuperar os dados do motorista.
 function renderizarReciboPagamento(folha, item, motorista) {
   const opcoes = {
     salario_base: true,
@@ -2489,6 +2753,9 @@ function renderizarReciboPagamento(folha, item, motorista) {
   `;
 }
 
+// Busca os dados do motorista, gera o HTML do recibo e dispara window.print().
+// O recibo é injetado em #recibo-folha-container (criado dinamicamente se necessário).
+// A impressão inclui apenas o elemento com classe .print-area via CSS de mídia.
 async function imprimirReciboFolha(folha, item) {
   const motoristas = await carregarMotoristas();
   const motorista = motoristas.find((registro) => registro.id === item.motorista_id) || {};
@@ -2521,6 +2788,13 @@ window.abrirFolhaMotorista = async (motoristaId) => {
   await abrirTelaFolhaPagamento(motoristaId);
 };
 
+// Abre o modal de lançamento de folha de pagamento.
+// Se motoristaId for fornecido, exibe apenas aquele motorista (modo individual).
+// Se null, exibe todos os motoristas cadastrados (modo geral).
+// Pré-preenche os campos com os valores padrão de cada motorista (salário,
+// carga horária, hora extra, descontos padrão) calculados dinamicamente.
+// O botão "Gerar folha" valida os dados, chama POST /folha-pagamento e
+// imprime o recibo automaticamente se houver apenas 1 motorista na folha.
 async function abrirTelaFolhaPagamento(motoristaId = null) {
   const container = document.getElementById("folha-pagamento-container");
   if (!container) return;
@@ -2730,15 +3004,29 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
 
 // =========================================================
 // MODULO DE PLANO DE CONTAS
+//
+// Gerencia as classificações financeiras usadas nos lançamentos.
+// Duas listas coexistem na tela:
+//   1. Plano base (somente leitura): grupos e subclasses pré-definidos
+//      pelo sistema (/plano-contas/estrutura). Exibido em cards.
+//   2. Classificações personalizadas: criadas pela empresa via formulário.
+//      Aparecem na tabela editável e nos selects de classificação.
+//
+// Apenas subclasses (não grupos) entram nos selects de lançamentos.
 // =========================================================
+
+// Busca as classificações personalizadas (criadas pela empresa) no backend.
 async function carregarPlanoContas() {
   return apiGet("/plano-contas");
 }
 
+// Busca a estrutura hierárquica do plano base (grupos + itens pré-definidos).
 async function carregarEstruturaPlanoContas() {
   return apiGet("/plano-contas/estrutura");
 }
 
+// Renderiza o plano base em cards agrupados com código e nome do grupo
+// e os itens/subclasses de cada grupo listados dentro do card.
 async function renderizarEstruturaPlanoContas() {
   const container = document.getElementById("estrutura-plano-contas");
   if (!container) return;
@@ -2802,6 +3090,9 @@ async function renderizarPlanoContas() {
   `;
 }
 
+// Inicializa a página de plano de contas: carrega estrutura e lista,
+// conecta o submit do formulário (POST ou PUT) e o botão cancelar.
+// Chamada por loadPage("planoContas") após renderização do HTML.
 async function iniciarPlanoContas() {
   const form = document.getElementById("form-plano-conta");
   const inputNome = document.getElementById("plano-conta-nome");
@@ -2866,7 +3157,26 @@ window.excluirPlanoConta = async (id) => {
 
 // =========================================================
 // MODULO DE LANCAMENTOS
+//
+// Gerencia o registro de todas as movimentações financeiras da empresa.
+// Um lançamento possui: classificação (plano de contas), descrição,
+// valor, data, veículo vinculado (opcional), obra/serviço e campos
+// extras de combustível (KM, litros, NF) quando aplicável.
+//
+// Vínculo com estoque: ao salvar um lançamento de saída de produto,
+// o backend decrementa automaticamente o estoque do item vinculado.
+// O autocomplete (iniciarBuscaEstoque) filtra produtos em cache local.
+//
+// Fluxo de dados:
+//   1. iniciarModuloLancamentos() carrega selects e vincula eventos
+//   2. carregarLancamentos() aplica filtros e chama renderizarTabela()
+//   3. renderizarTabela() exibe linhas com botões Editar/Excluir
+//   4. editarLancamentoPorId() pré-preenche o form para PUT
+//   5. Reset via resetFormLancamento() volta ao modo POST
 // =========================================================
+
+// Carrega a lista de classificações da API e preenche os dois selects:
+// o do formulário de novo lançamento e o do filtro de pesquisa.
 async function carregarClassificacoes() {
   const classificacaoSelect = document.getElementById("classificacao");
   const filtroClassificacao = document.getElementById("filtro-classificacao");
@@ -2889,6 +3199,8 @@ async function carregarClassificacoes() {
   });
 }
 
+// Carrega veículos e preenche os selects de vínculo e filtro na página de lançamentos.
+// Atualiza cacheVeiculos para que nomeVeiculoPorId() funcione sem novas requisições.
 async function carregarVeiculosLancamento() {
   const selectVeiculo = document.getElementById("veiculo-id");
   const filtroVeiculo = document.getElementById("filtro-veiculo-id");
@@ -2922,6 +3234,9 @@ async function carregarVeiculosLancamento() {
   });
 }
 
+// Mostra ou oculta os campos extras de combustível (kilometragem, litros, NF, data NF)
+// com base na classificação selecionada. Chamada no evento "change" do select e
+// também no carregamento inicial e ao pré-preencher o formulário de edição.
 function alternarCamposCombustivel() {
   const classificacao = document.getElementById("classificacao")?.value || "";
   const campos = document.getElementById("campos-combustivel");
@@ -2938,8 +3253,8 @@ function alternarCamposCombustivel() {
 let cacheProdutosEstoqueLancamento = [];
 
 /**
- * Carrega todos os produtos do estoque da empresa atual.
- * Armazena em cache para evitar múltiplas requisições durante a sessão.
+ * Carrega produtos do estoque e popula o select de vínculo no formulário
+ * de lançamentos, igual ao padrão usado nas classificações.
  */
 async function carregarProdutosEstoqueLancamento() {
   try {
@@ -2947,89 +3262,71 @@ async function carregarProdutosEstoqueLancamento() {
   } catch {
     cacheProdutosEstoqueLancamento = [];
   }
+
+  const sel = document.getElementById("estoque-item-id");
+  if (!sel) return;
+
+  const valorAtual = sel.value;
+  sel.innerHTML = `<option value="">Nenhum</option>`;
+  cacheProdutosEstoqueLancamento.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = `${p.nome} (${p.quantidade_atual} ${p.unidade_medida})`;
+    opt.dataset.disponivel = p.quantidade_atual;
+    sel.appendChild(opt);
+  });
+
+  if (valorAtual) sel.value = valorAtual;
 }
 
 /**
- * Preenche o campo de busca de estoque ao editar um lançamento que já
- * possui um item de estoque vinculado. Restaura nome e quantidade exibida.
+ * Preenche o select de estoque ao editar um lançamento já vinculado.
  */
 function preencherEstoqueLancamento(item) {
-  const inputBusca = document.getElementById("estoque-busca");
-  const hiddenId = document.getElementById("estoque-item-id");
-  const divSelecionado = document.getElementById("estoque-item-selecionado");
-  const spanNome = document.getElementById("estoque-item-nome");
-  const spanDisponivel = document.getElementById("estoque-item-disponivel");
+  if (!item.estoque_item_id) return;
+
+  const sel = document.getElementById("estoque-item-id");
   const campoQtd = document.getElementById("campo-estoque-quantidade");
   const inputQtd = document.getElementById("estoque-quantidade");
 
-  if (!item.estoque_item_id || !inputBusca) return;
-
-  hiddenId.value = item.estoque_item_id;
-  inputBusca.value = item.estoque_item_nome || "";
-  spanNome.textContent = item.estoque_item_nome || "";
-  spanDisponivel.textContent = `Vinculado: ${item.estoque_quantidade || 0}`;
-  divSelecionado.style.display = "flex";
-  campoQtd.style.display = "block";
-  if (inputQtd) inputQtd.value = item.estoque_quantidade || "";
-}
-
-/**
- * Limpa todos os campos do vínculo de estoque (busca, selecionado, quantidade).
- * Chamado ao resetar o formulário ou ao clicar no botão ✕.
- */
-function limparSelecaoEstoque() {
-  const inputBusca = document.getElementById("estoque-busca");
-  const hiddenId = document.getElementById("estoque-item-id");
-  const divSelecionado = document.getElementById("estoque-item-selecionado");
-  const campoQtd = document.getElementById("campo-estoque-quantidade");
-  const inputQtd = document.getElementById("estoque-quantidade");
-  const aviso = document.getElementById("estoque-quantidade-aviso");
-
-  if (inputBusca) inputBusca.value = "";
-  if (hiddenId) hiddenId.value = "";
-  if (divSelecionado) divSelecionado.style.display = "none";
-  if (campoQtd) campoQtd.style.display = "none";
-  if (inputQtd) inputQtd.value = "";
-  if (aviso) aviso.style.display = "none";
-  document.getElementById("estoque-sugestoes").style.display = "none";
-}
-
-/**
- * Seleciona um produto do autocomplete, exibindo nome, quantidade disponível
- * e o campo de quantidade a ser dado como saída.
- */
-function selecionarItemEstoque(id, nome, quantidadeDisponivel, unidadeMedida) {
-  document.getElementById("estoque-item-id").value = id;
-  document.getElementById("estoque-busca").value = nome;
-  document.getElementById("estoque-item-nome").textContent = nome;
-  document.getElementById("estoque-item-disponivel").textContent =
-    `Disponivel: ${quantidadeDisponivel} ${unidadeMedida}`;
-  document.getElementById("estoque-item-selecionado").style.display = "flex";
-  document.getElementById("campo-estoque-quantidade").style.display = "block";
-  document.getElementById("estoque-sugestoes").style.display = "none";
-
-  // Armazenar disponível para validação local
-  const inputQtd = document.getElementById("estoque-quantidade");
+  if (sel) sel.value = item.estoque_item_id;
+  if (campoQtd) { campoQtd.style.display = "flex"; campoQtd.style.flexDirection = "column"; }
   if (inputQtd) {
-    inputQtd.dataset.disponivel = quantidadeDisponivel;
-    inputQtd.max = quantidadeDisponivel;
+    inputQtd.value = item.estoque_quantidade || "";
+    const opt = sel?.querySelector(`option[value="${item.estoque_item_id}"]`);
+    if (opt) inputQtd.dataset.disponivel = opt.dataset.disponivel;
   }
 }
 
 /**
- * Valida se a quantidade solicitada não excede o estoque disponível.
- * Exibe aviso visual e impede o envio se inválido.
- * Retorna true se válido, false se deve bloquear o submit.
+ * Limpa a seleção de estoque no formulário.
  */
-function validarQuantidadeEstoque() {
-  const hiddenId = document.getElementById("estoque-item-id");
+function limparSelecaoEstoque() {
+  const sel = document.getElementById("estoque-item-id");
+  const campoQtd = document.getElementById("campo-estoque-quantidade");
   const inputQtd = document.getElementById("estoque-quantidade");
   const aviso = document.getElementById("estoque-quantidade-aviso");
 
-  if (!hiddenId?.value || !inputQtd?.value) return true;
+  if (sel) sel.value = "";
+  if (campoQtd) campoQtd.style.display = "none";
+  if (inputQtd) inputQtd.value = "";
+  if (aviso) aviso.style.display = "none";
+}
+
+/**
+ * Valida se a quantidade solicitada não excede o estoque disponível.
+ * Retorna true se válido, false se deve bloquear o submit.
+ */
+function validarQuantidadeEstoque() {
+  const sel = document.getElementById("estoque-item-id");
+  const inputQtd = document.getElementById("estoque-quantidade");
+  const aviso = document.getElementById("estoque-quantidade-aviso");
+
+  if (!sel?.value || !inputQtd?.value) return true;
 
   const solicitado = normalizarNumero(inputQtd.value);
-  const disponivel = parseFloat(inputQtd.dataset.disponivel || 999999);
+  const opt = sel.querySelector(`option[value="${sel.value}"]`);
+  const disponivel = parseFloat(opt?.dataset.disponivel || 999999);
 
   if (solicitado <= 0) {
     aviso.textContent = "A quantidade deve ser maior que zero.";
@@ -3048,70 +3345,38 @@ function validarQuantidadeEstoque() {
 }
 
 /**
- * Inicializa o comportamento de autocomplete do campo de busca de estoque.
- * Filtra os produtos em cache conforme o usuário digita (debounce 300ms).
+ * Inicializa o evento change no select de estoque para mostrar/ocultar
+ * o campo de quantidade quando um item é selecionado.
  */
 function iniciarBuscaEstoque() {
-  const inputBusca = document.getElementById("estoque-busca");
-  const listaSugestoes = document.getElementById("estoque-sugestoes");
-  const btnLimpar = document.getElementById("btn-limpar-estoque");
+  const sel = document.getElementById("estoque-item-id");
+  if (!sel) return;
 
-  if (!inputBusca || !listaSugestoes) return;
+  sel.addEventListener("change", () => {
+    const campoQtd = document.getElementById("campo-estoque-quantidade");
+    const inputQtd = document.getElementById("estoque-quantidade");
+    const aviso = document.getElementById("estoque-quantidade-aviso");
 
-  let debounceTimer = null;
-
-  inputBusca.addEventListener("input", () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      const termo = inputBusca.value.trim().toLowerCase();
-
-      // Limpar hidden se usuário apagar o texto manualmente
-      if (!termo) {
-        limparSelecaoEstoque();
-        return;
-      }
-
-      const filtrados = cacheProdutosEstoqueLancamento.filter(p =>
-        p.nome.toLowerCase().includes(termo)
-      );
-
-      if (!filtrados.length) {
-        listaSugestoes.innerHTML = `<li class="sem-resultado">Nenhum produto encontrado.</li>`;
-      } else {
-        listaSugestoes.innerHTML = filtrados.map(p => `
-          <li
-            class="sugestao-item"
-            onclick="selecionarItemEstoque(${p.id}, '${p.nome.replace(/'/g, "\\'")}', ${p.quantidade_atual}, '${p.unidade_medida}')"
-          >
-            <strong>${p.nome}</strong>
-            <span class="sugestao-qtd">${p.quantidade_atual} ${p.unidade_medida}</span>
-          </li>
-        `).join("");
-      }
-
-      listaSugestoes.style.display = "block";
-    }, 300);
-  });
-
-  // Fechar sugestões ao clicar fora
-  document.addEventListener("click", (e) => {
-    if (!inputBusca.contains(e.target) && !listaSugestoes.contains(e.target)) {
-      listaSugestoes.style.display = "none";
+    if (sel.value) {
+      campoQtd.style.display = "flex";
+      campoQtd.style.flexDirection = "column";
+      const opt = sel.querySelector(`option[value="${sel.value}"]`);
+      if (opt && inputQtd) inputQtd.dataset.disponivel = opt.dataset.disponivel;
+    } else {
+      campoQtd.style.display = "none";
+      if (inputQtd) inputQtd.value = "";
+      if (aviso) aviso.style.display = "none";
     }
   });
 
-  // Botão de limpar seleção
-  if (btnLimpar) {
-    btnLimpar.addEventListener("click", limparSelecaoEstoque);
-  }
-
-  // Validação em tempo real da quantidade
   const inputQtd = document.getElementById("estoque-quantidade");
-  if (inputQtd) {
-    inputQtd.addEventListener("input", validarQuantidadeEstoque);
-  }
+  if (inputQtd) inputQtd.addEventListener("input", validarQuantidadeEstoque);
 }
 
+// Pré-preenche o formulário de lançamento com os dados de um registro existente.
+// Chamada por editarLancamentoPorId() para entrar no modo de edição (PUT).
+// Restaura o vínculo de estoque (se houver) via preencherEstoqueLancamento().
+// Atualiza o título, texto do botão e exibe o botão "Cancelar edição".
 function preencherFormLancamento(item) {
   document.getElementById("classificacao").value = item.classificacao;
   document.getElementById("descricao").value = item.descricao;
@@ -3137,6 +3402,9 @@ function preencherFormLancamento(item) {
   document.getElementById("btn-cancelar-edicao-lancamento").style.display = "inline-block";
 }
 
+// Reseta o formulário de lançamento para o modo de criação (POST).
+// Limpa todos os campos, o vínculo de estoque e restaura títulos/botões.
+// Chamada após salvar com sucesso ou ao clicar em "Cancelar edição".
 function resetFormLancamento() {
   editandoLancamentoId = null;
   document.getElementById("form-lancamento").reset();
@@ -3148,6 +3416,9 @@ function resetFormLancamento() {
   limparSelecaoEstoque();
 }
 
+// Atualiza os 4 cards KPI da página de lançamentos:
+// quantidade, valor total, maior e menor lançamento da seleção atual.
+// Chamada por renderizarTabela() sempre que a lista é atualizada.
 function atualizarTotalizadores(lancamentos) {
   const totalQuantidade = document.getElementById("total-quantidade");
   const totalValor = document.getElementById("total-valor");
@@ -3175,6 +3446,9 @@ function atualizarTotalizadores(lancamentos) {
   menorValor.textContent = formatarValor(menor);
 }
 
+// Copia o innerHTML da tabela principal para o modal de "tela cheia",
+// mantendo a contagem de registros sincronizada entre os dois contextos.
+// Chamada sempre que a tabela é atualizada e ao abrir o modal.
 function copiarTabelaLancamentosParaModal() {
   const origem = document.getElementById("tabela-lancamentos");
   const destino = document.getElementById("tabela-lancamentos-modal");
@@ -3190,6 +3464,9 @@ function copiarTabelaLancamentosParaModal() {
   }
 }
 
+// Adiciona temporariamente a classe .print-area ao elemento e dispara window.print().
+// O CSS de impressão (@media print) exibe apenas elementos com essa classe.
+// A classe é removida logo após para não afetar a renderização normal.
 function imprimirElementoPorId(elementId) {
   const elemento = document.getElementById(elementId);
   if (!elemento) return;
@@ -3199,6 +3476,9 @@ function imprimirElementoPorId(elementId) {
   elemento.classList.remove("print-area");
 }
 
+// Conecta os botões de conferência: "Tela completa" (abre modal),
+// "Fechar" (fecha modal), "Imprimir" (imprime tabela da tela)
+// e "Imprimir" do modal (imprime tabela do modal expandido).
 function iniciarAcoesConferenciaLancamentos() {
   const btnTelaCheia = document.getElementById("btn-tela-cheia-lancamentos");
   const btnImprimir = document.getElementById("btn-imprimir-lancamentos");
@@ -3232,6 +3512,9 @@ function iniciarAcoesConferenciaLancamentos() {
   }
 }
 
+// Renderiza as linhas da tabela de lançamentos com todos os dados e ações.
+// Exibe badge de estoque vinculado (nome + quantidade) ou "—" se não houver.
+// Também atualiza KPIs (atualizarTotalizadores) e sincroniza o modal.
 function renderizarTabela(lancamentos) {
   const tabelaLancamentos = document.getElementById("tabela-lancamentos");
   const totalRegistros = document.getElementById("total-registros");
@@ -3293,6 +3576,9 @@ window.excluirLancamento = async (id) => {
   await carregarLancamentos();
 };
 
+// Lê os filtros ativos da página (classificação, datas, descrição, veículo),
+// monta a query string e busca os lançamentos filtrados no backend.
+// Chamada na inicialização, ao aplicar filtros e após salvar/excluir.
 async function carregarLancamentos() {
   const filtroClassificacao = document.getElementById("filtro-classificacao");
   const filtroDataInicial = document.getElementById("filtro-data-inicial");
@@ -3314,6 +3600,11 @@ async function carregarLancamentos() {
   renderizarTabela(lancamentos);
 }
 
+// Ponto de entrada do módulo de lançamentos. Carrega todos os dados iniciais
+// (classificações, veículos, produtos de estoque, lançamentos) e vincula
+// todos os eventos: submit do form, filtrar, limpar, cancelar edição,
+// ações de conferência e autocomplete de estoque.
+// Chamada por loadPage("lancamentos") após renderizar o HTML.
 async function iniciarModuloLancamentos() {
   await carregarClassificacoes();
   await carregarVeiculosLancamento();
@@ -3415,7 +3706,21 @@ async function iniciarModuloLancamentos() {
 
 // =========================================================
 // MODULO DE CONTAS A RECEBER
+//
+// Controla contratos, tickets, fretes e horas de máquina a receber.
+// Campos especiais para veículos do tipo "Máquina": valor/hora unitário
+// e quantidade de horas — o valor total é calculado automaticamente.
+//
+// Status de pagamento: pendente → recebido → cancelado.
+// O botão de status na tabela alterna entre pendente e recebido via PATCH.
+//
+// KPIs exibidos: registros, valor bruto, descontos, total a receber,
+// recebido e pendente — todos calculados localmente sobre a lista retornada.
 // =========================================================
+
+// Carrega veículos e classificações e preenche os selects do formulário e filtro.
+// Também filtra apenas classificações do grupo "2." (despesas/descontos) para
+// o campo de classificação de desconto.
 async function carregarOpcoesContasReceber() {
   const selectVeiculo = document.getElementById("cr-veiculo-id");
   const filtroVeiculo = document.getElementById("cr-filtro-veiculo-id");
@@ -3461,6 +3766,8 @@ async function carregarOpcoesContasReceber() {
   });
 }
 
+// Calcula o valor total a receber do formulário: valor (ou horas × valor/hora)
+// + bonificação − descontos. Exibido em tempo real no preview do formulário.
 function calcularTotalReceberFormulario() {
   const valorHoraUnitario = normalizarNumero(document.getElementById("cr-valor-hora-unitario")?.value);
   const quantidadeHoras = normalizarNumero(document.getElementById("cr-quantidade-horas")?.value);
@@ -3471,6 +3778,9 @@ function calcularTotalReceberFormulario() {
   return valor + bonificacao - descontos;
 }
 
+// Atualiza o preview "Valor total a receber" em tempo real enquanto o usuário edita
+// os campos do formulário. Para máquinas, também preenche o campo "Valor" com
+// o resultado de horas × valor/hora quando este modo está ativo.
 function atualizarTotalReceberPreview() {
   const preview = document.getElementById("cr-total-preview");
   if (!preview) return;
@@ -3482,12 +3792,17 @@ function atualizarTotalReceberPreview() {
   preview.textContent = formatarValor(calcularTotalReceberFormulario());
 }
 
+// Verifica se o veículo selecionado no formulário de conta a receber é do tipo "Máquina".
+// Usado para mostrar/ocultar os campos de valor/hora e quantidade de horas.
 function veiculoContaReceberEhMaquina() {
   const veiculoId = Number(document.getElementById("cr-veiculo-id")?.value || 0);
   const veiculo = cacheVeiculos.find((item) => item.id === veiculoId);
   return Boolean(veiculo && normalizarTexto(veiculo.tipo).includes("maquina"));
 }
 
+// Exibe ou oculta os campos de hora/máquina com base no veículo selecionado.
+// Limpa os campos quando o veículo deixa de ser máquina para evitar dados inconsistentes.
+// Também atualiza o preview do total após a alteração.
 function atualizarCamposMaquinaContaReceber() {
   const ehMaquina = veiculoContaReceberEhMaquina();
   document.querySelectorAll(".cr-maquina-field").forEach((campo) => {
@@ -3502,6 +3817,9 @@ function atualizarCamposMaquinaContaReceber() {
   atualizarTotalReceberPreview();
 }
 
+// Coleta e normaliza todos os campos do formulário de conta a receber,
+// incluindo o valor calculado por horas (quando for máquina) ou valor direto.
+// Retorna o objeto pronto para ser enviado via apiSend (POST ou PUT).
 function montarPayloadContaReceber() {
   const valorHoraUnitario = normalizarNumero(document.getElementById("cr-valor-hora-unitario")?.value);
   const quantidadeHoras = normalizarNumero(document.getElementById("cr-quantidade-horas")?.value);
@@ -3563,6 +3881,9 @@ function resetFormContaReceber() {
   atualizarTotalReceberPreview();
 }
 
+// Calcula e exibe os 6 KPIs da página de contas a receber:
+// total de registros, valor bruto, total de descontos, total a receber,
+// valor recebido e valor pendente — todos calculados localmente sobre a lista.
 function atualizarKpisContasReceber(contas) {
   const totalRegistros = document.getElementById("cr-total-registros-kpi");
   const totalBruto = document.getElementById("cr-total-bruto-kpi");
@@ -3591,6 +3912,9 @@ function atualizarKpisContasReceber(contas) {
   totalPendente.textContent = formatarValor(pendente);
 }
 
+// Renderiza a tabela de contas a receber com todas as colunas do modelo operacional.
+// O botão de status alterna entre "Marcar recebido" e "Marcar pendente" dinamicamente.
+// Usa escapeHtml em todos os campos de texto para evitar XSS.
 function renderizarTabelaContasReceber(contas) {
   const tabela = document.getElementById("tabela-contas-receber");
   const total = document.getElementById("cr-total-registros");
@@ -3678,6 +4002,9 @@ window.excluirContaReceber = async (id) => {
   await carregarContasReceber();
 };
 
+// Altera o status de pagamento de uma conta (pendente ↔ recebido) via PATCH.
+// Exposta globalmente para ser chamada pelo onclick da tabela.
+// Recarrega a tabela após a alteração para refletir o novo status e KPIs.
 window.alterarStatusContaReceber = async (id, statusPagamento) => {
   await apiSend(`/contas-receber/${id}/status`, "PATCH", {
     status_pagamento: statusPagamento
@@ -3740,8 +4067,21 @@ async function iniciarContasReceber() {
 }
 
 // =========================================================
-// MODULO DE ATIVOS, PASSIVOS, ESTOQUE E CONFIGURACOES
+// MODULO DE ATIVOS E PASSIVOS
+//
+// Controla o patrimônio da empresa: ativos (bens: veículos, máquinas,
+// imóveis, equipamentos) e passivos (financiamentos, empréstimos, dívidas).
+//
+// Os KPIs de topo (total ativos, total passivos, patrimônio líquido) são
+// calculados pelo backend em /relatorios/patrimonio-liquido.
+//
+// Edição: ao clicar em "Editar", os campos do formulário são preenchidos
+// e o modo muda para PUT. Cancelar reseta para POST.
 // =========================================================
+
+// Utilitário genérico para preencher qualquer select de veículos no sistema.
+// Verifica se o select já tem opções (evita duplicação em re-renders).
+// Usado em ativos, dashboard e outros módulos que precisam do select de veículos.
 async function carregarSelectVeiculosGenerico(selectId, vazio = "Sem vinculo") {
   const select = document.getElementById(selectId);
   if (!select) return;
@@ -3756,6 +4096,8 @@ async function carregarSelectVeiculosGenerico(selectId, vazio = "Sem vinculo") {
   });
 }
 
+// Carrega ativos, passivos e patrimônio em paralelo (Promise.all).
+// Atualiza os 3 KPIs de topo e preenche as duas tabelas usando preencherTabela().
 async function carregarAtivosPassivos() {
   const [ativos, passivos, patrimonio] = await Promise.all([
     apiGet("/ativos"),
@@ -3902,6 +4244,29 @@ async function iniciarAtivosPassivos() {
   document.getElementById("btn-cancelar-passivo").addEventListener("click", resetPassivo);
 }
 
+// =========================================================
+// MODULO DE ESTOQUE
+//
+// Gerencia o inventário de produtos da empresa (lubrificantes,
+// peças, insumos etc.). Cada produto tem: nome, categoria, unidade,
+// quantidade atual, custo unitário, estoque mínimo e observação.
+//
+// Movimentações: Entrada, Saída e Ajuste registradas com data,
+// valor unitário e observação. Saídas via lançamento são automáticas.
+//
+// Alerta de estoque baixo: produto marcado quando quantidade_atual
+// cai abaixo de estoque_minimo. Exibido com badge "baixo" na tabela.
+//
+// Edição: três modos coexistem na mesma tela:
+//   1. Painel "Novo produto" (#estoque-inline-container, toggle)
+//   2. Painel "Movimentar" (#estoque-inline-container, toggle)
+//   3. Edição inline por linha da tabela (editarProduto — injeta <tr>)
+//   Abrindo um painel fecha o outro automaticamente.
+// =========================================================
+
+// Carrega produtos, movimentações e relatório de estoque em paralelo.
+// Aplica filtros (nome, categoria, estoque baixo) via query string.
+// Atualiza KPIs, tabela de produtos, tabela de movimentações e select de produto no painel.
 async function carregarEstoque() {
   const params = new URLSearchParams();
   const nome = document.getElementById("filtro-produto-nome")?.value.trim() || "";
@@ -3970,11 +4335,16 @@ function payloadProduto() {
 //   injeta uma <tr> diretamente abaixo da linha editada na tabela.
 // =========================================================
 
+// Remove o conteúdo do container de painéis inline e reseta o estado "aberto".
+// Chamada antes de abrir qualquer painel para garantir que apenas um fique visível.
 function fecharPainelEstoque() {
   const container = document.getElementById("estoque-inline-container");
   if (container) { container.innerHTML = ""; delete container.dataset.aberto; }
 }
 
+// Abre o painel inline de cadastro de novo produto ou fecha se já estiver aberto (toggle).
+// Injeta o formulário em #estoque-inline-container e foca o campo "Nome".
+// O submit chama POST (novo) ou PUT (edição via editandoProdutoId) conforme o estado.
 function abrirPainelProduto() {
   const container = document.getElementById("estoque-inline-container");
   if (container.dataset.aberto === "produto") { fecharPainelEstoque(); return; }
@@ -4024,6 +4394,9 @@ function abrirPainelProduto() {
   });
 }
 
+// Abre o painel inline de movimentação de estoque (toggle).
+// Carrega a lista de produtos para o select antes de renderizar o formulário.
+// Tipos disponíveis: Entrada, Saída, Ajuste. Registra em /estoque/movimentacoes.
 async function abrirPainelMovimentacao() {
   const container = document.getElementById("estoque-inline-container");
   if (container.dataset.aberto === "movimentacao") { fecharPainelEstoque(); return; }
@@ -4086,6 +4459,12 @@ function resetProduto() {
   fecharEdicaoInline();
 }
 
+// Edição inline de produto diretamente na linha da tabela (modo toggle).
+// Ao clicar em "Editar", injeta uma <tr class="edit-inline-row"> logo abaixo da linha.
+// Clicar novamente no mesmo produto fecha o editor (remove a <tr>).
+// Clicar em outro produto remove o editor anterior e abre o novo.
+// Os dados atuais do produto são carregados e pré-preenchidos nos campos inline.
+// Salvar chama apiPut (PUT) via salvarEdicaoInline(). Cancelar remove a <tr>.
 window.editarProduto = async (id, btn) => {
   const existente = document.getElementById(`edit-row-${id}`);
   document.querySelectorAll(".edit-inline-row").forEach(r => r.remove());
@@ -4132,11 +4511,15 @@ window.editarProduto = async (id, btn) => {
   document.getElementById("btn-cancelar-inline").addEventListener("click", fecharEdicaoInline);
 };
 
+// Remove todas as linhas de edição inline da tabela de estoque e reseta o estado.
 function fecharEdicaoInline() {
   document.querySelectorAll(".edit-inline-row").forEach(r => r.remove());
   editandoProdutoId = null;
 }
 
+// Coleta os campos do editor inline, valida o nome e chama PUT /estoque/produtos/{id}.
+// Em caso de sucesso: fecha o editor e recarrega a tabela de estoque.
+// Em caso de erro: exibe mensagem dentro do próprio editor inline.
 async function salvarEdicaoInline(id) {
   const payload = {
     nome: document.getElementById("edit-nome").value.trim(),
@@ -4168,6 +4551,10 @@ window.excluirProduto = async (id) => {
   await carregarEstoque();
 };
 
+// Ponto de entrada do módulo de estoque. Carrega os dados iniciais e conecta:
+//   - Botões "Novo produto" e "Movimentar"
+//   - Tecla ESC para fechar painéis/editores ativos
+//   - Botões de filtrar e limpar filtros do popup
 async function iniciarEstoque() {
   await carregarEstoque();
 
@@ -4194,10 +4581,25 @@ async function iniciarEstoque() {
   });
 }
 
+// =========================================================
+// MODULO DE CONFIGURACOES E USUARIOS
+//
+// Configurações são armazenadas localmente no localStorage
+// (não no backend), pois são preferências visuais da máquina:
+// nome da empresa, logo, tema, cor principal, moeda e rodapé.
+//
+// Usuários da empresa são gerenciados via API (/usuarios).
+// O painel admin (master) tem gestão mais completa em renderizarAdminUsuarios().
+// =========================================================
+
+// Lê o objeto de configurações do localStorage. Retorna {} se não existir.
 function carregarConfiguracoesLocais() {
   return JSON.parse(localStorage.getItem("financeiro_configuracoes") || "{}");
 }
 
+// Aplica o tema (dark/light) e a cor principal ao DOM imediatamente.
+// Chamada na inicialização e sempre que o tema for alterado (toggle ou configurações).
+// data-theme no <body> controla as variáveis CSS globais do tema.
 function aplicarTema() {
   const config = carregarConfiguracoesLocais();
   const tema = config.tema || localStorage.getItem("financeiro_tema") || "dark";
@@ -4205,6 +4607,8 @@ function aplicarTema() {
   document.documentElement.style.setProperty("--blue", config.corPrincipal || "#22D3EE");
 }
 
+// Inicializa a página de configurações: pré-preenche com dados salvos e
+// conecta o submit para salvar no localStorage e aplicar o tema.
 function iniciarConfiguracoes() {
   const config = carregarConfiguracoesLocais();
   document.getElementById("config-empresa").value = config.nomeEmpresa || "";
@@ -4230,6 +4634,9 @@ function iniciarConfiguracoes() {
   });
 }
 
+// Lê o objeto do usuário logado do sessionStorage.
+// Retorna {} se não autenticado ou se o JSON estiver corrompido.
+// Campos esperados: perfil ("master" | "admin" | "gestor" | etc.), nome, email.
 function obterUsuarioSessao() {
   try {
     return JSON.parse(sessionStorage.getItem("financeiro_usuario") || "{}");
@@ -4238,6 +4645,10 @@ function obterUsuarioSessao() {
   }
 }
 
+// Aplica restrições de visibilidade no menu lateral baseado no perfil do usuário:
+//   - "master": mostra APENAS o botão do painel admin (oculta todo o resto)
+//   - outros: oculta o botão admin (que só o master pode acessar)
+// Chamada na inicialização e não precisa ser repetida durante a sessão.
 function aplicarPermissoesVisuais() {
   const usuario = obterUsuarioSessao();
   navButtons.forEach((button) => {
@@ -4306,6 +4717,24 @@ window.desativarUsuario = async (usuarioId) => {
   await renderizarUsuarios();
 };
 
+// =========================================================
+// MODULO ADMIN MASTER
+//
+// Acessível apenas ao usuário com perfil "master". Gerencia:
+//   - Todas as empresas cadastradas (criar, aprovar, bloquear, desativar)
+//   - Todos os usuários do sistema (todas as empresas)
+//   - Logs de auditoria de ações administrativas
+//   - Acessos do app mobile dos motoristas (motorista.html)
+//
+// O seletor "Empresa em gerenciamento" filtra usuários e logs
+// por empresa, sem recarregar a página.
+//
+// Modais de cadastro (empresa e usuário) são overlays CSS com
+// display:flex/none controlados por abrirModalAdmin/fecharModalAdmin.
+// =========================================================
+
+// Ponto de entrada do painel admin. Carrega todos os dados em paralelo
+// e configura todos os eventos: modais, seletor de empresa, logo, forms.
 async function iniciarAdminMaster() {
   await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminUsuarios(), renderizarAdminAuditoria(), renderizarMotoristaAcessos()]);
 
@@ -4398,6 +4827,8 @@ async function iniciarAdminMaster() {
   });
 }
 
+// Busca e exibe os 4 KPIs do painel admin: total de empresas, usuários ativos,
+// usuários pendentes de aprovação e empresas bloqueadas/inativas.
 async function renderizarAdminResumo() {
   const resumo = await apiGet("/admin/resumo");
   document.getElementById("admin-total-empresas").textContent = resumo.empresas || 0;
@@ -4406,6 +4837,9 @@ async function renderizarAdminResumo() {
   document.getElementById("admin-empresas-bloqueadas").textContent = resumo.empresas_bloqueadas || 0;
 }
 
+// Preenche o select de empresa no formulário de usuário admin e o select de filtro.
+// Retorna a lista de empresas para reuso em renderizarAdminEmpresas().
+// Mantém o valor selecionado (adminEmpresaFiltro) após re-render.
 async function preencherSelectEmpresasAdmin() {
   const empresas = await apiGet("/empresas");
   const selectUsuario = document.getElementById("admin-usuario-empresa");
@@ -4420,6 +4854,8 @@ async function preencherSelectEmpresasAdmin() {
   return empresas;
 }
 
+// Renderiza a tabela de empresas no painel admin com botões:
+// Gerenciar (filtra dados por empresa), Aprovar, Bloquear e Desativar.
 async function renderizarAdminEmpresas() {
   const tabela = document.getElementById("tabela-admin-empresas");
   const empresas = await preencherSelectEmpresasAdmin();
@@ -4440,6 +4876,9 @@ async function renderizarAdminEmpresas() {
   `).join("") || `<tr><td colspan="5" class="empty-row">Nenhuma empresa cadastrada.</td></tr>`;
 }
 
+// Renderiza a tabela de todos os usuários do sistema, com filtro opcional por empresa.
+// Carrega empresas em paralelo para exibir o nome da empresa (não o ID).
+// Botões: Aprovar, Bloquear, Desativar, Definir senha e Excluir.
 async function renderizarAdminUsuarios() {
   const tabela = document.getElementById("tabela-admin-usuarios");
   if (!tabela) return;
@@ -4466,6 +4905,8 @@ async function renderizarAdminUsuarios() {
   `).join("") || `<tr><td colspan="8" class="empty-row">Nenhum usuario cadastrado.</td></tr>`;
 }
 
+// Renderiza a tabela de logs de auditoria, filtrável por empresa.
+// Cada log registra: data, ação, entidade afetada, ID e IP do solicitante.
 async function renderizarAdminAuditoria() {
   const tabela = document.getElementById("tabela-admin-auditoria");
   if (!tabela) return;
@@ -4499,6 +4940,10 @@ async function renderizarAdminAuditoria() {
 //   GET/POST/PUT/DELETE /motorista-acessos  (admin_routes.py)
 // =========================================================
 
+// Renderiza a tabela de acessos do app mobile dos motoristas.
+// Exibe nome, email, motorista vinculado, status e link do app.
+// O botão "Copiar link" copia a URL do app (motorista.html) para a área de transferência.
+// Os botões Excluir e Ativar/Desativar controlam o acesso do motorista ao app.
 async function renderizarMotoristaAcessos() {
   const tabela = document.getElementById("tabela-motorista-acessos");
   if (!tabela) return;
@@ -4524,6 +4969,9 @@ async function renderizarMotoristaAcessos() {
   }
 }
 
+// Abre o formulário inline de criação de acesso ao app motorista (toggle).
+// Preenche o select de motoristas via GET /motoristas para vincular ao acesso.
+// O botão Salvar chama POST /motorista-acessos e re-renderiza a tabela.
 function abrirFormAcessoMotorista() {
   const container = document.getElementById("form-acesso-motorista-container");
   if (!container) return;
@@ -4585,6 +5033,8 @@ window.toggleAtivoMotorista = async (id, ativo) => {
   await renderizarMotoristaAcessos();
 };
 
+// Executa uma ação administrativa em uma empresa (aprovar, bloquear).
+// Após a ação, atualiza resumo, lista de empresas e auditoria em paralelo.
 window.acaoEmpresa = async (empresaId, acao) => {
   await apiSend(`/empresas/${empresaId}/${acao}`, "POST", {});
   await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminAuditoria()]);
@@ -4596,6 +5046,8 @@ window.excluirEmpresaAdmin = async (empresaId) => {
   await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminAuditoria()]);
 };
 
+// Define a empresa como ativa no filtro do painel admin e atualiza
+// o select de empresa, a tabela de usuários e os logs de auditoria.
 window.gerenciarEmpresaAdmin = async (empresaId) => {
   adminEmpresaFiltro = String(empresaId);
   const select = document.getElementById("admin-empresa-gerenciada");
@@ -4608,6 +5060,9 @@ window.acaoUsuario = async (usuarioId, acao) => {
   await Promise.all([renderizarAdminResumo(), renderizarAdminUsuarios(), renderizarAdminAuditoria()]);
 };
 
+// Solicita a nova senha via prompt nativo e chama dois endpoints:
+// 1. POST /alterar-senha (define a nova senha)
+// 2. POST /forcar-troca-senha (exige troca no próximo login)
 window.resetarSenhaUsuario = async (usuarioId) => {
   const novaSenha = prompt("Digite a nova senha do usuario. Ela deve ter no minimo 8 caracteres.");
   if (!novaSenha) return;
@@ -4631,9 +5086,32 @@ window.excluirLogAdmin = async (logId) => {
 
 // =========================================================
 // MODULO DE RELATORIOS
+//
+// Gera o demonstrativo financeiro executivo com: KPIs, DRE gerencial,
+// insights automáticos, gráficos Chart.js e tabelas detalhadas.
+//
+// Dados carregados em paralelo (Promise.all):
+//   - Resumo financeiro (faturamento, custos, lucros, saldo)
+//   - Por classificação (participação de cada conta)
+//   - Por veículo (resultado e custo/KM por veículo)
+//   - Por período (evolução mensal)
+//   - Contas a receber (contratos do período)
+//   - Contas a pagar (passivos)
+//
+// Exportação: PDF e Excel são gerados pelo backend e abertos via
+// abrirExportacao() em nova aba com os mesmos filtros ativos.
+//
+// Gráficos: instâncias Chart.js são armazenadas em relatorioCharts[]
+// e destruídas antes de recriar (destruirGraficosRelatorio) para
+// evitar vazamentos de memória e conflito de canvas.
 // =========================================================
+
+// Array de instâncias Chart.js ativas na página de relatórios.
+// Destruídas a cada nova geração de relatório para evitar sobreposição.
 let relatorioCharts = [];
 
+// Coleta os filtros ativos da página de relatórios e retorna um URLSearchParams.
+// Compartilhado entre gerarRelatorio(), exportar PDF e exportar Excel.
 function parametrosRelatorio() {
   const params = new URLSearchParams();
   const dataInicial = document.getElementById("rel-data-inicial")?.value || "";
