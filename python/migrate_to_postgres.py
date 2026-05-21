@@ -375,6 +375,8 @@ def atualizar_sequences(db):
 
 
 def migrar_empresa(empresa_id: int, data_dir: Path, db, id_offset: int = 0):
+    # Orquestra a migração completa da empresa, mantendo ordem por dependência:
+    # veículos/motoristas -> módulos financeiros -> estoque -> plano de contas.
     print(f"\n=== Empresa {empresa_id} ({data_dir.name}) ===")
     veiculo_mapa = migrar_veiculos(empresa_id, data_dir, db, id_offset)
     motorista_mapa = migrar_motoristas(empresa_id, data_dir, db, id_offset)  # noqa: F841
@@ -390,6 +392,7 @@ def migrar_empresa(empresa_id: int, data_dir: Path, db, id_offset: int = 0):
 
 
 if __name__ == "__main__":
+    # Execução standalone para migração única dos JSON legados.
     print("Iniciando migracao JSON -> PostgreSQL...")
     db = SessionLocal()
     try:

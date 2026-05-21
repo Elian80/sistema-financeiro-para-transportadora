@@ -1,3 +1,12 @@
+// =========================================================
+// pwa.js — Registro do Service Worker + fluxo de instalação
+//
+// Controla:
+// - exibição do botão de instalar app;
+// - prompt nativo (beforeinstallprompt) no Android/Chrome;
+// - orientação para instalação manual no iOS/Safari.
+// =========================================================
+
 (function () {
   if (!("serviceWorker" in navigator) || window.location.protocol === "file:") {
     return;
@@ -48,6 +57,7 @@
     if (isIos && !isStandalone) {
       mostrarBotaoInstalar();
     }
+    // Registra o SW para cache/offline e força verificação de atualização.
     navigator.serviceWorker.register("/sw.js").then((registration) => {
       registration.update();
     }).catch(() => {

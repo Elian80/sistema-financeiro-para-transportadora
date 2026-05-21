@@ -1,3 +1,12 @@
+// =========================================================
+// sw.js — Service Worker do Financeiro PWA
+//
+// Estratégia:
+// - App shell em cache para carregamento rápido/offline parcial.
+// - APIs dinâmicas sempre em rede (sem cache) para evitar dados antigos.
+// - Limpeza automática de caches antigos na ativação.
+// =========================================================
+
 const CACHE_NAME = "financeiro-pwa-v56";
 
 const APP_SHELL = [
@@ -50,6 +59,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Endpoints de negócio: sempre network-first sem fallback de cache.
   if (["/lancamentos", "/veiculos", "/motoristas", "/motorista-mobile", "/localizacoes-motoristas", "/folha-pagamento", "/classificacoes", "/plano-contas", "/contas-receber", "/relatorios", "/ativos", "/passivos", "/estoque"].some((path) => url.pathname.startsWith(path))) {
     event.respondWith(fetch(request));
     return;
