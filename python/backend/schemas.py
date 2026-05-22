@@ -422,6 +422,30 @@ class SolicitacaoCadastroOut(BaseModel):
     created_at: datetime
 
 
+class ConfiguracaoEmpresaIn(BaseModel):
+    """Campos de branding que o usuário pode salvar via tela de configurações.
+
+    Logo e nome são salvos no banco (Empresa.logo / Empresa.nome_fantasia)
+    e ficam compartilhados entre todos os usuários da mesma empresa.
+    Tema, cor e outras prefs de UI continuam no localStorage (por usuário).
+    """
+    nomeEmpresa: str = Field("", max_length=160)
+    logoEmpresa: str = Field("")   # base64 ou vazio para remover
+
+    @field_validator("logoEmpresa")
+    @classmethod
+    def validar_logo(cls, value: str) -> str:
+        if value and len(value) > 1_500_000:
+            raise ValueError("Logo muito grande. Use imagem menor que ~1 MB.")
+        return value
+
+
+class ConfiguracaoEmpresaOut(BaseModel):
+    """Dados de branding retornados pela API para popular a tela de configurações."""
+    nomeEmpresa: str
+    logoEmpresa: str
+
+
 class TokenOut(BaseModel):
     """Schema de resposta para o endpoint de login bem-sucedido.
 

@@ -6,6 +6,8 @@ from .dependencies import get_current_user
 from .models import AuditLog, Empresa, Motorista, MotoristaAcesso, SolicitacaoCadastro, Usuario
 from .schemas import (
     AlterarSenhaIn,
+    ConfiguracaoEmpresaIn,
+    ConfiguracaoEmpresaOut,
     EmpresaCreate,
     EmpresaOut,
     EmpresaUpdate,
@@ -132,6 +134,60 @@ def aprovar_empresa(empresa_id: int, request: Request, db: Session = Depends(get
     registrar_auditoria(db, request, usuario, "aprovar", "empresa", str(empresa.id))
     db.commit()
     return {"mensagem": "Empresa aprovada com sucesso."}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONFIGURAÇÕES DE BRANDING DA EMPRESA
+# Logo e nome ficam no banco → compartilhados entre todos os usuários da empresa
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/configuracoes-empresa", response_model=ConfiguracaoEmpresaOut)
+def obter_configuracao_empresa(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
+    """Retorna logo e nome da empresa do usuário autenticado.
+
+    Qualquer perfil pode ler — todos os usuários precisam da logo para exibi-la.
+    """
+    empresa = db.get(Empresa, usuario.empresa_id)
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa nao encontrada.")
+    return ConfiguracaoEmpresaOut(
+        nomeEmpresa=empresa.nome_fantasia or empresa.nome or "",
+        logoEmpresa=empresa.logo or "",
+    )
+
+
+@router.put("/configuracoes-empresa")
+def salvar_configuracao_empresa(
+    dados: ConfiguracaoEmpresaIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
+    """Salva logo e nome fantasia da empresa no banco de dados.
+
+    Requer perfil admin, gestor ou financeiro (não disponível para operador/visualizador).
+    O master também pode salvar (gerencia todas as empresas).
+    """
+    perfis_permitidos = {"master", "admin", "gestor", "financeiro"}
+    if usuario.perfil not in perfis_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Somente admin, gestor ou financeiro podem alterar configuracoes da empresa.",
+        )
+    empresa = db.get(Empresa, usuario.empresa_id)
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa nao encontrada.")
+
+    # Atualiza apenas os campos de branding
+    empresa.nome_fantasia = dados.nomeEmpresa.strip() or empresa.nome_fantasia
+    empresa.logo = dados.logoEmpresa  # string vazia = remover logo
+
+    registrar_auditoria(db, request, usuario, "editar", "configuracao_empresa", str(empresa.id))
+    db.commit()
+    return {"ok": True, "nomeEmpresa": empresa.nome_fantasia, "logoEmpresa": empresa.logo}
 
 
 @router.get("/usuarios", response_model=list[UsuarioOut])

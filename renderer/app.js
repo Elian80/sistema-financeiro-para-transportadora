@@ -4811,6 +4811,23 @@ function carregarConfiguracoesLocais() {
   return JSON.parse(localStorage.getItem(_chaveConfiguracao()) || "{}");
 }
 
+// Busca logo e nome da empresa no servidor e sincroniza com o localStorage.
+// Chamada uma vez após o login para garantir que todos os usuários da mesma
+// empresa vejam a mesma logo, independente do dispositivo.
+async function sincronizarConfiguracaoEmpresa() {
+  try {
+    const dados = await apiGet("/configuracoes-empresa");
+    const config = carregarConfiguracoesLocais();
+    // Servidor tem prioridade para logo e nome (campos compartilhados)
+    config.logoEmpresa = dados.logoEmpresa ?? config.logoEmpresa ?? "";
+    if (dados.nomeEmpresa) config.nomeEmpresa = dados.nomeEmpresa;
+    localStorage.setItem(_chaveConfiguracao(), JSON.stringify(config));
+    aplicarMarca();
+  } catch (_) {
+    // Falha silenciosa — usa cache local (ex: offline, sem permissão)
+  }
+}
+
 // Aplica o tema (dark/light) e a cor principal ao DOM imediatamente.
 // Chamada na inicialização e sempre que o tema for alterado (toggle ou configurações).
 // data-theme no <body> controla as variáveis CSS globais do tema.
@@ -4863,8 +4880,11 @@ function iniciarConfiguracoes() {
     _atualizarPreviewLogo("");
   });
 
-  document.getElementById("form-configuracoes").addEventListener("submit", (event) => {
+  document.getElementById("form-configuracoes").addEventListener("submit", async (event) => {
     event.preventDefault();
+    const btnSalvar = event.target.querySelector("button[type=submit]");
+    if (btnSalvar) btnSalvar.disabled = true;
+
     const novo = {
       nomeEmpresa: document.getElementById("config-empresa").value.trim(),
       logoEmpresa: document.getElementById("config-logo").value,
@@ -4873,11 +4893,26 @@ function iniciarConfiguracoes() {
       moeda: document.getElementById("config-moeda").value.trim() || "BRL",
       dadosRelatorio: document.getElementById("config-relatorio").value.trim()
     };
+
+    // 1. Salva localmente (instantâneo)
     localStorage.setItem(_chaveConfiguracao(), JSON.stringify(novo));
     localStorage.setItem("financeiro_tema", novo.tema);
     aplicarTema();
     aplicarMarca();
-    mostrarToast("Configuracoes salvas.", "success");
+
+    // 2. Persiste logo e nome no servidor (compartilhado entre todos os usuários da empresa)
+    try {
+      await apiSend("/configuracoes-empresa", "PUT", {
+        nomeEmpresa: novo.nomeEmpresa,
+        logoEmpresa: novo.logoEmpresa,
+      });
+      mostrarToast("Configuracoes salvas e sincronizadas com a empresa.", "success");
+    } catch (erro) {
+      // Salvo localmente, mas falhou no servidor (ex: sem permissão)
+      mostrarToast(`Salvo localmente. Sincronizacao: ${erro.message}`, "warn");
+    } finally {
+      if (btnSalvar) btnSalvar.disabled = false;
+    }
   });
 }
 
@@ -6575,10 +6610,14 @@ globalSearch?.addEventListener("keydown", async (event) => {
 // INICIALIZACAO DO SISTEMA
 // =========================================================
 aplicarTema();
-aplicarMarca();
+aplicarMarca();           // aplica cache local imediatamente (sem esperar rede)
 aplicarEstadoSidebar();
 aplicarIconesNavegacao();
 exigirLogin();
 aplicarPermissoesVisuais();
 loadPage(obterUsuarioSessao().perfil === "master" ? "admin" : "dashboard");
 window.lucide?.createIcons();
+
+// Sincroniza logo/nome com o servidor em background (não bloqueia a UI).
+// Garante que todos os usuários da mesma empresa vejam a mesma marca.
+sincronizarConfiguracaoEmpresa();
