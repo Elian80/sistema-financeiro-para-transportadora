@@ -158,6 +158,7 @@ let mapaAtualizacaoTimer = null;     // Timer do setInterval de atualização au
 function aplicarIconesNavegacao() {
   navButtons.forEach((button) => {
     if (button.querySelector(".nav-icon")) return; // Já foi processado
+    if (button.classList.contains("mbn-btn")) return; // Bottom nav — tem estrutura própria, não sobrescrever
     const iconName = button.dataset.icon || "circle";
     const label = button.textContent.trim();
     const fallback = button.dataset.short || label.slice(0, 2).toUpperCase();
