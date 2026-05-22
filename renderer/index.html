@@ -48,8 +48,8 @@
   <!-- CSS da biblioteca Leaflet (mapa interativo — usada na página de Mapa) -->
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
 
-  <!-- Folha de estilos principal do sistema financeiro (v=31 para cache busting) -->
-  <link rel="stylesheet" href="style.css?v=31" />
+  <!-- Folha de estilos principal do sistema financeiro (v=32 para cache busting) -->
+  <link rel="stylesheet" href="style.css?v=40" />
 </head>
 
 <body>
@@ -79,11 +79,11 @@
         <!-- Identidade visual / marca do sistema -->
         <div class="brand">
           <!-- Ícone/logo da marca (letra "F" estilizada com gradiente) -->
-          <div class="brand-icon">F</div>
+          <div class="brand-icon" id="brand-icon">F</div>
 
           <!-- Texto da marca: nome e subtítulo — ocultos quando sidebar está recolhida -->
           <div class="brand-copy">
-            <h1>Financeiro</h1>
+            <h1 id="brand-nome">Financeiro</h1>
             <p>Gestao operacional</p>
           </div>
         </div>
@@ -118,9 +118,6 @@
         <!-- Motoristas: cadastro, folha de pagamento e controle de viagens -->
         <button class="nav-btn" data-page="motoristas" data-short="MO" data-icon="users">Motoristas</button>
 
-        <!-- Plano de Contas: estrutura contábil de receitas e despesas -->
-        <button class="nav-btn" data-page="planoContas" data-short="PC" data-icon="list-tree">Plano de contas</button>
-
         <!-- Lançamentos: registro de entradas e saídas financeiras -->
         <button class="nav-btn" data-page="lancamentos" data-short="LA" data-icon="receipt">Lancamentos</button>
 
@@ -129,9 +126,6 @@
 
         <!-- Relatórios: DRE, fluxo de caixa, gráficos e exportação -->
         <button class="nav-btn" data-page="relatorios" data-short="RE" data-icon="chart-no-axes-combined">Relatorios</button>
-
-        <!-- Ativos/Passivos: balanço patrimonial da transportadora -->
-        <button class="nav-btn" data-page="ativosPassivos" data-short="AP" data-icon="scale">Ativos/Passivos</button>
 
         <!-- Estoque: controle de peças, combustível e itens de manutenção -->
         <button class="nav-btn" data-page="estoque" data-short="ES" data-icon="package">Estoque</button>
@@ -207,10 +201,6 @@
             <span data-lucide="settings">&#9881;</span>
           </button>
 
-          <!-- Avatar do usuário logado: exibe a inicial do nome.
-               Conteúdo pode ser atualizado pelo app.js após login. -->
-          <div class="user-avatar" title="Usuario">J</div>
-
           <!-- Botão de logout: app.js escuta o clique para encerrar a sessão -->
           <button class="ghost-btn" id="logout-btn">Sair</button>
         </div>
@@ -224,6 +214,48 @@
            Começa vazio — o dashboard é carregado ao iniciar o app.
            ======================================================== -->
       <section id="page-content" class="page-content"></section>
+
+      <!-- ========================================================
+           MOBILE BOTTOM NAVIGATION BAR
+           Fica DENTRO do main-area para participar do flex layout vertical.
+           CSS: display:none em desktop, display:flex em ≤ 768px.
+           Os botões com class "nav-btn" são capturados pelo mesmo
+           event listener do menu lateral — navegação unificada e sincronizada.
+           O botão "Mais" (id="mbn-more-btn") abre o drawer da sidebar.
+           ======================================================== -->
+      <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Navegação principal">
+
+        <!-- Início / Dashboard -->
+        <button class="nav-btn mbn-btn active" data-page="dashboard" type="button" aria-label="Início">
+          <span class="mbn-icon" data-lucide="layout-dashboard"></span>
+          <span class="mbn-label">Início</span>
+        </button>
+
+        <!-- Lançamentos financeiros -->
+        <button class="nav-btn mbn-btn" data-page="lancamentos" type="button" aria-label="Lançamentos">
+          <span class="mbn-icon" data-lucide="receipt"></span>
+          <span class="mbn-label">Lançar</span>
+        </button>
+
+        <!-- Contas a receber — fretes/viagens -->
+        <button class="nav-btn mbn-btn" data-page="contasReceber" type="button" aria-label="Contas a receber">
+          <span class="mbn-icon" data-lucide="wallet-cards"></span>
+          <span class="mbn-label">Receber</span>
+        </button>
+
+        <!-- Frota / Veículos -->
+        <button class="nav-btn mbn-btn" data-page="veiculos" type="button" aria-label="Veículos">
+          <span class="mbn-icon" data-lucide="truck"></span>
+          <span class="mbn-label">Frota</span>
+        </button>
+
+        <!-- Mais: abre drawer da sidebar (Relatórios, Estoque, Admin, Mapa…) -->
+        <button class="mbn-btn" id="mbn-more-btn" type="button" aria-label="Mais páginas">
+          <span class="mbn-icon" data-lucide="ellipsis"></span>
+          <span class="mbn-label">Mais</span>
+        </button>
+
+      </nav>
 
     </main>
     <!-- /main.main-area -->
@@ -250,8 +282,8 @@
 
   <!-- app.js: lógica principal do SPA financeiro.
        Gerencia roteamento de páginas, renderização dinâmica, CRUD de dados,
-       gráficos, filtros e todas as interações do sistema. (v=34 para cache busting) -->
-  <script src="app.js?v=34"></script>
+       gráficos, filtros e todas as interações do sistema. -->
+  <script src="app.js?v=45"></script>
 
   <!-- pwa.js: gerencia o ciclo de vida do Progressive Web App.
        Registra o Service Worker, controla o prompt de instalação

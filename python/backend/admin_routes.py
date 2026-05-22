@@ -3,12 +3,15 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .dependencies import get_current_user
-from .models import AuditLog, Empresa, Motorista, MotoristaAcesso, Usuario
+from .models import AuditLog, Empresa, Motorista, MotoristaAcesso, SolicitacaoCadastro, Usuario
 from .schemas import (
     AlterarSenhaIn,
     EmpresaCreate,
     EmpresaOut,
     EmpresaUpdate,
+    SolicitacaoCadastroCreate,
+    SolicitacaoCadastroOut,
+    SolicitacaoStatusUpdate,
     UsuarioCreate,
     UsuarioOut,
     UsuarioUpdate,
@@ -485,3 +488,76 @@ def excluir_motorista_acesso(acesso_id: int, request: Request, db: Session = Dep
     db.delete(acesso)
     db.commit()
     return {"mensagem": "Acesso excluido."}
+
+
+# =========================================================
+# SOLICITAÇÕES DE CADASTRO (público + master)
+# =========================================================
+
+@router.post("/solicitacoes-cadastro", response_model=SolicitacaoCadastroOut)
+def criar_solicitacao(dados: SolicitacaoCadastroCreate, db: Session = Depends(get_db)):
+    """Endpoint público: qualquer pessoa pode enviar uma solicitação de acesso."""
+    sol = SolicitacaoCadastro(
+        empresa=dados.empresa.strip(),
+        nome=dados.nome.strip(),
+        cargo=dados.cargo.strip(),
+        email=dados.email.strip().lower(),
+        whatsapp=dados.whatsapp.strip(),
+    )
+    db.add(sol)
+    db.commit()
+    db.refresh(sol)
+    return sol
+
+
+@router.get("/solicitacoes-cadastro", response_model=list[SolicitacaoCadastroOut])
+def listar_solicitacoes(
+    status_filtro: str | None = Query(None, alias="status"),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
+    if usuario.perfil != "master":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master acessa solicitacoes.")
+    q = db.query(SolicitacaoCadastro)
+    if status_filtro:
+        q = q.filter(SolicitacaoCadastro.status == status_filtro)
+    return q.order_by(SolicitacaoCadastro.created_at.desc()).all()
+
+
+@router.patch("/solicitacoes-cadastro/{sol_id}", response_model=SolicitacaoCadastroOut)
+def atualizar_solicitacao(
+    sol_id: int,
+    dados: SolicitacaoStatusUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
+    if usuario.perfil != "master":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master atualiza solicitacoes.")
+    sol = db.get(SolicitacaoCadastro, sol_id)
+    if not sol:
+        raise HTTPException(status_code=404, detail="Solicitacao nao encontrada.")
+    sol.status = dados.status
+    sol.observacao = dados.observacao.strip()
+    registrar_auditoria(db, request, usuario, "editar", "solicitacao_cadastro", str(sol.id), f"{dados.status}: {sol.email}")
+    db.commit()
+    db.refresh(sol)
+    return sol
+
+
+@router.delete("/solicitacoes-cadastro/{sol_id}")
+def excluir_solicitacao(
+    sol_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
+    if usuario.perfil != "master":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Somente master exclui solicitacoes.")
+    sol = db.get(SolicitacaoCadastro, sol_id)
+    if not sol:
+        raise HTTPException(status_code=404, detail="Solicitacao nao encontrada.")
+    registrar_auditoria(db, request, usuario, "excluir", "solicitacao_cadastro", str(sol.id), f"Excluida: {sol.email}")
+    db.delete(sol)
+    db.commit()
+    return {"mensagem": "Solicitacao excluida."}

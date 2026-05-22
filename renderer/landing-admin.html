@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Admin — GM7 Sistemas</title>
+  <link rel="stylesheet" href="landing-admin.css" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+</head>
+<body>
+
+<!-- ── LOGIN PAGE ── -->
+<div class="login-wrapper" id="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-mark">G</div>
+      <h1>GM7 Admin</h1>
+      <p>Painel de gerenciamento do site</p>
+    </div>
+    <form class="login-form" id="login-form">
+      <div>
+        <label for="login-senha">Senha de acesso</label>
+        <input type="password" id="login-senha" placeholder="Digite a senha admin" autofocus />
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button type="submit" class="login-btn">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── ADMIN PANEL ── -->
+<div class="admin-layout" id="admin-panel" style="display:none">
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-mark">G</div>
+      <span class="sidebar-brand-text">GM7 Admin</span>
+    </div>
+    <div class="sidebar-label">Conteúdo</div>
+    <ul class="sidebar-nav">
+      <li>
+        <button class="sidebar-nav-item active" data-tab="marca">
+          <span class="nav-icon">🏷️</span> Marca
+        </button>
+      </li>
+      <li>
+        <button class="sidebar-nav-item" data-tab="hero">
+          <span class="nav-icon">🚀</span> Hero
+        </button>
+      </li>
+      <li>
+        <button class="sidebar-nav-item" data-tab="servicos">
+          <span class="nav-icon">⚙️</span> Serviços
+        </button>
+      </li>
+      <li>
+        <button class="sidebar-nav-item" data-tab="sobre">
+          <span class="nav-icon">🏢</span> Sobre
+        </button>
+      </li>
+      <li>
+        <button class="sidebar-nav-item" data-tab="depoimentos">
+          <span class="nav-icon">💬</span> Depoimentos
+        </button>
+      </li>
+      <li>
+        <button class="sidebar-nav-item" data-tab="contato">
+          <span class="nav-icon">📞</span> Contato
+        </button>
+      </li>
+    </ul>
+    <div class="sidebar-label">Sistema</div>
+    <ul class="sidebar-nav">
+      <li>
+        <button class="sidebar-nav-item" data-tab="mensagens">
+          <span class="nav-icon">📩</span> Mensagens
+        </button>
+      </li>
+      <li>
+        <button class="sidebar-nav-item" data-tab="senha">
+          <span class="nav-icon">🔑</span> Senha
+        </button>
+      </li>
+    </ul>
+    <div class="sidebar-footer">
+      <button class="sidebar-logout" id="logout-btn">
+        <span>←</span> Sair
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="admin-main">
+    <div class="admin-header">
+      <div class="admin-header-title">GM7 Sistemas &rsaquo; <span id="current-tab-label">Marca</span></div>
+      <a href="/" target="_blank" style="font-size:0.8rem;color:var(--text3);text-decoration:none;">↗ Ver site</a>
+    </div>
+
+    <div class="admin-content">
+
+      <!-- ── MARCA TAB ── -->
+      <div class="tab-panel active" id="tab-marca">
+        <div class="panel-title">Identidade da Marca</div>
+        <div class="panel-sub">Nome da empresa, tagline e logotipo exibidos no site.</div>
+
+        <div class="form-section">
+          <div class="form-section-title">Informações básicas</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nome da empresa</label>
+              <input type="text" id="marca-nome" placeholder="GM7 Sistemas" />
+            </div>
+            <div class="form-group">
+              <label>Tagline / Slogan</label>
+              <input type="text" id="marca-tagline" placeholder="Tecnologia que move o Brasil." />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Logotipo</div>
+          <div class="img-upload-area" id="logo-upload-area">
+            <input type="file" id="logo-file" accept="image/*" />
+            <img class="img-preview" id="logo-preview" src="" alt="Logo" />
+            <div class="img-upload-label">
+              <div style="font-size:1.5rem;margin-bottom:8px;">🖼️</div>
+              <span>Clique para selecionar</span> ou arraste a imagem<br />
+              <small style="color:var(--text3)">Será redimensionado para 256×256 px</small>
+            </div>
+          </div>
+          <p style="font-size:0.78rem;color:var(--text3);margin-top:8px;">Deixe em branco para usar o ícone de texto padrão.</p>
+        </div>
+
+        <div class="save-bar">
+          <button class="btn-save" onclick="salvarSecao('marca')">Salvar marca</button>
+          <span class="save-status" id="save-status-marca"></span>
+        </div>
+      </div>
+
+      <!-- ── HERO TAB ── -->
+      <div class="tab-panel" id="tab-hero">
+        <div class="panel-title">Seção Hero</div>
+        <div class="panel-sub">Título, subtítulo, botões e contadores da seção principal.</div>
+
+        <div class="form-section">
+          <div class="form-section-title">Texto principal</div>
+          <div class="form-grid single">
+            <div class="form-group">
+              <label>Título (HTML permitido — use &lt;span class="grad-text"&gt; para gradiente)</label>
+              <input type="text" id="hero-title" placeholder='Gestão inteligente para <span class="grad-text">transportadoras</span> que crescem' />
+            </div>
+            <div class="form-group">
+              <label>Subtítulo</label>
+              <textarea id="hero-subtitle" rows="3" placeholder="Texto complementar do hero..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Botões CTA</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Botão principal (CTA 1)</label>
+              <input type="text" id="hero-cta1" placeholder="Começar agora →" />
+            </div>
+            <div class="form-group">
+              <label>Botão secundário (CTA 2)</label>
+              <input type="text" id="hero-cta2" placeholder="📄 Ver serviços" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Contadores</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Clientes — número</label>
+              <input type="number" id="hero-stat-clients" placeholder="50" />
+            </div>
+            <div class="form-group">
+              <label>Clientes — rótulo</label>
+              <input type="text" id="hero-stat-clients-label" placeholder="Clientes ativos" />
+            </div>
+            <div class="form-group">
+              <label>Projetos — número</label>
+              <input type="number" id="hero-stat-projects" placeholder="120" />
+            </div>
+            <div class="form-group">
+              <label>Projetos — rótulo</label>
+              <input type="text" id="hero-stat-projects-label" placeholder="Projetos entregues" />
+            </div>
+            <div class="form-group">
+              <label>Anos — número</label>
+              <input type="number" id="hero-stat-years" placeholder="5" />
+            </div>
+            <div class="form-group">
+              <label>Anos — rótulo</label>
+              <input type="text" id="hero-stat-years-label" placeholder="Anos de experiência" />
+            </div>
+          </div>
+        </div>
+
+        <div class="save-bar">
+          <button class="btn-save" onclick="salvarSecao('hero')">Salvar hero</button>
+          <span class="save-status" id="save-status-hero"></span>
+        </div>
+      </div>
+
+      <!-- ── SERVIÇOS TAB ── -->
+      <div class="tab-panel" id="tab-servicos">
+        <div class="panel-title">Serviços</div>
+        <div class="panel-sub">Os 3 cards de serviços exibidos na seção principal.</div>
+
+        <div class="service-editor-grid" id="service-editor-grid">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div class="save-bar">
+          <button class="btn-save" onclick="salvarSecao('servicos')">Salvar serviços</button>
+          <span class="save-status" id="save-status-servicos"></span>
+        </div>
+      </div>
+
+      <!-- ── SOBRE TAB ── -->
+      <div class="tab-panel" id="tab-sobre">
+        <div class="panel-title">Seção Sobre</div>
+        <div class="panel-sub">Conteúdo da seção institucional com texto e imagem.</div>
+
+        <div class="form-section">
+          <div class="form-section-title">Textos</div>
+          <div class="form-grid single">
+            <div class="form-group">
+              <label>Título (HTML permitido)</label>
+              <input type="text" id="sobre-title" placeholder='Tecnologia com <span class="grad-text">propósito</span>' />
+            </div>
+            <div class="form-group">
+              <label>Subtítulo</label>
+              <input type="text" id="sobre-subtitle" placeholder="Nascemos para resolver um problema real." />
+            </div>
+            <div class="form-group">
+              <label>Texto principal</label>
+              <textarea id="sobre-texto" rows="6" placeholder="Texto sobre a empresa..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Imagem</div>
+          <div class="img-upload-area" id="sobre-img-upload-area">
+            <input type="file" id="sobre-img-file" accept="image/*" />
+            <img class="img-preview" id="sobre-img-preview" src="" alt="Sobre" />
+            <div class="img-upload-label">
+              <div style="font-size:1.5rem;margin-bottom:8px;">📷</div>
+              <span>Clique para selecionar</span> ou arraste<br />
+              <small style="color:var(--text3)">Recomendado: 800×600 px</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="save-bar">
+          <button class="btn-save" onclick="salvarSecao('sobre')">Salvar sobre</button>
+          <span class="save-status" id="save-status-sobre"></span>
+        </div>
+      </div>
+
+      <!-- ── DEPOIMENTOS TAB ── -->
+      <div class="tab-panel" id="tab-depoimentos">
+        <div class="panel-title">Depoimentos</div>
+        <div class="panel-sub">Gerenciar os depoimentos de clientes exibidos no site.</div>
+
+        <div class="table-actions">
+          <span style="font-size:0.85rem;color:var(--text3)" id="dep-count">0 depoimentos</span>
+          <button class="btn-add" onclick="toggleAddTestimonial()">+ Adicionar depoimento</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Empresa</th>
+                <th>Depoimento</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="dep-table-body">
+              <tr><td colspan="4" class="table-empty">Nenhum depoimento cadastrado.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Add form -->
+        <div class="add-form" id="add-dep-form" style="display:none">
+          <div class="add-form-title">Novo depoimento</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nome do cliente</label>
+              <input type="text" id="new-dep-nome" placeholder="João Silva" />
+            </div>
+            <div class="form-group">
+              <label>Empresa</label>
+              <input type="text" id="new-dep-empresa" placeholder="Transportadora XYZ" />
+            </div>
+            <div class="form-group full">
+              <label>Depoimento</label>
+              <textarea id="new-dep-texto" rows="3" placeholder="O texto do depoimento..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Foto do cliente (opcional)</label>
+              <div class="img-upload-area" style="padding:14px">
+                <input type="file" id="new-dep-foto" accept="image/*" />
+                <img class="img-preview" id="new-dep-foto-preview" src="" alt="Foto" style="max-width:80px;max-height:80px;" />
+                <div class="img-upload-label" style="font-size:0.78rem">
+                  <span>Selecionar foto</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:14px">
+            <button class="btn-save" onclick="adicionarDepoimento()">Salvar depoimento</button>
+            <button class="btn-delete" onclick="toggleAddTestimonial()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CONTATO TAB ── -->
+      <div class="tab-panel" id="tab-contato">
+        <div class="panel-title">Informações de Contato</div>
+        <div class="panel-sub">Dados exibidos na seção de contato e no footer.</div>
+
+        <div class="form-section">
+          <div class="form-section-title">Canais de comunicação</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>WhatsApp (com DDD, somente números)</label>
+              <input type="tel" id="contato-whatsapp" placeholder="5511999999999" />
+            </div>
+            <div class="form-group">
+              <label>E-mail</label>
+              <input type="email" id="contato-email" placeholder="contato@gm7sistemas.com.br" />
+            </div>
+            <div class="form-group">
+              <label>Instagram (@usuario)</label>
+              <input type="text" id="contato-instagram" placeholder="@gm7sistemas" />
+            </div>
+            <div class="form-group">
+              <label>LinkedIn (URL completa)</label>
+              <input type="url" id="contato-linkedin" placeholder="https://linkedin.com/company/gm7" />
+            </div>
+            <div class="form-group full">
+              <label>Endereço (opcional)</label>
+              <input type="text" id="contato-endereco" placeholder="Rua Exemplo, 123 — Cidade, Estado" />
+            </div>
+          </div>
+        </div>
+
+        <div class="save-bar">
+          <button class="btn-save" onclick="salvarSecao('contato')">Salvar contato</button>
+          <span class="save-status" id="save-status-contato"></span>
+        </div>
+      </div>
+
+      <!-- ── MENSAGENS TAB ── -->
+      <div class="tab-panel" id="tab-mensagens">
+        <div class="panel-title">Mensagens Recebidas</div>
+        <div class="panel-sub">Formulários de contato enviados pelos visitantes.</div>
+
+        <div class="table-actions">
+          <span style="font-size:0.85rem;color:var(--text3)" id="msg-count">0 mensagens</span>
+          <button class="btn-add" onclick="carregarMensagens()">↻ Atualizar</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Empresa</th>
+                <th>Telefone</th>
+                <th>Mensagem</th>
+                <th>Data</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="msg-table-body">
+              <tr><td colspan="6" class="table-empty">Nenhuma mensagem.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── SENHA TAB ── -->
+      <div class="tab-panel" id="tab-senha">
+        <div class="panel-title">Alterar Senha</div>
+        <div class="panel-sub">Troque a senha de acesso ao painel administrativo.</div>
+
+        <div class="form-section" style="max-width:480px">
+          <div class="form-section-title">Nova senha</div>
+          <div class="form-grid single">
+            <div class="form-group">
+              <label>Senha atual</label>
+              <input type="password" id="senha-atual" placeholder="Senha atual" />
+            </div>
+            <div class="form-group">
+              <label>Nova senha</label>
+              <input type="password" id="senha-nova" placeholder="Nova senha (min. 6 caracteres)" />
+            </div>
+            <div class="form-group">
+              <label>Confirmar nova senha</label>
+              <input type="password" id="senha-confirmar" placeholder="Repita a nova senha" />
+            </div>
+          </div>
+          <div class="save-bar" style="border:none;padding-top:8px">
+            <button class="btn-save" onclick="alterarSenha()">Alterar senha</button>
+            <span class="save-status" id="save-status-senha"></span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /admin-content -->
+  </div><!-- /admin-main -->
+</div><!-- /admin-layout -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="landing-admin.js?v=1"></script>
+</body>
+</html>

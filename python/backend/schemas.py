@@ -384,6 +384,44 @@ class LoginIn(BaseModel):
         return validar_email_formato(value)
 
 
+class SolicitacaoCadastroCreate(BaseModel):
+    empresa: str = Field(..., min_length=1, max_length=160)
+    nome: str = Field(..., min_length=1, max_length=160)
+    cargo: str = Field("", max_length=100)
+    email: str
+    whatsapp: str = Field("", max_length=30)
+
+    @field_validator("email")
+    @classmethod
+    def validar_email(cls, value: str) -> str:
+        return validar_email_formato(value)
+
+
+class SolicitacaoStatusUpdate(BaseModel):
+    status: str  # pendente | aprovado | rejeitado
+    observacao: str = ""
+
+    @field_validator("status")
+    @classmethod
+    def validar_status(cls, value: str) -> str:
+        if value not in {"pendente", "aprovado", "rejeitado"}:
+            raise ValueError("Status invalido. Use: pendente, aprovado ou rejeitado.")
+        return value
+
+
+class SolicitacaoCadastroOut(BaseModel):
+    model_config = {"from_attributes": True}
+    id: int
+    empresa: str
+    nome: str
+    cargo: str
+    email: str
+    whatsapp: str
+    status: str
+    observacao: str
+    created_at: datetime
+
+
 class TokenOut(BaseModel):
     """Schema de resposta para o endpoint de login bem-sucedido.
 

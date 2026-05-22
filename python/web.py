@@ -16,8 +16,14 @@ from main import FRONTEND_DIR, app
 
 
 @app.get("/")
+def abrir_landing():
+    # Página inicial: landing page institucional da GM7 Sistemas.
+    return FileResponse(FRONTEND_DIR / "landing.html")
+
+
+@app.get("/login")
 def abrir_login():
-    # Página inicial padrão: autenticação do usuário administrativo.
+    # Página de login do sistema administrativo.
     return FileResponse(FRONTEND_DIR / "login.html")
 
 
@@ -31,6 +37,12 @@ def abrir_app():
 def abrir_motorista():
     # PWA voltado aos motoristas (viagens + GPS).
     return FileResponse(FRONTEND_DIR / "motorista.html")
+
+
+@app.get("/gm7-admin")
+def abrir_gm7_admin():
+    # Painel de administração da landing page.
+    return FileResponse(FRONTEND_DIR / "landing-admin.html")
 
 
 if FRONTEND_DIR.exists():

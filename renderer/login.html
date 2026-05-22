@@ -38,7 +38,9 @@
       </div>
 
       <div class="login-right">
-        <div class="form-box">
+
+        <!-- Painel de login -->
+        <div class="form-box" id="painel-login">
           <h2>Entrar</h2>
           <p class="subtitle">Use seu e-mail e senha para acessar.</p>
 
@@ -58,11 +60,42 @@
           <button type="button" class="access-link" id="solicitar-acesso">Solicitar cadastro</button>
           <button type="button" class="access-link install-login-btn" id="install-pwa-btn" hidden>Instalar app</button>
         </div>
+
+        <!-- Painel de solicitação de cadastro -->
+        <div class="form-box" id="painel-solicitacao" style="display:none;">
+          <h2>Solicitar acesso</h2>
+          <p class="subtitle">Preencha seus dados. O administrador sera notificado.</p>
+
+          <form id="form-solicitacao">
+            <label for="sol-empresa">Empresa</label>
+            <input type="text" id="sol-empresa" placeholder="Nome da empresa" required />
+
+            <label for="sol-nome">Nome completo</label>
+            <input type="text" id="sol-nome" placeholder="Seu nome" required />
+
+            <label for="sol-cargo">Cargo / Funcao</label>
+            <input type="text" id="sol-cargo" placeholder="Ex.: Motorista, Financeiro..." />
+
+            <label for="sol-email">E-mail</label>
+            <input type="email" id="sol-email" placeholder="seu@email.com" required />
+
+            <label for="sol-whats">WhatsApp</label>
+            <input type="tel" id="sol-whats" placeholder="(00) 00000-0000" />
+
+            <button type="submit" id="btn-enviar-solicitacao">Enviar solicitacao</button>
+          </form>
+
+          <p id="sol-erro" class="erro-login"></p>
+          <p id="sol-status" class="login-status"></p>
+
+          <button type="button" class="access-link" id="voltar-login">Voltar ao login</button>
+        </div>
+
       </div>
     </div>
   </div>
 
-  <script src="login.js?v=12"></script>
+  <script src="login.js?v=13"></script>
   <script src="pwa.js?v=12"></script>
 </body>
 </html>

@@ -365,3 +365,23 @@ class MotoristaLocalizacao(Base):
     velocidade: Mapped[float | None] = mapped_column(Float, nullable=True)
     heading: Mapped[float | None] = mapped_column(Float, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class SolicitacaoCadastro(Base):
+    """Solicitações de acesso enviadas pelo formulário público da tela de login.
+
+    Aguardam aprovação ou rejeição pelo usuário master.
+    Não pertence a nenhuma empresa (empresa é informada no formulário pelo solicitante).
+    """
+    __tablename__ = "solicitacoes_cadastro"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    empresa: Mapped[str] = mapped_column(String(160), nullable=False)
+    nome: Mapped[str] = mapped_column(String(160), nullable=False)
+    cargo: Mapped[str] = mapped_column(String(100), default="", nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    whatsapp: Mapped[str] = mapped_column(String(30), default="", nullable=False)
+    # pendente, aprovado, rejeitado
+    status: Mapped[str] = mapped_column(String(20), default="pendente", nullable=False)
+    observacao: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

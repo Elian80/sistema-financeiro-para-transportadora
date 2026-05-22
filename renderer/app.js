@@ -542,6 +542,13 @@ const pages = {
     title: "Lancamentos",
     subtitle: "Cadastro, conferencia e filtros",
     render: () => `
+      <div class="page-tabs" style="display:flex;gap:8px;margin-bottom:18px;">
+        <button class="tab-btn active" data-tab="tab-lancamentos" type="button">Lancamentos</button>
+        <button class="tab-btn" data-tab="tab-plano-contas" type="button">Plano de Contas</button>
+        <button class="tab-btn" data-tab="tab-ativos-passivos" type="button">Ativos e Passivos</button>
+      </div>
+
+      <div id="tab-lancamentos">
       <div class="content-grid">
         <div class="panel-box">
           <h3 id="titulo-form-lancamento">Novo lancamento</h3>
@@ -768,6 +775,80 @@ const pages = {
             </table>
           </div>
         </div>
+      </div>
+      </div>
+
+      <div id="tab-plano-contas" style="display:none;">
+
+        <div class="panel-box pc-form-card" style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div>
+              <h3 id="titulo-form-plano-conta" style="margin:0;">Nova classificacao</h3>
+              <p style="margin:4px 0 0;color:var(--muted);font-size:13px;">Use o codigo do grupo como prefixo. Ex.: 1.6 PEDAGIO, 2.8 LIMPEZA</p>
+            </div>
+          </div>
+          <form id="form-plano-conta">
+            <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+              <div style="flex:1;min-width:220px;">
+                <label for="plano-conta-nome" style="font-size:12px;color:var(--muted);display:block;margin-bottom:5px;">Nome da classificacao</label>
+                <input id="plano-conta-nome" placeholder="Ex.: 1.6 PEDAGIO" required style="width:100%;" />
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button type="submit" class="primary-btn" id="btn-salvar-plano-conta">+ Adicionar</button>
+                <button type="button" class="ghost-btn" id="btn-cancelar-plano-conta" style="display:none;">Cancelar</button>
+              </div>
+            </div>
+            <p id="mensagem-plano-conta" class="mensagem" style="margin-top:10px;"></p>
+          </form>
+        </div>
+
+        <div id="estrutura-plano-contas" class="account-plan-grid">
+          <p class="empty-row">Carregando...</p>
+        </div>
+      </div>
+
+      <div id="tab-ativos-passivos" style="display:none;">
+        <div class="kpi-grid" style="margin-bottom:18px;">
+          <div class="kpi-card"><div class="kpi-label">Total de ativos</div><div class="kpi-value positive" id="ap-total-ativos">R$ 0,00</div></div>
+          <div class="kpi-card"><div class="kpi-label">Total de passivos</div><div class="kpi-value negative" id="ap-total-passivos">R$ 0,00</div></div>
+          <div class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="ap-patrimonio">R$ 0,00</div></div>
+        </div>
+
+        <div class="content-grid">
+          <section class="panel-box">
+            <h3 id="titulo-form-ativo">Novo ativo</h3>
+            <form id="form-ativo" class="form-grid">
+              <div class="field"><label>Nome</label><input id="ativo-nome" required /></div>
+              <div class="field"><label>Tipo</label><select id="ativo-tipo"><option>Veiculo</option><option>Maquina</option><option>Equipamento</option><option>Imovel</option><option>Outro</option></select></div>
+              <div class="field"><label>Valor</label><input type="number" step="0.01" id="ativo-valor" /></div>
+              <div class="field"><label>Data aquisicao</label><input type="date" id="ativo-data" /></div>
+              <div class="field"><label>Veiculo vinculado</label><select id="ativo-veiculo-id"><option value="">Sem vinculo</option></select></div>
+              <div class="field"><label>Status</label><input id="ativo-status" value="Ativo" /></div>
+              <div class="field full"><label>Observacao</label><input id="ativo-observacao" /></div>
+              <div class="field full btn-row"><button class="primary-btn" type="submit">Salvar ativo</button><button class="ghost-btn" type="button" id="btn-cancelar-ativo" style="display:none;">Cancelar</button></div>
+            </form>
+            <p id="mensagem-ativo" class="mensagem"></p>
+          </section>
+
+          <section class="panel-box">
+            <h3 id="titulo-form-passivo">Novo passivo</h3>
+            <form id="form-passivo" class="form-grid">
+              <div class="field"><label>Nome</label><input id="passivo-nome" required /></div>
+              <div class="field"><label>Tipo</label><select id="passivo-tipo"><option>Financiamento</option><option>Emprestimo</option><option>Divida</option><option>Imposto a pagar</option><option>Outro</option></select></div>
+              <div class="field"><label>Valor total</label><input type="number" step="0.01" id="passivo-valor-total" /></div>
+              <div class="field"><label>Valor pago</label><input type="number" step="0.01" id="passivo-valor-pago" /></div>
+              <div class="field"><label>Data inicio</label><input type="date" id="passivo-data-inicio" /></div>
+              <div class="field"><label>Vencimento</label><input type="date" id="passivo-data-vencimento" /></div>
+              <div class="field"><label>Status</label><input id="passivo-status" value="Pendente" /></div>
+              <div class="field full"><label>Observacao</label><input id="passivo-observacao" /></div>
+              <div class="field full btn-row"><button class="primary-btn" type="submit">Salvar passivo</button><button class="ghost-btn" type="button" id="btn-cancelar-passivo" style="display:none;">Cancelar</button></div>
+            </form>
+            <p id="mensagem-passivo" class="mensagem"></p>
+          </section>
+        </div>
+
+        <section class="panel-box" style="margin-top:18px;"><h3>Ativos</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>Tipo</th><th>Valor</th><th>Data</th><th>Status</th><th>Acoes</th></tr></thead><tbody id="tabela-ativos"></tbody></table></div></section>
+        <section class="panel-box" style="margin-top:18px;"><h3>Passivos</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>Tipo</th><th>Total</th><th>Pago</th><th>Saldo</th><th>Vencimento</th><th>Acoes</th></tr></thead><tbody id="tabela-passivos"></tbody></table></div></section>
       </div>
     `
   },
@@ -1120,7 +1201,21 @@ const pages = {
       <section class="panel-box">
         <form id="form-configuracoes" class="form-grid">
           <div class="field"><label>Nome da empresa</label><input id="config-empresa" /></div>
-          <div class="field"><label>Logo da empresa</label><input id="config-logo" placeholder="URL ou base64" /></div>
+          <div class="field full">
+            <label>Logo da empresa</label>
+            <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-top:6px;">
+              <div id="logo-preview-box" style="width:72px;height:72px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--surface2);flex-shrink:0;">
+                <span id="logo-preview-placeholder" style="font-size:28px;font-weight:700;color:var(--muted);">F</span>
+              </div>
+              <div style="flex:1;min-width:180px;">
+                <input type="file" id="config-logo-file" accept="image/*" style="display:none;" />
+                <button type="button" class="ghost-btn" id="btn-escolher-logo">Escolher imagem</button>
+                <button type="button" class="ghost-btn" id="btn-remover-logo" style="display:none;margin-left:8px;color:var(--danger);">Remover logo</button>
+                <p style="margin:6px 0 0;font-size:12px;color:var(--muted);">PNG, JPG ou SVG. Redimensionado para 256×256px automaticamente.</p>
+              </div>
+            </div>
+            <input type="hidden" id="config-logo" />
+          </div>
           <div class="field"><label>Tema</label><select id="config-tema"><option value="dark">Escuro</option><option value="light">Claro</option></select></div>
           <div class="field"><label>Cor principal</label><input type="color" id="config-cor" value="#4f8cff" /></div>
           <div class="field"><label>Moeda</label><input id="config-moeda" value="BRL" /></div>
@@ -1252,6 +1347,26 @@ const pages = {
           <table class="data-table">
             <thead><tr><th>Nome</th><th>Email</th><th>Motorista vinculado</th><th>Status</th><th>Link app</th><th>Acoes</th></tr></thead>
             <tbody id="tabela-motorista-acessos"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel-box">
+        <div class="table-toolbar">
+          <div><h3 style="margin:0;">Solicitacoes de cadastro</h3><span>Pedidos de acesso enviados pelo formulario de login</span></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="filtro-solicitacao-status" style="font-size:13px;padding:6px 10px;">
+              <option value="">Todas</option>
+              <option value="pendente">Pendentes</option>
+              <option value="aprovado">Aprovadas</option>
+              <option value="rejeitado">Rejeitadas</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table class="data-table">
+            <thead><tr><th>Data</th><th>Empresa</th><th>Nome</th><th>Cargo</th><th>Email</th><th>WhatsApp</th><th>Status</th><th>Acoes</th></tr></thead>
+            <tbody id="tabela-solicitacoes"></tbody>
           </table>
         </div>
       </section>
@@ -1643,14 +1758,14 @@ function tratarNaoAutorizado(response) {
   if (response.status !== 401) return;
   sessionStorage.removeItem("financeiro_access_token");
   sessionStorage.removeItem("financeiro_usuario");
-  window.location.href = "login.html";
+  window.location.href = "/login";
 }
 
 // Proteção de rota: chamada na inicialização para garantir que o usuário
 // esteja autenticado antes de qualquer renderização. Redireciona se não há token.
 function exigirLogin() {
   if (!getAccessToken()) {
-    window.location.href = "login.html";
+    window.location.href = "/login";
   }
 }
 
@@ -1720,21 +1835,46 @@ function iconePorTipo(tipo) {
   return "🚘";
 }
 
-// Lê um arquivo de imagem do input type="file" e retorna sua representação
-// em Base64 (data URL). Usado para armazenar a foto do veículo e logo da empresa.
+// Redimensiona e comprime uma imagem antes de converter para base64.
+// maxW/maxH: dimensão máxima em px (mantém proporção). qualidade: 0-1 para JPEG.
+// SVGs passam direto sem redimensionamento (canvas não suporta SVG bem).
 // Retorna string vazia se nenhum arquivo foi fornecido.
-function arquivoParaBase64(arquivo) {
+function redimensionarImagem(arquivo, maxW, maxH, qualidade = 0.82) {
   return new Promise((resolve, reject) => {
-    if (!arquivo) {
-      resolve("");
+    if (!arquivo) { resolve(""); return; }
+    if (arquivo.type === "image/svg+xml") {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(arquivo);
       return;
     }
-
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", qualidade));
+      };
+      img.src = ev.target.result;
+    };
     reader.readAsDataURL(arquivo);
   });
+}
+
+function arquivoParaBase64(arquivo) {
+  return redimensionarImagem(arquivo, 800, 600);
 }
 
 // Filtra a lista de veículos localmente com base nos valores atuais dos campos de filtro.
@@ -3025,13 +3165,17 @@ async function carregarEstruturaPlanoContas() {
   return apiGet("/plano-contas/estrutura");
 }
 
-// Renderiza o plano base em cards agrupados com código e nome do grupo
-// e os itens/subclasses de cada grupo listados dentro do card.
+// Renderiza grupos do plano de contas mesclando itens base e personalizados.
+// Itens base aparecem como chips somente-leitura.
+// Itens personalizados aparecem com botões Editar/Excluir dentro do mesmo grupo.
 async function renderizarEstruturaPlanoContas() {
   const container = document.getElementById("estrutura-plano-contas");
   if (!container) return;
 
-  const estrutura = await carregarEstruturaPlanoContas();
+  const [estrutura, personalizados] = await Promise.all([
+    carregarEstruturaPlanoContas(),
+    carregarPlanoContas(),
+  ]);
   const grupos = estrutura.grupos || [];
 
   if (!grupos.length) {
@@ -3039,17 +3183,57 @@ async function renderizarEstruturaPlanoContas() {
     return;
   }
 
-  container.innerHTML = grupos.map((grupo) => `
+  container.innerHTML = grupos.map((grupo) => {
+    const itensBase = grupo.itens || [];
+    // Personalizados cujo nome começa com o código do grupo (ex: "1." → grupo 1)
+    const itensCustom = personalizados.filter(p =>
+      p.nome.startsWith(grupo.codigo + ".")
+    );
+    const total = itensBase.length + itensCustom.length;
+
+    return `
     <article class="account-group">
       <div class="account-group-title">
-        <strong>${grupo.codigo}. ${grupo.nome}</strong>
-        <span>${(grupo.itens || []).length} classificacao(oes)</span>
+        <div>
+          <strong>${grupo.codigo}. ${grupo.nome}</strong>
+          <span class="pc-count">${total} classificacao(oes)</span>
+        </div>
       </div>
       <div class="account-items">
-        ${(grupo.itens || []).map((item) => `<span>${item}</span>`).join("")}
+        ${itensBase.map(item => `<span class="pc-chip pc-chip-base" title="Item base">${item}</span>`).join("")}
+        ${itensCustom.map(item => `
+          <span class="pc-chip pc-chip-custom">
+            ${escapeHtml(item.nome)}
+            <button class="pc-chip-btn edit" onclick="editarPlanoConta(${item.id})" title="Editar">&#9998;</button>
+            <button class="pc-chip-btn del" onclick="excluirPlanoConta(${item.id})" title="Excluir">&#10005;</button>
+          </span>
+        `).join("")}
       </div>
     </article>
-  `).join("");
+  `}).join("");
+
+  // Personalizados que não pertencem a nenhum grupo listado
+  const codigosGrupos = grupos.map(g => g.codigo + ".");
+  const avulsos = personalizados.filter(p =>
+    !codigosGrupos.some(cod => p.nome.startsWith(cod))
+  );
+  if (avulsos.length) {
+    container.innerHTML += `
+    <article class="account-group">
+      <div class="account-group-title">
+        <div><strong>Outros</strong><span class="pc-count">${avulsos.length} classificacao(oes)</span></div>
+      </div>
+      <div class="account-items">
+        ${avulsos.map(item => `
+          <span class="pc-chip pc-chip-custom">
+            ${escapeHtml(item.nome)}
+            <button class="pc-chip-btn edit" onclick="editarPlanoConta(${item.id})" title="Editar">&#9998;</button>
+            <button class="pc-chip-btn del" onclick="excluirPlanoConta(${item.id})" title="Excluir">&#10005;</button>
+          </span>
+        `).join("")}
+      </div>
+    </article>`;
+  }
 }
 
 async function renderizarPlanoContas() {
@@ -3102,7 +3286,6 @@ async function iniciarPlanoContas() {
   const botaoCancelar = document.getElementById("btn-cancelar-plano-conta");
 
   await renderizarEstruturaPlanoContas();
-  await renderizarPlanoContas();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3117,10 +3300,10 @@ async function iniciarPlanoContas() {
       editandoPlanoContaId = null;
       form.reset();
       titulo.textContent = "Nova classificacao";
-      botaoSalvar.textContent = "Salvar classificacao";
+      botaoSalvar.textContent = "+ Adicionar";
       botaoCancelar.style.display = "none";
       mensagem.textContent = "Classificacao salva com sucesso.";
-      await renderizarPlanoContas();
+      await renderizarEstruturaPlanoContas();
     } catch (erro) {
       mensagem.textContent = erro.message;
     }
@@ -3146,13 +3329,14 @@ window.editarPlanoConta = async (id) => {
   document.getElementById("titulo-form-plano-conta").textContent = "Alterar classificacao";
   document.getElementById("btn-salvar-plano-conta").textContent = "Salvar alteracao";
   document.getElementById("btn-cancelar-plano-conta").style.display = "inline-block";
+  document.getElementById("btn-cancelar-plano-conta").style.display = "inline-block";
 };
 
 window.excluirPlanoConta = async (id) => {
   if (!confirm("Deseja excluir esta classificacao?")) return;
 
   await apiDelete(`/plano-contas/${id}`);
-  await renderizarPlanoContas();
+  await renderizarEstruturaPlanoContas();
 };
 
 // =========================================================
@@ -3606,6 +3790,29 @@ async function carregarLancamentos() {
 // ações de conferência e autocomplete de estoque.
 // Chamada por loadPage("lancamentos") após renderizar o HTML.
 async function iniciarModuloLancamentos() {
+  // Lógica das abas: Lançamentos / Plano de Contas / Ativos e Passivos
+  let ativosJaCarregados = false;
+  let planoJaCarregado   = false;
+  const tabIds = ["tab-lancamentos", "tab-plano-contas", "tab-ativos-passivos"];
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const alvo = btn.dataset.tab;
+      tabIds.forEach(id => {
+        document.getElementById(id).style.display = id === alvo ? "" : "none";
+      });
+      if (alvo === "tab-plano-contas" && !planoJaCarregado) {
+        planoJaCarregado = true;
+        await iniciarPlanoContas();
+      }
+      if (alvo === "tab-ativos-passivos" && !ativosJaCarregados) {
+        ativosJaCarregados = true;
+        await iniciarAtivosPassivos();
+      }
+    });
+  });
+
   await carregarClassificacoes();
   await carregarVeiculosLancamento();
   // Carregar produtos para o autocomplete de vínculo de estoque
@@ -4592,9 +4799,16 @@ async function iniciarEstoque() {
 // O painel admin (master) tem gestão mais completa em renderizarAdminUsuarios().
 // =========================================================
 
+// Retorna a chave localStorage de configurações isolada por empresa.
+// Cada empresa tem seus próprios dados (logo, nome, tema, etc.) no mesmo browser.
+function _chaveConfiguracao() {
+  const u = obterUsuarioSessao();
+  return u.empresa_id ? `financeiro_configuracoes_${u.empresa_id}` : "financeiro_configuracoes";
+}
+
 // Lê o objeto de configurações do localStorage. Retorna {} se não existir.
 function carregarConfiguracoesLocais() {
-  return JSON.parse(localStorage.getItem("financeiro_configuracoes") || "{}");
+  return JSON.parse(localStorage.getItem(_chaveConfiguracao()) || "{}");
 }
 
 // Aplica o tema (dark/light) e a cor principal ao DOM imediatamente.
@@ -4617,21 +4831,135 @@ function iniciarConfiguracoes() {
   document.getElementById("config-cor").value = config.corPrincipal || "#22D3EE";
   document.getElementById("config-moeda").value = config.moeda || "BRL";
   document.getElementById("config-relatorio").value = config.dadosRelatorio || "";
+
+  // Pré-exibe logo salva no preview
+  if (config.logoEmpresa) {
+    _atualizarPreviewLogo(config.logoEmpresa);
+  }
+
+  // Botão "Escolher imagem" abre o file input oculto
+  document.getElementById("btn-escolher-logo").addEventListener("click", () => {
+    document.getElementById("config-logo-file").click();
+  });
+
+  // Ao selecionar arquivo: valida, converte para base64, atualiza preview
+  document.getElementById("config-logo-file").addEventListener("change", async () => {
+    const arquivo = document.getElementById("config-logo-file").files[0];
+    if (!arquivo) return;
+    if (arquivo.size > 10 * 1024 * 1024) {
+      mostrarToast("Imagem muito grande. Use ate 10MB.", "error");
+      document.getElementById("config-logo-file").value = "";
+      return;
+    }
+    const base64 = await redimensionarImagem(arquivo, 256, 256, 0.85);
+    document.getElementById("config-logo").value = base64;
+    _atualizarPreviewLogo(base64);
+  });
+
+  // Botão "Remover logo"
+  document.getElementById("btn-remover-logo").addEventListener("click", () => {
+    document.getElementById("config-logo").value = "";
+    document.getElementById("config-logo-file").value = "";
+    _atualizarPreviewLogo("");
+  });
+
   document.getElementById("form-configuracoes").addEventListener("submit", (event) => {
     event.preventDefault();
     const novo = {
       nomeEmpresa: document.getElementById("config-empresa").value.trim(),
-      logoEmpresa: document.getElementById("config-logo").value.trim(),
+      logoEmpresa: document.getElementById("config-logo").value,
       tema: document.getElementById("config-tema").value,
       corPrincipal: document.getElementById("config-cor").value,
       moeda: document.getElementById("config-moeda").value.trim() || "BRL",
       dadosRelatorio: document.getElementById("config-relatorio").value.trim()
     };
-    localStorage.setItem("financeiro_configuracoes", JSON.stringify(novo));
+    localStorage.setItem(_chaveConfiguracao(), JSON.stringify(novo));
     localStorage.setItem("financeiro_tema", novo.tema);
     aplicarTema();
+    aplicarMarca();
     mostrarToast("Configuracoes salvas.", "success");
   });
+}
+
+// Atualiza o preview da logo na tela de configuracoes
+function _atualizarPreviewLogo(src) {
+  const box = document.getElementById("logo-preview-box");
+  const placeholder = document.getElementById("logo-preview-placeholder");
+  const btnRemover = document.getElementById("btn-remover-logo");
+  if (!box) return;
+  if (src) {
+    placeholder.style.display = "none";
+    let img = box.querySelector("img");
+    if (!img) {
+      img = document.createElement("img");
+      img.style.cssText = "width:100%;height:100%;object-fit:contain;";
+      box.appendChild(img);
+    }
+    img.src = src;
+    btnRemover.style.display = "inline-block";
+  } else {
+    const img = box.querySelector("img");
+    if (img) img.remove();
+    placeholder.style.display = "";
+    btnRemover.style.display = "none";
+  }
+}
+
+// Lê as configuracoes salvas e atualiza a marca na sidebar
+// (logo e nome da empresa substituem o icone "F" e o texto "Financeiro")
+function aplicarMarca() {
+  const config = carregarConfiguracoesLocais();
+  const iconEl = document.getElementById("brand-icon");
+  const nomeEl = document.getElementById("brand-nome");
+  if (!iconEl || !nomeEl) return;
+  const logo = config.logoEmpresa || "";
+  const nome = config.nomeEmpresa || "Financeiro";
+  if (logo) {
+    iconEl.style.background = "none";
+    iconEl.style.boxShadow = "none";
+    iconEl.innerHTML = `<img src="${logo}" alt="Logo" style="width:100%;height:100%;object-fit:cover;display:block;">`;
+  } else {
+    iconEl.style.background = "";
+    iconEl.style.boxShadow = "";
+    iconEl.textContent = "F";
+  }
+  nomeEl.textContent = nome;
+  _atualizarManifestoPWA(logo, nome);
+}
+
+// Substitui o manifesto PWA por um blob com a logo e nome da empresa.
+// O Chrome re-avalia a elegibilidade de instalação quando o href do manifesto muda.
+function _atualizarManifestoPWA(logo, nome) {
+  const icones = logo
+    ? [{ src: logo, sizes: "192x192 512x512", type: "image/jpeg", purpose: "any maskable" }]
+    : [
+        { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+        { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" },
+      ];
+  const manifesto = {
+    name: nome !== "Financeiro" ? `${nome} Financeiro` : "Financeiro",
+    short_name: nome,
+    description: "Sistema financeiro, operacional e de frota.",
+    id: "/app", start_url: "/app", scope: "/",
+    display: "standalone",
+    display_override: ["standalone", "minimal-ui"],
+    background_color: "#0B0F1A", theme_color: "#0B0F1A",
+    orientation: "any",
+    categories: ["business", "finance", "productivity"],
+    icons: icones,
+  };
+  try {
+    const blob = new Blob([JSON.stringify(manifesto)], { type: "application/manifest+json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.querySelector("link[rel='manifest']");
+    if (!link) return;
+    if (link._pwaBlobUrl) URL.revokeObjectURL(link._pwaBlobUrl);
+    link._pwaBlobUrl = url;
+    link.href = url;
+  } catch {
+    // Navegador sem suporte a Blob URL — usa o manifesto estático normalmente.
+  }
 }
 
 // Lê o objeto do usuário logado do sessionStorage.
@@ -4733,10 +5061,74 @@ window.desativarUsuario = async (usuarioId) => {
 // display:flex/none controlados por abrirModalAdmin/fecharModalAdmin.
 // =========================================================
 
+async function renderizarAdminSolicitacoes() {
+  const tbody = document.getElementById("tabela-solicitacoes");
+  if (!tbody) return;
+  const status = document.getElementById("filtro-solicitacao-status")?.value || "";
+  try {
+    const url = status ? `/solicitacoes-cadastro?status=${encodeURIComponent(status)}` : "/solicitacoes-cadastro";
+    const lista = await apiGet(url);
+    atualizarBadgeNotificacao(lista.filter(s => s.status === "pendente").length);
+    if (!lista.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-row">Nenhuma solicitacao encontrada.</td></tr>`;
+      return;
+    }
+    const badgeClasse = { pendente: "badge-warn", aprovado: "badge-ok", rejeitado: "badge-err" };
+    tbody.innerHTML = lista.map(s => `
+      <tr>
+        <td>${new Date(s.created_at).toLocaleDateString("pt-BR")}</td>
+        <td>${s.empresa}</td>
+        <td>${s.nome}</td>
+        <td>${s.cargo || "-"}</td>
+        <td>${s.email}</td>
+        <td>${s.whatsapp || "-"}</td>
+        <td><span class="badge ${badgeClasse[s.status] || ""}">${s.status}</span></td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${s.status === "pendente" ? `
+            <button class="primary-btn" style="padding:4px 10px;font-size:12px;" onclick="aprovarSolicitacao(${s.id})">Aprovar</button>
+            <button class="ghost-btn" style="padding:4px 10px;font-size:12px;color:var(--danger);" onclick="rejeitarSolicitacao(${s.id})">Rejeitar</button>
+          ` : ""}
+          <button class="ghost-btn" style="padding:4px 10px;font-size:12px;" onclick="excluirSolicitacao(${s.id})">Excluir</button>
+        </td>
+      </tr>`).join("");
+  } catch {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-row">Erro ao carregar solicitacoes.</td></tr>`;
+  }
+}
+
+async function aprovarSolicitacao(id) {
+  if (!confirm("Aprovar esta solicitacao?")) return;
+  await apiSend(`/solicitacoes-cadastro/${id}`, "PATCH", { status: "aprovado", observacao: "" });
+  mostrarToast("Solicitacao aprovada.", "success");
+  await renderizarAdminSolicitacoes();
+}
+
+async function rejeitarSolicitacao(id) {
+  if (!confirm("Rejeitar esta solicitacao?")) return;
+  await apiSend(`/solicitacoes-cadastro/${id}`, "PATCH", { status: "rejeitado", observacao: "" });
+  mostrarToast("Solicitacao rejeitada.", "success");
+  await renderizarAdminSolicitacoes();
+}
+
+async function excluirSolicitacao(id) {
+  if (!confirm("Excluir esta solicitacao permanentemente?")) return;
+  await apiDelete(`/solicitacoes-cadastro/${id}`);
+  mostrarToast("Solicitacao excluida.", "success");
+  await renderizarAdminSolicitacoes();
+}
+
+function atualizarBadgeNotificacao(pendentes) {
+  const btn = document.getElementById("notification-btn");
+  if (!btn) return;
+  btn.dataset.badge = pendentes > 0 ? String(pendentes) : "";
+}
+
 // Ponto de entrada do painel admin. Carrega todos os dados em paralelo
 // e configura todos os eventos: modais, seletor de empresa, logo, forms.
 async function iniciarAdminMaster() {
-  await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminUsuarios(), renderizarAdminAuditoria(), renderizarMotoristaAcessos()]);
+  await Promise.all([renderizarAdminResumo(), renderizarAdminEmpresas(), renderizarAdminUsuarios(), renderizarAdminAuditoria(), renderizarMotoristaAcessos(), renderizarAdminSolicitacoes()]);
+
+  document.getElementById("filtro-solicitacao-status")?.addEventListener("change", () => renderizarAdminSolicitacoes());
 
   const modalEmpresa = document.getElementById("modal-admin-empresa");
   const modalUsuario = document.getElementById("modal-admin-usuario");
@@ -4766,12 +5158,12 @@ async function iniciarAdminMaster() {
   logoArquivo?.addEventListener("change", async () => {
     const arquivo = logoArquivo.files?.[0];
     if (!arquivo) return;
-    if (arquivo.size > 1024 * 1024) {
-      mostrarToast("Logo deve ter no maximo 1MB.", "error");
+    if (arquivo.size > 10 * 1024 * 1024) {
+      mostrarToast("Imagem muito grande. Use ate 10MB.", "error");
       logoArquivo.value = "";
       return;
     }
-    document.getElementById("empresa-logo").value = await arquivoParaBase64(arquivo);
+    document.getElementById("empresa-logo").value = await redimensionarImagem(arquivo, 256, 256, 0.85);
   });
 
   document.getElementById("form-admin-empresa")?.addEventListener("submit", async (event) => {
@@ -6015,6 +6407,13 @@ async function loadPage(pageKey) {
   const page = pages[pageKey];
   if (!page) return;
 
+  // Sincroniza o estado "active" em todos os nav-btns (sidebar + bottom nav)
+  // Garante que a navegação programática (busca, configurações, etc.) também seja refletida
+  navButtons.forEach((btn) => {
+    if (btn.dataset.page === pageKey) btn.classList.add("active");
+    else btn.classList.remove("active");
+  });
+
   pararAtualizacaoMapa();
   if (mapaInstancia) {
     mapaInstancia.remove();
@@ -6025,6 +6424,8 @@ async function loadPage(pageKey) {
   pageTitle.textContent = page.title;
   pageSubtitle.textContent = page.subtitle;
   pageContent.innerHTML = page.render();
+  // Volta ao topo do conteúdo a cada troca de página (UX mobile)
+  pageContent.scrollTop = 0;
   window.lucide?.createIcons();
   iniciarBotoesPopupFiltros();
 
@@ -6117,6 +6518,9 @@ navButtons.forEach((button) => {
 
 sidebarBackdrop?.addEventListener("click", fecharSidebarMobile);
 
+// Botão "Mais" do bottom nav mobile — abre o drawer da sidebar
+document.getElementById("mbn-more-btn")?.addEventListener("click", alternarSidebar);
+
 window.addEventListener("resize", aplicarEstadoSidebar);
 
 window.addEventListener("keydown", (event) => {
@@ -6128,7 +6532,7 @@ window.addEventListener("keydown", (event) => {
 logoutBtn.addEventListener("click", () => {
   sessionStorage.removeItem("financeiro_access_token");
   sessionStorage.removeItem("financeiro_usuario");
-  window.location.href = "login.html";
+  window.location.href = "/login";
 });
 
 if (themeToggleBtn) {
@@ -6171,6 +6575,7 @@ globalSearch?.addEventListener("keydown", async (event) => {
 // INICIALIZACAO DO SISTEMA
 // =========================================================
 aplicarTema();
+aplicarMarca();
 aplicarEstadoSidebar();
 aplicarIconesNavegacao();
 exigirLogin();

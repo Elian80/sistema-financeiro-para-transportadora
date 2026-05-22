@@ -98,8 +98,9 @@ from pydantic import BaseModel, Field, field_validator
 
 # Routers externos — auth e admin são definidos em módulos separados
 # e montados nesta aplicação para manter o código organizado.
-from backend.admin_routes import router as admin_router   # gerenciamento de empresas (perfil master)
-from backend.auth import router as auth_router            # login/logout de usuários administrativos
+from backend.admin_routes import router as admin_router       # gerenciamento de empresas (perfil master)
+from backend.auth import router as auth_router                # login/logout de usuários administrativos
+from backend.landing_routes import router as landing_router   # landing page institucional GM7
 
 # Camada de banco de dados: engine SQLAlchemy, sessão, modelos ORM e migração runtime.
 from backend.database import Base, SessionLocal, engine, garantir_colunas_runtime
@@ -295,8 +296,10 @@ def inicializar_banco():
 # Registra os routers externos na aplicação principal.
 # auth_router: endpoints de autenticação (/auth/login, /auth/logout, etc.)
 # admin_router: painel de gerenciamento de empresas (perfil master)
+# landing_router: API do site institucional GM7 (/gm7-api/*)
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(landing_router)
 
 # ContextVar que armazena o empresa_id do usuário logado durante cada request.
 # Definida aqui (após os routers) para estar disponível em todo o arquivo.
