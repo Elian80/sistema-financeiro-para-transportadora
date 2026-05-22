@@ -6557,6 +6557,26 @@ sidebarBackdrop?.addEventListener("click", fecharSidebarMobile);
 // Botão "Mais" do bottom nav mobile — abre o drawer da sidebar
 document.getElementById("mbn-more-btn")?.addEventListener("click", alternarSidebar);
 
+// Intercepta o botão Voltar / gesto de voltar no mobile.
+// Sem isso, o browser navegaria para /login (ou sairia do app).
+// Estratégia: mantemos sempre uma entrada no history stack apontando para o app,
+// e ao receber popstate redirecionamos para o dashboard em vez de sair.
+history.replaceState({ spa: true }, "");   // substitui a entrada atual sem criar nova
+window.addEventListener("popstate", () => {
+  history.pushState({ spa: true }, "");    // reempurra a entrada para travar o histórico
+  const usuario = obterUsuarioSessao();
+  if (!usuario) return;                    // não logado — deixa sair normalmente
+  fecharSidebarMobile();
+  fecharTodosPopupsFiltros();
+  // Volta ao dashboard (ou admin se for master)
+  const destino = usuario.perfil === "master" ? "admin" : "dashboard";
+  navButtons.forEach((btn) => {
+    if (btn.dataset.page === destino) btn.classList.add("active");
+    else btn.classList.remove("active");
+  });
+  loadPage(destino);
+});
+
 window.addEventListener("resize", aplicarEstadoSidebar);
 
 window.addEventListener("keydown", (event) => {
