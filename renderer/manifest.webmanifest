@@ -1,7 +1,7 @@
 {
-  "name": "Adelia Transportes Financeiro",
-  "short_name": "Financeiro",
-  "description": "Sistema financeiro, operacional e de frota.",
+  "name": "GM7 Log",
+  "short_name": "GM7 Log",
+  "description": "Sistema financeiro, operacional e de frota — GM7 Sistemas.",
   "id": "/app",
   "start_url": "/app",
   "scope": "/",

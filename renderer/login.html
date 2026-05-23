@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0B0F1A" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Financeiro" />
+  <meta name="apple-mobile-web-app-title" content="GM7 Log" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Login - Projeto Financeiro</title>
+  <title>Login — GM7 Log</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -17,11 +17,17 @@
 <body>
   <div class="login-shell">
     <div class="login-card">
+
+      <!-- ── PAINEL ESQUERDO ───────────────────────────────── -->
       <div class="login-left">
-        <div class="brand-badge">F</div>
-        <h1>Financeiro Transportes</h1>
+        <!-- Logo GM7 -->
+        <div class="brand-badge">
+          <img src="icons/icon.svg" alt="GM7 Log" />
+        </div>
+        <h1>GM7 Log</h1>
         <p>
-          Sistema de gestao operacional, financeira e de frota com acesso seguro por empresa.
+          Sistema de gestao operacional, financeira e de frota
+          com acesso seguro por empresa.
         </p>
 
         <div class="login-info">
@@ -29,7 +35,6 @@
             <strong>Controle central</strong>
             <span>Financeiro, veiculos, motoristas, estoque e folha em um so lugar.</span>
           </div>
-
           <div class="info-box">
             <strong>Acesso protegido</strong>
             <span>Login real, permissoes por perfil e separacao de dados por empresa.</span>
@@ -37,7 +42,13 @@
         </div>
       </div>
 
+      <!-- ── PAINEL DIREITO (FORMULÁRIO) ──────────────────── -->
       <div class="login-right">
+
+        <!-- Logo GM7 no topo — visível em todas as telas -->
+        <div class="login-logo-top">
+          <img src="icons/gm7-logo.svg" alt="GM7 Log" class="login-logo-img" />
+        </div>
 
         <!-- Painel de login -->
         <div class="form-box" id="painel-login">
@@ -46,10 +57,24 @@
 
           <form id="login-form">
             <label for="usuario">E-mail</label>
-            <input type="email" id="usuario" placeholder="usuario@empresa.com" autocomplete="username" required />
+            <input type="email" id="usuario" placeholder="usuario@empresa.com"
+                   autocomplete="username" required />
 
             <label for="senha">Senha</label>
-            <input type="password" id="senha" placeholder="Digite sua senha" autocomplete="current-password" required />
+            <div class="input-senha-wrap">
+              <input type="password" id="senha" placeholder="Digite sua senha"
+                     autocomplete="current-password" required />
+              <button type="button" class="btn-eye" id="toggle-senha"
+                      aria-label="Mostrar ou ocultar senha" title="Mostrar senha">
+                <!-- Ícone olho aberto (padrão) -->
+                <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
 
             <button type="submit" id="login-submit">Acessar sistema</button>
           </form>
@@ -58,7 +83,7 @@
           <p id="login-status" class="login-status"></p>
 
           <button type="button" class="access-link" id="solicitar-acesso">Solicitar cadastro</button>
-          <button type="button" class="access-link install-login-btn" id="install-pwa-btn" hidden>Instalar app</button>
+          <button type="button" class="access-link install-login-btn" id="install-pwa-btn" hidden>📲 Instalar app</button>
         </div>
 
         <!-- Painel de solicitação de cadastro -->
@@ -95,7 +120,7 @@
     </div>
   </div>
 
-  <script src="login.js?v=13"></script>
-  <script src="pwa.js?v=12"></script>
+  <script src="login.js?v=14"></script>
+  <script src="pwa.js?v=13"></script>
 </body>
 </html>

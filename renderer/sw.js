@@ -10,7 +10,7 @@
 // - Limpeza automática de caches antigos na ativação.
 // =========================================================
 
-const CACHE_NAME = "financeiro-pwa-v60";
+const CACHE_NAME = "financeiro-pwa-v61";
 const ICON_CACHE  = "financeiro-icons-v1"; // cache exclusivo para ícones da empresa
 
 const APP_SHELL = [
@@ -24,7 +24,8 @@ const APP_SHELL = [
   "/style.css",
   "/motorista.css",
   "/login.js?v=12",
-  "/app.js?v=47",
+  "/app.js?v=48",
+  "/icons/gm7-logo.svg",
   "/motorista.js?v=2",
   "/pwa.js?v=13",
   "/vendor/leaflet/leaflet.css",

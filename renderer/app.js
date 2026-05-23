@@ -1235,7 +1235,7 @@ const pages = {
         <form id="form-usuario" class="form-grid">
           <div class="field"><label>Nome</label><input id="usuario-nome" /></div>
           <div class="field"><label>Email</label><input id="usuario-email" type="email" /></div>
-          <div class="field"><label>Senha inicial</label><input id="usuario-senha" type="password" /></div>
+          <div class="field"><label>Senha inicial</label><div class="input-eye-wrap"><input id="usuario-senha" type="password" /><button type="button" class="btn-eye-inline" onclick="toggleSenhaInput('usuario-senha',this)" title="Mostrar senha"><span data-lucide="eye"></span></button></div></div>
           <div class="field"><label>Perfil</label><select id="usuario-perfil"><option value="visualizador">Visualizador</option><option value="operador">Operador</option><option value="financeiro">Financeiro</option><option value="gestor">Gestor</option><option value="admin">Admin</option></select></div>
           <div class="field"><label>Status</label><select id="usuario-status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></div>
           <div class="field full"><button class="primary-btn" type="submit">Criar usuario</button></div>
@@ -1326,7 +1326,7 @@ const pages = {
           <form id="form-admin-usuario" class="form-grid">
             <div class="field"><label>Nome</label><input id="admin-usuario-nome" required /></div>
             <div class="field"><label>Email</label><input id="admin-usuario-email" type="email" required /></div>
-            <div class="field"><label>Senha inicial</label><input id="admin-usuario-senha" type="password" required /></div>
+            <div class="field"><label>Senha inicial</label><div class="input-eye-wrap"><input id="admin-usuario-senha" type="password" required /><button type="button" class="btn-eye-inline" onclick="toggleSenhaInput('admin-usuario-senha',this)" title="Mostrar senha"><span data-lucide="eye"></span></button></div></div>
             <div class="field"><label>Empresa</label><select id="admin-usuario-empresa"></select></div>
             <div class="field"><label>Perfil</label><select id="admin-usuario-perfil"><option value="visualizador">Visualizador</option><option value="operador">Operador</option><option value="financeiro">Financeiro</option><option value="gestor">Gestor</option><option value="admin">Admin</option><option value="master">Master</option></select></div>
             <div class="field"><label>Status</label><select id="admin-usuario-status"><option value="ativo">Ativo</option><option value="pendente">Pendente</option><option value="bloqueado">Bloqueado</option><option value="inativo">Inativo</option></select></div>
@@ -6729,6 +6729,42 @@ globalSearch?.addEventListener("keydown", async (event) => {
     mostrarToast("Nenhuma tela encontrada para esta busca.", "error");
   }
 });
+
+// =========================================================
+// TOGGLE MOSTRAR / OCULTAR SENHA — usada nos formularios de
+// criacao de usuario (admin e gestor). Funcao global chamada
+// via onclick inline nos botoes gerados no HTML dos modulos.
+// =========================================================
+window.toggleSenhaInput = function(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const visivel = input.type === "text";
+  input.type = visivel ? "password" : "text";
+  // Troca o icone Lucide: eye <-> eye-off
+  const span = btn.querySelector("span[data-lucide]");
+  if (span) {
+    span.setAttribute("data-lucide", visivel ? "eye" : "eye-off");
+    if (window.lucide) window.lucide.createIcons({ nodes: [span] });
+  }
+  btn.title = visivel ? "Mostrar senha" : "Ocultar senha";
+};
+
+// Injeta CSS do botao olho inline uma unica vez (evita duplicar via <style> multiplos)
+if (!document.getElementById("eye-btn-style")) {
+  const s = document.createElement("style");
+  s.id = "eye-btn-style";
+  s.textContent = `
+    .input-eye-wrap{position:relative;display:flex;align-items:center;}
+    .input-eye-wrap input{padding-right:42px;width:100%;}
+    .btn-eye-inline{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+      background:transparent;border:none;box-shadow:none;padding:4px 6px;margin:0;
+      color:var(--muted,#9CA3AF);cursor:pointer;display:flex;align-items:center;
+      border-radius:6px;transition:color .15s,background .15s;line-height:1;}
+    .btn-eye-inline:hover{color:var(--blue,#22D3EE);background:rgba(34,211,238,.08);}
+    .btn-eye-inline svg{width:18px;height:18px;display:block;}
+  `;
+  document.head.appendChild(s);
+}
 
 // =========================================================
 // INICIALIZACAO DO SISTEMA
