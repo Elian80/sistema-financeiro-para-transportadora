@@ -4941,26 +4941,54 @@ function _atualizarPreviewLogo(src) {
   }
 }
 
-// Lê as configuracoes salvas e atualiza a marca na sidebar
-// (logo e nome da empresa substituem o icone "F" e o texto "Financeiro")
+// Aplica logo e nome da empresa na sidebar e na topbar mobile.
+// Chamada na inicialização e sempre que as configurações mudarem.
 function aplicarMarca() {
   const config = carregarConfiguracoesLocais();
   const iconEl = document.getElementById("brand-icon");
   const nomeEl = document.getElementById("brand-nome");
+  const topbarBrand = document.getElementById("topbar-brand-icon");
   if (!iconEl || !nomeEl) return;
+
   const logo = config.logoEmpresa || "";
   const nome = config.nomeEmpresa || "Financeiro";
-  if (logo) {
-    iconEl.style.background = "none";
-    iconEl.style.boxShadow = "none";
-    iconEl.innerHTML = `<img src="${logo}" alt="Logo" style="width:100%;height:100%;object-fit:cover;display:block;">`;
-  } else {
-    iconEl.style.background = "";
-    iconEl.style.boxShadow = "";
-    iconEl.textContent = "F";
+  const inicial = nome.charAt(0).toUpperCase();
+
+  // Helper: aplica logo ou inicial em um elemento de brand icon
+  function _aplicarIconeBrand(el) {
+    if (!el) return;
+    if (logo) {
+      el.style.background = "none";
+      el.style.boxShadow = "none";
+      el.innerHTML = `<img src="${logo}" alt="Logo" style="width:100%;height:100%;object-fit:cover;display:block;">`;
+    } else {
+      el.style.background = "";
+      el.style.boxShadow = "";
+      el.textContent = inicial;
+    }
   }
+
+  _aplicarIconeBrand(iconEl);       // sidebar
+  _aplicarIconeBrand(topbarBrand);  // topbar mobile
   nomeEl.textContent = nome;
   _atualizarManifestoPWA(logo, nome);
+}
+
+// Preenche o rodapé da sidebar com nome, perfil e avatar do usuário logado.
+// Chamada uma vez na inicialização, após obterUsuarioSessao().
+function aplicarInfoUsuarioSidebar() {
+  const u = obterUsuarioSessao();
+  const nameEl = document.getElementById("sidebar-user-name");
+  const roleEl = document.getElementById("sidebar-user-role");
+  const avatarEl = document.getElementById("sidebar-user-avatar");
+  if (!nameEl || !roleEl || !avatarEl) return;
+
+  const nome = u.nome || u.email || "Usuário";
+  const perfil = u.perfil || "";
+  nameEl.textContent = nome;
+  roleEl.textContent = perfil;
+  // Avatar: inicial do nome (não usa foto para economizar espaço)
+  avatarEl.textContent = nome.charAt(0).toUpperCase();
 }
 
 // Substitui o manifesto PWA por um blob com a logo e nome da empresa.
@@ -6558,17 +6586,19 @@ sidebarBackdrop?.addEventListener("click", fecharSidebarMobile);
 document.getElementById("mbn-more-btn")?.addEventListener("click", alternarSidebar);
 
 // Intercepta o botão Voltar / gesto de voltar no mobile.
-// Sem isso, o browser navegaria para /login (ou sairia do app).
-// Estratégia: mantemos sempre uma entrada no history stack apontando para o app,
-// e ao receber popstate redirecionamos para o dashboard em vez de sair.
-history.replaceState({ spa: true }, "");   // substitui a entrada atual sem criar nova
+// Estratégia:
+//   1. pushState adiciona uma entrada EXTRA no topo do history:
+//      [..., /login, /app, /app(spa)] → back vai de /app(spa) para /app
+//      dentro do mesmo contexto da página, então popstate DISPARA aqui.
+//   2. No handler: empurra outra entrada (re-trava) e navega para dashboard.
+//   Resultado: o usuário nunca sai do app ao pressionar Voltar.
+history.pushState({ spa: true }, "");
 window.addEventListener("popstate", () => {
-  history.pushState({ spa: true }, "");    // reempurra a entrada para travar o histórico
+  history.pushState({ spa: true }, "");  // re-trava para o próximo Voltar
   const usuario = obterUsuarioSessao();
-  if (!usuario) return;                    // não logado — deixa sair normalmente
+  if (!usuario) return;
   fecharSidebarMobile();
   fecharTodosPopupsFiltros();
-  // Volta ao dashboard (ou admin se for master)
   const destino = usuario.perfil === "master" ? "admin" : "dashboard";
   navButtons.forEach((btn) => {
     if (btn.dataset.page === destino) btn.classList.add("active");
@@ -6631,7 +6661,8 @@ globalSearch?.addEventListener("keydown", async (event) => {
 // INICIALIZACAO DO SISTEMA
 // =========================================================
 aplicarTema();
-aplicarMarca();           // aplica cache local imediatamente (sem esperar rede)
+aplicarMarca();               // aplica cache local imediatamente (sem esperar rede)
+aplicarInfoUsuarioSidebar();  // nome e perfil no rodapé da sidebar
 aplicarEstadoSidebar();
 aplicarIconesNavegacao();
 exigirLogin();

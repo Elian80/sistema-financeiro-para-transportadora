@@ -136,6 +136,25 @@
         <!-- Mapa: rastreamento GPS em tempo real dos motoristas (usa Leaflet) -->
         <button class="nav-btn" data-page="mapa" data-short="MA" data-icon="map">Mapa</button>
       </nav>
+
+      <!-- ========================================================
+           RODAPÉ DA SIDEBAR — Usuário logado + botão sair
+           Fica fixo na parte inferior, separado dos nav-btns.
+           Preenchido pelo JS (aplicarInfoUsuarioSidebar) com nome e perfil.
+           ======================================================== -->
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar" id="sidebar-user-avatar">U</div>
+          <div class="sidebar-user-info">
+            <span class="sidebar-user-name" id="sidebar-user-name">Carregando...</span>
+            <span class="sidebar-user-role" id="sidebar-user-role"></span>
+          </div>
+        </div>
+        <button class="sidebar-logout-btn" id="logout-btn" type="button" title="Sair do sistema" aria-label="Sair">
+          <span data-lucide="log-out"></span>
+        </button>
+      </div>
+
     </aside>
     <!-- /aside.sidebar -->
 
@@ -149,60 +168,41 @@
            ======================================================== -->
       <header class="topbar">
 
-        <!-- Botão hambúrguer mobile: visível apenas em telas pequenas (< 900px).
-             ID "mobile-menu-btn": o JS adiciona a classe "sidebar-open" ao body
-             para deslizar a sidebar sobre o conteúdo. -->
+        <!-- Logo da empresa na topbar — visível apenas no mobile (sidebar está oculta).
+             Preenchido e sincronizado por aplicarMarca() junto com #brand-icon da sidebar. -->
+        <div class="topbar-brand" id="topbar-brand-icon" aria-hidden="true"></div>
+
+        <!-- Botão hambúrguer mobile (desktop: hidden via CSS) -->
         <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Abrir menu lateral">
           <span></span>
           <span></span>
           <span></span>
         </button>
 
-        <!-- Título dinâmico da página atual.
-             ID "page-title": atualizado pelo app.js ao trocar de página.
-             ID "page-subtitle": exibe descrição curta da seção ativa. -->
+        <!-- Título dinâmico da página atual -->
         <div class="page-heading">
           <h2 id="page-title">Dashboard</h2>
           <p id="page-subtitle">Visao geral da operacao e do financeiro</p>
         </div>
 
-        <!-- Campo de busca global do sistema.
-             role="search": semântica de acessibilidade.
-             ID "global-search": capturado pelo app.js para filtrar conteúdo
-             da página atual em tempo real. -->
+        <!-- Campo de busca global -->
         <div class="topbar-search" role="search">
-          <!-- Ícone de lupa renderizado pela biblioteca Lucide via JS -->
           <span data-lucide="search">Buscar</span>
           <input id="global-search" type="search" placeholder="Buscar no sistema..." />
         </div>
 
-        <!-- Grupo de ações da topbar: botões de PWA, notificações, tema e usuário -->
+        <!-- Ações da topbar: PWA, notificações, configurações.
+             Botão Sair foi movido para o rodapé da sidebar. -->
         <div class="topbar-actions">
-
-          <!-- Botão "Instalar app" (PWA): aparece somente quando o browser dispara
-               o evento "beforeinstallprompt". Controlado por pwa.js via hidden attribute.
-               ID "install-pwa-btn": pwa.js remove o atributo hidden quando aplicável. -->
           <button class="ghost-btn install-pwa-btn" id="install-pwa-btn" type="button" hidden>Instalar app</button>
-
-          <!-- Botão de notificações: exibe badge laranja via CSS (::after) quando há alertas.
-               ID "notification-btn": app.js abre painel de notificações ao clicar. -->
           <button class="icon-btn notification-btn" id="notification-btn" type="button"
             aria-label="Notificacoes" title="Notificacoes">
-            <!-- data-lucide="bell": Lucide renderiza o SVG de sino automaticamente -->
             <span data-lucide="bell">!</span>
           </button>
-
-          <!-- Botão de configurações e alternância de tema (dark/light).
-               ID "settings-btn": app.js abre modal de configurações e alterna
-               o atributo data-theme no body. -->
           <button class="icon-btn settings-btn" id="settings-btn" type="button"
             aria-label="Configuracoes e tema" title="Configuracoes e tema">
-            <!-- Fallback de engrenagem caso o Lucide não carregue -->
             <span data-lucide="settings">&#9881;</span>
           </button>
-
-          <!-- Botão de logout: app.js escuta o clique para encerrar a sessão -->
-          <button class="ghost-btn" id="logout-btn">Sair</button>
         </div>
       </header>
       <!-- /header.topbar -->
