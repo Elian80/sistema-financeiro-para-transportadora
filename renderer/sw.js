@@ -25,7 +25,6 @@ const APP_SHELL = [
   "/motorista.css",
   "/login.js?v=12",
   "/app.js?v=48",
-  "/icons/gm7-logo.svg",
   "/motorista.js?v=2",
   "/pwa.js?v=13",
   "/vendor/leaflet/leaflet.css",

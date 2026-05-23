@@ -145,11 +145,14 @@ body {
 }
 
 .login-logo-img {
-  height: 52px;
-  width: auto;
-  max-width: 260px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
-  filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.25));
+  border-radius: 16px;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  box-shadow: 0 0 28px rgba(34, 211, 238, 0.18);
+  background: #0A0F1E;
+  padding: 4px;
 }
 
 /* ── FORM BOX ───────────────────────────────────────── */
@@ -319,7 +322,8 @@ button:disabled {
   }
 
   .login-logo-img {
-    height: 44px;
+    width: 56px;
+    height: 56px;
   }
 }
 
