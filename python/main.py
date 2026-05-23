@@ -272,8 +272,18 @@ async def aplicar_seguranca(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
     response.headers["Permissions-Policy"] = "geolocation=(self), microphone=(), camera=()"
-    # CSP: permite tiles do OpenStreetMap (mapa), estilos inline e scripts de CDN conhecidos
-    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; style-src 'self' 'unsafe-inline' https://unpkg.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com"
+    # CSP: permite tiles do OpenStreetMap (mapa), estilos inline e scripts de CDN conhecidos.
+    # manifest-src blob: necessário para o manifesto dinâmico gerado com logo da empresa via Canvas.
+    # worker-src 'self' necessário para registrar o Service Worker do PWA.
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "img-src 'self' data: blob: https://*.tile.openstreetmap.org; "
+        "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+        "manifest-src 'self' blob:; "
+        "worker-src 'self'; "
+        "connect-src 'self'"
+    )
     return response
 
 

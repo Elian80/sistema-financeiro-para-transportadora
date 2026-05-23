@@ -7,7 +7,7 @@
 // - Limpeza automática de caches antigos na ativação.
 // =========================================================
 
-const CACHE_NAME = "financeiro-pwa-v56";
+const CACHE_NAME = "financeiro-pwa-v58";
 
 const APP_SHELL = [
   "/",
@@ -20,9 +20,9 @@ const APP_SHELL = [
   "/style.css",
   "/motorista.css",
   "/login.js?v=12",
-  "/app.js?v=30",
+  "/app.js?v=45",
   "/motorista.js?v=2",
-  "/pwa.js?v=12",
+  "/pwa.js?v=13",
   "/vendor/leaflet/leaflet.css",
   "/vendor/leaflet/leaflet.js",
   "/vendor/leaflet/images/marker-icon.png",
