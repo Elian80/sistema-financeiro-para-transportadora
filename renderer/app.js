@@ -4995,16 +4995,69 @@ function aplicarInfoUsuarioSidebar() {
   avatarEl.textContent = nome.charAt(0).toUpperCase();
 }
 
+// Redimensiona a logo para um ícone PWA quadrado via Canvas.
+// Retorna uma Promise<string> com data: URI PNG no tamanho exato.
+// Adiciona fundo escuro (#0B0F1A) para icons "maskable" ficarem bem em qualquer forma.
+function _redimensionarIconePWA(logoBase64, tamanho) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width  = tamanho;
+      canvas.height = tamanho;
+      const ctx = canvas.getContext("2d");
+
+      // Fundo sólido — obrigatório para ícones maskable (Android adapta a forma)
+      ctx.fillStyle = "#0B0F1A";
+      ctx.fillRect(0, 0, tamanho, tamanho);
+
+      // Logo centralizada com 15% de padding para não colar nas bordas
+      const pad  = tamanho * 0.15;
+      const size = tamanho - pad * 2;
+      ctx.drawImage(img, pad, pad, size, size);
+
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = logoBase64;
+  });
+}
+
 // Substitui o manifesto PWA por um blob com a logo e nome da empresa.
-// O Chrome re-avalia a elegibilidade de instalação quando o href do manifesto muda.
-function _atualizarManifestoPWA(logo, nome) {
-  const icones = logo
-    ? [{ src: logo, sizes: "192x192 512x512", type: "image/jpeg", purpose: "any maskable" }]
-    : [
-        { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-        { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
-        { src: "/icons/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" },
+// Gera ícones nos tamanhos 192×192 e 512×512 via Canvas para atender
+// exatamente os requisitos do Chrome (tamanhos separados + tipo correto).
+// O Chrome re-avalia a elegibilidade de instalação quando o href muda.
+async function _atualizarManifestoPWA(logo, nome) {
+  let icones;
+
+  if (logo) {
+    try {
+      // Gera os dois tamanhos obrigatórios de forma paralela
+      const [ico192, ico512] = await Promise.all([
+        _redimensionarIconePWA(logo, 192),
+        _redimensionarIconePWA(logo, 512),
+      ]);
+      icones = [
+        { src: ico192, sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: ico512, sizes: "512x512", type: "image/png", purpose: "maskable" },
       ];
+    } catch {
+      // Canvas falhou (ex: imagem corrompida) — usa a logo direto como fallback
+      const tipo = logo.startsWith("data:image/png") ? "image/png" : "image/jpeg";
+      icones = [
+        { src: logo, sizes: "192x192", type: tipo, purpose: "any" },
+        { src: logo, sizes: "512x512", type: tipo, purpose: "maskable" },
+      ];
+    }
+  } else {
+    // Sem logo — usa os ícones estáticos padrão do sistema
+    icones = [
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+      { src: "/icons/icon.svg",     sizes: "any",     type: "image/svg+xml", purpose: "any maskable" },
+    ];
+  }
+
   const manifesto = {
     name: nome !== "Financeiro" ? `${nome} Financeiro` : "Financeiro",
     short_name: nome,
@@ -5017,9 +5070,10 @@ function _atualizarManifestoPWA(logo, nome) {
     categories: ["business", "finance", "productivity"],
     icons: icones,
   };
+
   try {
     const blob = new Blob([JSON.stringify(manifesto)], { type: "application/manifest+json" });
-    const url = URL.createObjectURL(blob);
+    const url  = URL.createObjectURL(blob);
     const link = document.querySelector("link[rel='manifest']");
     if (!link) return;
     if (link._pwaBlobUrl) URL.revokeObjectURL(link._pwaBlobUrl);
