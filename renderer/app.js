@@ -5048,12 +5048,16 @@ async function _atualizarManifestoPWA(logo, nome) {
     { src: "/icons/icon.svg",           sizes: "any",     type: "image/svg+xml", purpose: "any maskable" },
   ];
 
-  // Envia o logo da empresa ao Service Worker para ser servido nos ícones
-  if (logo && "serviceWorker" in navigator) {
+  // Envia o ícone ao Service Worker para ser servido nos ícones PNG.
+  // Usa a logo da empresa quando cadastrada; caso contrário usa o ícone
+  // padrão GM7 Log (/icons/icon.svg) para que icon-192.png e icon-512.png
+  // nunca retornem 404 — garantindo a instalação correta em PC e mobile.
+  if ("serviceWorker" in navigator) {
     try {
+      const fonteIcone = logo || "/icons/icon.svg";
       const [ico192, ico512] = await Promise.all([
-        _redimensionarIconePWA(logo, 192),
-        _redimensionarIconePWA(logo, 512),
+        _redimensionarIconePWA(fonteIcone, 192),
+        _redimensionarIconePWA(fonteIcone, 512),
       ]);
       // Aguarda o SW ficar disponível (pode ainda estar instalando no primeiro acesso)
       const swReg = await navigator.serviceWorker.ready;
@@ -5065,7 +5069,7 @@ async function _atualizarManifestoPWA(logo, nome) {
         });
       }
     } catch {
-      // Canvas não disponível ou logo inválida — ícone padrão do sistema será usado
+      // Canvas não disponível — o ícone SVG estático será usado pelo manifesto
     }
   }
 
