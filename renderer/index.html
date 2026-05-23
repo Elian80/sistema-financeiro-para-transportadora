@@ -168,31 +168,34 @@
            ======================================================== -->
       <header class="topbar">
 
-        <!-- Logo da empresa na topbar — visível apenas no mobile (sidebar está oculta).
-             Preenchido e sincronizado por aplicarMarca() junto com #brand-icon da sidebar. -->
-        <div class="topbar-brand" id="topbar-brand-icon" aria-hidden="true"></div>
+        <!-- Brand da empresa — visível apenas no mobile (sidebar oculta).
+             Contém ícone/logo + nome da empresa abaixo.
+             Preenchido por aplicarMarca() em app.js. -->
+        <div class="topbar-brand" aria-hidden="true">
+          <div class="topbar-brand-icon" id="topbar-brand-icon"></div>
+          <span class="topbar-brand-name" id="topbar-brand-name">Financeiro</span>
+        </div>
 
-        <!-- Botão hambúrguer mobile (desktop: hidden via CSS) -->
+        <!-- Botão hambúrguer mobile (hidden via CSS no mobile — substituído pela bottom nav) -->
         <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Abrir menu lateral">
           <span></span>
           <span></span>
           <span></span>
         </button>
 
-        <!-- Título dinâmico da página atual -->
+        <!-- Título da página — centralizado no mobile via CSS grid -->
         <div class="page-heading">
           <h2 id="page-title">Dashboard</h2>
           <p id="page-subtitle">Visao geral da operacao e do financeiro</p>
         </div>
 
-        <!-- Campo de busca global -->
+        <!-- Busca global (desktop) -->
         <div class="topbar-search" role="search">
           <span data-lucide="search">Buscar</span>
           <input id="global-search" type="search" placeholder="Buscar no sistema..." />
         </div>
 
-        <!-- Ações da topbar: PWA, notificações, configurações.
-             Botão Sair foi movido para o rodapé da sidebar. -->
+        <!-- Ações: notificações + configurações (Sair está no rodapé da sidebar) -->
         <div class="topbar-actions">
           <button class="ghost-btn install-pwa-btn" id="install-pwa-btn" type="button" hidden>Instalar app</button>
           <button class="icon-btn notification-btn" id="notification-btn" type="button"

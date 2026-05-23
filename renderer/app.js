@@ -4945,32 +4945,36 @@ function _atualizarPreviewLogo(src) {
 // Chamada na inicialização e sempre que as configurações mudarem.
 function aplicarMarca() {
   const config = carregarConfiguracoesLocais();
-  const iconEl = document.getElementById("brand-icon");
-  const nomeEl = document.getElementById("brand-nome");
-  const topbarBrand = document.getElementById("topbar-brand-icon");
+  const iconEl        = document.getElementById("brand-icon");          // sidebar
+  const nomeEl        = document.getElementById("brand-nome");          // sidebar
+  const topbarIconEl  = document.getElementById("topbar-brand-icon");   // topbar mobile (ícone)
+  const topbarNomeEl  = document.getElementById("topbar-brand-name");   // topbar mobile (nome)
   if (!iconEl || !nomeEl) return;
 
-  const logo = config.logoEmpresa || "";
-  const nome = config.nomeEmpresa || "Financeiro";
+  const logo   = config.logoEmpresa || "";
+  const nome   = config.nomeEmpresa || "Financeiro";
   const inicial = nome.charAt(0).toUpperCase();
 
-  // Helper: aplica logo ou inicial em um elemento de brand icon
-  function _aplicarIconeBrand(el) {
+  // Aplica logo ou inicial em qualquer elemento de brand icon
+  function _setBrandIcon(el) {
     if (!el) return;
     if (logo) {
       el.style.background = "none";
-      el.style.boxShadow = "none";
+      el.style.boxShadow  = "none";
       el.innerHTML = `<img src="${logo}" alt="Logo" style="width:100%;height:100%;object-fit:cover;display:block;">`;
     } else {
       el.style.background = "";
-      el.style.boxShadow = "";
+      el.style.boxShadow  = "";
       el.textContent = inicial;
     }
   }
 
-  _aplicarIconeBrand(iconEl);       // sidebar
-  _aplicarIconeBrand(topbarBrand);  // topbar mobile
-  nomeEl.textContent = nome;
+  _setBrandIcon(iconEl);       // ícone na sidebar
+  _setBrandIcon(topbarIconEl); // ícone na topbar mobile
+
+  nomeEl.textContent = nome;               // nome na sidebar
+  if (topbarNomeEl) topbarNomeEl.textContent = nome; // nome abaixo do ícone na topbar mobile
+
   _atualizarManifestoPWA(logo, nome);
 }
 
