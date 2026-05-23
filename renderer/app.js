@@ -5028,39 +5028,47 @@ function _redimensionarIconePWA(logoBase64, tamanho) {
 // exatamente os requisitos do Chrome (tamanhos separados + tipo correto).
 // O Chrome re-avalia a elegibilidade de instalação quando o href muda.
 async function _atualizarManifestoPWA(logo, nome) {
-  let icones;
+  // IMPORTANTE: o manifesto SEMPRE usa URLs estáticas para os ícones.
+  // data: URIs como src de ícone são rejeitados pelo Chrome e invalidam o PWA,
+  // fazendo o navegador criar um atalho em vez de instalar o app corretamente.
+  // O logo real da empresa é injetado no Service Worker via postMessage: o SW
+  // intercepta as requisições /icons/icon-192.png e /icons/icon-512.png e
+  // serve o logo customizado, mantendo as URLs estáticas no manifesto.
+  const icones = [
+    { src: "/icons/icon-192.png",       sizes: "192x192", type: "image/png",     purpose: "any" },
+    { src: "/icons/icon-512.png",       sizes: "512x512", type: "image/png",     purpose: "any maskable" },
+    { src: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png",   purpose: "any" },
+    { src: "/icons/icon.svg",           sizes: "any",     type: "image/svg+xml", purpose: "any maskable" },
+  ];
 
-  if (logo) {
+  // Envia o logo da empresa ao Service Worker para ser servido nos ícones
+  if (logo && "serviceWorker" in navigator) {
     try {
-      // Gera os dois tamanhos obrigatórios de forma paralela
       const [ico192, ico512] = await Promise.all([
         _redimensionarIconePWA(logo, 192),
         _redimensionarIconePWA(logo, 512),
       ]);
-      icones = [
-        { src: ico192, sizes: "192x192", type: "image/png", purpose: "any" },
-        { src: ico512, sizes: "512x512", type: "image/png", purpose: "maskable" },
-      ];
+      // Aguarda o SW ficar disponível (pode ainda estar instalando no primeiro acesso)
+      const swReg = await navigator.serviceWorker.ready;
+      if (swReg?.active) {
+        swReg.active.postMessage({
+          type: "SET_COMPANY_ICON",
+          base64_192: ico192,
+          base64_512: ico512,
+        });
+      }
     } catch {
-      // Canvas falhou (ex: imagem corrompida) — usa a logo direto como fallback
-      const tipo = logo.startsWith("data:image/png") ? "image/png" : "image/jpeg";
-      icones = [
-        { src: logo, sizes: "192x192", type: tipo, purpose: "any" },
-        { src: logo, sizes: "512x512", type: tipo, purpose: "maskable" },
-      ];
+      // Canvas não disponível ou logo inválida — ícone padrão do sistema será usado
     }
-  } else {
-    // Sem logo — usa os ícones estáticos padrão do sistema
-    icones = [
-      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
-      { src: "/icons/icon.svg",     sizes: "any",     type: "image/svg+xml", purpose: "any maskable" },
-    ];
   }
 
+  // Atualiza apenas o nome da empresa no manifesto via blob: URL.
+  // O Chrome re-avalia a elegibilidade de instalação ao detectar a mudança,
+  // mas como os ícones são URLs estáticas válidas, o critério é mantido.
+  const nomeApp = nome && nome !== "Financeiro" ? `${nome} Financeiro` : "Financeiro";
   const manifesto = {
-    name: nome !== "Financeiro" ? `${nome} Financeiro` : "Financeiro",
-    short_name: nome,
+    name: nomeApp,
+    short_name: nome || "Financeiro",
     description: "Sistema financeiro, operacional e de frota.",
     id: "/app", start_url: "/app", scope: "/",
     display: "standalone",
@@ -5080,7 +5088,7 @@ async function _atualizarManifestoPWA(logo, nome) {
     link._pwaBlobUrl = url;
     link.href = url;
   } catch {
-    // Navegador sem suporte a Blob URL — usa o manifesto estático normalmente.
+    // Blob URL não suportado — manifesto estático permanece ativo.
   }
 }
 
