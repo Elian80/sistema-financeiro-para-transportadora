@@ -4807,9 +4807,16 @@ function _chaveConfiguracao() {
   return u.empresa_id ? `financeiro_configuracoes_${u.empresa_id}` : "financeiro_configuracoes";
 }
 
-// Lê o objeto de configurações do localStorage. Retorna {} se não existir.
+// Lê o objeto de configurações do localStorage. Retorna {} se não existir
+// ou se o JSON estiver corrompido (ex: escrita interrompida por crash do tab).
+// Em caso de erro, limpa a chave corrompida para evitar falhas futuras.
 function carregarConfiguracoesLocais() {
-  return JSON.parse(localStorage.getItem(_chaveConfiguracao()) || "{}");
+  try {
+    return JSON.parse(localStorage.getItem(_chaveConfiguracao()) || "{}");
+  } catch {
+    try { localStorage.removeItem(_chaveConfiguracao()); } catch { /* ignore */ }
+    return {};
+  }
 }
 
 // Busca logo e nome da empresa no servidor e sincroniza com o localStorage.
@@ -6725,16 +6732,35 @@ globalSearch?.addEventListener("keydown", async (event) => {
 
 // =========================================================
 // INICIALIZACAO DO SISTEMA
+// Cada etapa é isolada em try/catch para garantir que uma falha
+// pontual (ex: localStorage corrompido, elemento DOM ausente)
+// não impeça as etapas seguintes de executar.
 // =========================================================
-aplicarTema();
-aplicarMarca();               // aplica cache local imediatamente (sem esperar rede)
-aplicarInfoUsuarioSidebar();  // nome e perfil no rodapé da sidebar
-aplicarEstadoSidebar();
-aplicarIconesNavegacao();
-exigirLogin();
-aplicarPermissoesVisuais();
+function _init_safe(fn, nome) {
+  try { fn(); }
+  catch (e) { console.warn("[init]", nome, "falhou:", e.message); }
+}
+
+_init_safe(aplicarTema,            "aplicarTema");
+_init_safe(aplicarMarca,           "aplicarMarca");
+_init_safe(aplicarInfoUsuarioSidebar, "aplicarInfoUsuarioSidebar");
+_init_safe(aplicarEstadoSidebar,   "aplicarEstadoSidebar");
+_init_safe(aplicarIconesNavegacao, "aplicarIconesNavegacao");
+_init_safe(exigirLogin,            "exigirLogin");
+_init_safe(aplicarPermissoesVisuais, "aplicarPermissoesVisuais");
+
+// Carrega a primeira página e ativa os ícones Lucide após a renderização
 loadPage(obterUsuarioSessao().perfil === "master" ? "admin" : "dashboard");
-window.lucide?.createIcons();
+
+// Tenta ativar ícones Lucide imediatamente. Caso o script ainda não tenha
+// carregado (CDN lento), agenda nova tentativa a cada 200ms por até 3s.
+(function _ativarLucide(tentativas) {
+  if (window.lucide) {
+    window.lucide.createIcons();
+  } else if (tentativas > 0) {
+    setTimeout(() => _ativarLucide(tentativas - 1), 200);
+  }
+})(15);
 
 // Sincroniza logo/nome com o servidor em background (não bloqueia a UI).
 // Garante que todos os usuários da mesma empresa vejam a mesma marca.

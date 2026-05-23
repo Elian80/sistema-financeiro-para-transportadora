@@ -274,10 +274,12 @@
        Carregada do CDN jsDelivr para maior disponibilidade. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Lucide Icons: biblioteca de ícones SVG.
-       Converte automaticamente os atributos data-lucide="nome-icone"
-       em elementos SVG inline ao chamar lucide.createIcons(). -->
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <!-- Lucide Icons v0.469.0: biblioteca de ícones SVG (servido localmente).
+       Versão pinada para garantir consistência e disponibilidade offline.
+       Fallback automático para CDN caso o arquivo local não seja encontrado. -->
+  <script src="vendor/lucide/lucide.min.js"
+          onerror="var s=document.createElement('script');s.src='https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js';document.head.appendChild(s)">
+  </script>
 
   <!-- Leaflet.js: biblioteca de mapas interativos usada na página de Mapa
        para exibir rastreamento GPS dos motoristas. -->
@@ -286,7 +288,7 @@
   <!-- app.js: lógica principal do SPA financeiro.
        Gerencia roteamento de páginas, renderização dinâmica, CRUD de dados,
        gráficos, filtros e todas as interações do sistema. -->
-  <script src="app.js?v=46"></script>
+  <script src="app.js?v=47"></script>
 
   <!-- pwa.js: gerencia o ciclo de vida do Progressive Web App.
        Registra o Service Worker, controla o prompt de instalação
