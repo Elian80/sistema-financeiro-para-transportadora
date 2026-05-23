@@ -10,7 +10,7 @@
 // - Limpeza automática de caches antigos na ativação.
 // =========================================================
 
-const CACHE_NAME = "financeiro-pwa-v62";
+const CACHE_NAME = "financeiro-pwa-v63";
 const ICON_CACHE  = "financeiro-icons-v1"; // cache exclusivo para ícones da empresa
 
 const APP_SHELL = [
@@ -77,6 +77,13 @@ self.addEventListener("activate", (event) => {
 // Isso garante que o manifesto use URLs estáticas válidas enquanto
 // o ícone real exibido no install prompt é o logo da empresa.
 self.addEventListener("message", (event) => {
+  // Limpa o ICON_CACHE quando a empresa não tem logo cadastrada,
+  // garantindo que os PNGs estáticos do servidor sejam usados.
+  if (event.data?.type === "CLEAR_COMPANY_ICON") {
+    event.waitUntil(caches.delete(ICON_CACHE));
+    return;
+  }
+
   if (event.data?.type !== "SET_COMPANY_ICON") return;
 
   const { base64_192, base64_512 } = event.data;

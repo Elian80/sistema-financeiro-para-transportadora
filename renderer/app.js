@@ -5048,28 +5048,32 @@ async function _atualizarManifestoPWA(logo, nome) {
     { src: "/icons/icon.svg",           sizes: "any",     type: "image/svg+xml", purpose: "any maskable" },
   ];
 
-  // Envia o ícone ao Service Worker para ser servido nos ícones PNG.
-  // Usa a logo da empresa quando cadastrada; caso contrário usa o ícone
-  // padrão GM7 Log (/icons/icon.svg) para que icon-192.png e icon-512.png
-  // nunca retornem 404 — garantindo a instalação correta em PC e mobile.
+  // Envia o logo da empresa ao SW apenas quando há logo cadastrada.
+  // Sem logo → limpa ICON_CACHE → SW cai para fetch() → serve os PNGs
+  // estáticos do servidor (icon-192.png / icon-512.png com design GM7 Log).
+  // NÃO usa icon.svg como fallback via Canvas: sem Arial Black instalada
+  // o Canvas produziria um ícone com visual incorreto.
   if ("serviceWorker" in navigator) {
     try {
-      const fonteIcone = logo || "/icons/icon.svg";
-      const [ico192, ico512] = await Promise.all([
-        _redimensionarIconePWA(fonteIcone, 192),
-        _redimensionarIconePWA(fonteIcone, 512),
-      ]);
-      // Aguarda o SW ficar disponível (pode ainda estar instalando no primeiro acesso)
       const swReg = await navigator.serviceWorker.ready;
       if (swReg?.active) {
-        swReg.active.postMessage({
-          type: "SET_COMPANY_ICON",
-          base64_192: ico192,
-          base64_512: ico512,
-        });
+        if (logo) {
+          const [ico192, ico512] = await Promise.all([
+            _redimensionarIconePWA(logo, 192),
+            _redimensionarIconePWA(logo, 512),
+          ]);
+          swReg.active.postMessage({
+            type: "SET_COMPANY_ICON",
+            base64_192: ico192,
+            base64_512: ico512,
+          });
+        } else {
+          // Sem logo cadastrada: apaga cache antigo para usar os PNGs estáticos
+          swReg.active.postMessage({ type: "CLEAR_COMPANY_ICON" });
+        }
       }
     } catch {
-      // Canvas não disponível — o ícone SVG estático será usado pelo manifesto
+      // SW não disponível — PNGs estáticos do servidor serão usados diretamente
     }
   }
 
