@@ -246,29 +246,7 @@ const pages = {
     title: "Dashboard",
     subtitle: "Visao geral da operacao e do financeiro",
     render: () => `
-      ${popupFiltros("painel-filtros-dashboard", "Filtros do dashboard", "Refine os indicadores por periodo, veiculo ou empresa.", `
-        <div class="form-grid">
-          <div class="field"><label>Data inicial</label><input type="date" id="dash-data-inicial" /></div>
-          <div class="field"><label>Data final</label><input type="date" id="dash-data-final" /></div>
-          <div class="field"><label>Veiculo</label><select id="dash-veiculo-id"><option value="">Todos</option></select></div>
-          <div class="field"><label>Empresa ID</label><input type="number" id="dash-empresa-id" placeholder="Opcional" /></div>
-          <div class="field full btn-row">
-            <button type="button" class="primary-btn" id="btn-dashboard-filtrar">Aplicar filtros</button>
-            <button type="button" class="ghost-btn" id="btn-dashboard-limpar">Limpar</button>
-          </div>
-        </div>
-      `)}
-
       <section class="dash-premium-shell">
-      <div class="panel-box filter-launcher dash-premium-head" style="margin-bottom:18px;">
-        <div>
-          <h3 style="margin:0;font-size:15px;">Periodo analisado</h3>
-          <p id="dashboard-periodo" style="margin:4px 0 0;font-size:13px;">Carregando...</p>
-        </div>
-        <div class="estoque-actions">
-          ${botaoFiltros("painel-filtros-dashboard")}
-        </div>
-      </div>
 
       <div class="dash-top-cards" style="margin-bottom:18px;">
         <section class="dash-stat-card dash-stat-blue">
@@ -6245,7 +6223,8 @@ async function atualizarHorasMaquinasDashboard() {
 }
 
 async function iniciarDashboard() {
-  await carregarSelectVeiculosGenerico("dash-veiculo-id", "Todos");
+  if (document.getElementById("dash-veiculo-id"))
+    await carregarSelectVeiculosGenerico("dash-veiculo-id", "Todos");
   const [lancamentos, veiculos, motoristas, dadosDashboard] = await Promise.all([
     apiGet("/lancamentos"),
     apiGet("/veiculos"),
@@ -6280,7 +6259,8 @@ async function iniciarDashboard() {
   const ticketMedio = receitas.length ? totalReceitas / receitas.length : 0;
   const frotaOperante = veiculos.length ? (ativos / veiculos.length) * 100 : 0;
 
-  document.getElementById("dashboard-periodo").textContent = `${lancamentos.length} lancamento(s) · ${periodoLabel}`;
+  const periodoEl = document.getElementById("dashboard-periodo");
+  if (periodoEl) periodoEl.textContent = `${lancamentos.length} lancamento(s) · ${periodoLabel}`;
   const periodoChip = document.getElementById("dash-periodo-chip");
   if (periodoChip) periodoChip.textContent = periodoLabel.replace("Periodo: ", "");
   document.getElementById("dashboard-margem-liquida").textContent = formatarPercentual(margemLiquida);
