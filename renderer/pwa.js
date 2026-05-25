@@ -208,6 +208,17 @@
 
   installBtn?.addEventListener("click", acionar_instalacao);
 
+  // ── Auto-reload quando novo Service Worker assume o controle ──
+  // Garante que o usuário sempre veja a versão mais recente do app
+  // após uma atualização do SW, sem precisar apertar F5 manualmente.
+  // Só recarrega se já havia um SW ativo (evita loop na primeira instalação).
+  let jaHaviaController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (jaHaviaController) {
+      window.location.reload();
+    }
+  });
+
   window.addEventListener("load", () => {
     // iOS: orientação manual pois não tem beforeinstallprompt
     if (isIos && !isStandalone) mostrarBotaoInstalar();

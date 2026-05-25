@@ -242,31 +242,28 @@ function initCanvas() {
 // ══════════════════════════════════════════
 function initHeroAnim() {
   if (rm() || typeof gsap === 'undefined') {
-    // fallback: show everything
+    // fallback: show everything immediately
     document.querySelectorAll('[data-hero]').forEach(el => { el.style.opacity = '1'; el.style.transform = 'none'; });
     document.querySelectorAll('.clip-wrap > span').forEach(el => { el.style.transform = 'none'; });
     return;
   }
 
-  const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
-
-  // Line reveals (clip-wrap overflow:hidden)
-  tl.from('.clip-wrap > span', {
-    yPercent: 110, opacity: 0, stagger: 0.12, duration: 1,
-  }, 0)
-  .to('.hero-eyebrow', { opacity: 1, y: 0, duration: 0.6 }, 0.1)
-  .to('.hero-sub',   { opacity: 1, y: 0, duration: 0.7 }, 0.5)
-  .to('.hero-ctas',  { opacity: 1, y: 0, duration: 0.6 }, 0.65)
-  .to('.hero-stats', { opacity: 1, y: 0, duration: 0.6 }, 0.8)
-  .to('.hero-visual',{ opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' }, 0.4);
-
+  // Definir estado inicial ANTES da timeline (ordem correta)
   gsap.set('.hero-eyebrow', { opacity: 0, y: 16 });
   gsap.set('.hero-sub',     { opacity: 0, y: 20 });
   gsap.set('.hero-ctas',    { opacity: 0, y: 20 });
   gsap.set('.hero-stats',   { opacity: 0, y: 20 });
   gsap.set('.hero-visual',  { opacity: 0, x: 40 });
   gsap.set('.clip-wrap > span', { yPercent: 110 });
-  tl.invalidate().restart();
+
+  // Animar DO estado inicial (já definido acima) PARA o estado final
+  gsap.timeline({ defaults: { ease: 'power4.out' } })
+    .to('.clip-wrap > span', { yPercent: 0, stagger: 0.12, duration: 1 }, 0)
+    .to('.hero-eyebrow', { opacity: 1, y: 0, duration: 0.6 }, 0.1)
+    .to('.hero-sub',     { opacity: 1, y: 0, duration: 0.7 }, 0.5)
+    .to('.hero-ctas',    { opacity: 1, y: 0, duration: 0.6 }, 0.65)
+    .to('.hero-stats',   { opacity: 1, y: 0, duration: 0.6 }, 0.8)
+    .to('.hero-visual',  { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' }, 0.4);
 }
 
 // ══════════════════════════════════════════
@@ -282,16 +279,17 @@ function setupScrollReveal() {
 
   document.querySelectorAll('[data-reveal]:not(.revealed)').forEach(el => {
     el.classList.add('revealed');
-    const y     = parseFloat(el.dataset.y     || '40');
     const delay = parseFloat(el.dataset.delay || '0');
 
-    gsap.from(el, {
+    // Usar gsap.to() (não from) porque o CSS já define opacity:0 / translateY
+    // gsap.from() captura o estado atual (0) e anima 0→0 = invisível para sempre
+    gsap.to(el, {
       scrollTrigger: {
         trigger: el,
         start:   'top 88%',
         once:    true,
       },
-      y, opacity: 0, delay,
+      opacity: 1, y: 0, delay,
       duration: 0.85,
       ease: 'power3.out',
     });
