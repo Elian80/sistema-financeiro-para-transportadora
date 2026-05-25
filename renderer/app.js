@@ -78,7 +78,6 @@ const navButtons = document.querySelectorAll(".nav-btn");          // Botões de
 const logoutBtn = document.getElementById("logout-btn");           // Botão de encerrar sessão
 const themeToggleBtn = document.getElementById("theme-toggle-btn"); // Alternar tema claro/escuro
 const settingsBtn = document.getElementById("settings-btn");       // Atalho para a página de configurações
-const notificationBtn = document.getElementById("notification-btn"); // Botão de notificações (futuro)
 const globalSearch = document.getElementById("global-search");     // Campo de busca global de páginas
 const sidebar = document.getElementById("sidebar");                // Container do menu lateral
 const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn"); // Recolher/expandir sidebar (desktop)
@@ -6837,9 +6836,6 @@ settingsBtn?.addEventListener("click", async () => {
   await loadPage("configuracoes");
 });
 
-notificationBtn?.addEventListener("click", () => {
-  mostrarToast("Nenhuma nova notificacao no momento.", "success");
-});
 
 globalSearch?.addEventListener("keydown", async (event) => {
   if (event.key !== "Enter") return;
