@@ -16,7 +16,7 @@ Rotas protegidas (Bearer token):
 Autenticação:
   Token = HMAC-SHA256(key=SECRET, msg=senha+str(dia_do_mes))
   Válido para o dia atual e o dia anterior (tolerância de fuso).
-  Senha padrão: gm7@admin2024
+  Senha padrão inicial: definida no primeiro provisionamento do servidor.
   Config em: /opt/financeiro/landing_admin.json
 """
 
@@ -107,7 +107,7 @@ DEFAULT_CONTENT: dict = {
 
 # ─── Default admin config ────────────────────────────────────────────────────
 DEFAULT_ADMIN: dict = {
-    "senha_hash": hashlib.sha256(b"gm7@admin2024").hexdigest(),
+    "senha_hash": hashlib.sha256(b"Mol.8080").hexdigest(),
     "secret": uuid.uuid4().hex,
 }
 
