@@ -58,6 +58,9 @@
        Controlado via JS: class "sidebar-open" no body mostra o backdrop.
        O ID é usado no app.js para fechar a sidebar ao clicar fora.
        ============================================================ -->
+  <!-- Canvas de partículas animadas no fundo -->
+  <canvas id="app-bg-canvas" aria-hidden="true"></canvas>
+
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
   <!-- ============================================================
@@ -269,6 +272,9 @@
   <!-- ============================================================
        SCRIPTS — Carregados no final do body para não bloquear a renderização
        ============================================================ -->
+
+  <!-- bg.js: canvas de partículas animadas no fundo do app -->
+  <script src="bg.js?v=1"></script>
 
   <!-- Chart.js: biblioteca de gráficos usada nas páginas de Dashboard e Relatórios.
        Carregada do CDN jsDelivr para maior disponibilidade. -->

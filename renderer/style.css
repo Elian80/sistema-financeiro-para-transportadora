@@ -113,8 +113,21 @@ body {
   background-color: var(--bg);
   color: var(--text);
   height: 100vh;
-  height: 100dvh; /* dynamic viewport height — corrige o problema com a barra do browser mobile */
+  height: 100dvh;
   overflow: hidden;
+}
+
+/* Canvas de partículas animadas no fundo do app */
+#app-bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  transition: opacity 0.4s;
+}
+body[data-theme="light"] #app-bg-canvas {
+  opacity: 0.06;
 }
 
 body[data-theme="light"] {
@@ -133,6 +146,8 @@ select {
   overflow: hidden;
   padding: 20px;
   gap: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar {
