@@ -3,17 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="GM7 Sistemas — Soluções tecnológicas para transportadoras e empresas. Gestão financeira, automação e desenvolvimento personalizado." />
-  <meta property="og:title" content="GM7 Sistemas" />
-  <meta property="og:description" content="Transforme sua operação com tecnologia de ponta." />
+  <meta name="description" content="GM7 Sistemas — Sistema financeiro, operacional e de frota para transportadoras. Gestão completa com dashboard em tempo real, controle de motoristas e muito mais." />
+  <meta property="og:title" content="GM7 Log — Gestão inteligente para transportadoras" />
+  <meta property="og:description" content="Controle financeiro, frota e motoristas em uma única plataforma." />
+  <meta property="og:image" content="/icons/icon-512.png" />
   <meta name="theme-color" content="#050a14" />
-  <title>GM7 Sistemas — Tecnologia para Transportadoras</title>
+  <title>GM7 Log — Gestão Inteligente para Transportadoras</title>
+
+  <!-- Preload de fonte -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
   <link rel="stylesheet" href="landing.css" />
-  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+
+  <script id="reduced-motion-init">
+    (function(){
+      if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+        document.documentElement.classList.add('reduced-motion');
+      window.matchMedia('(prefers-reduced-motion: reduce)')
+        .addEventListener('change', e => document.documentElement.classList.toggle('reduced-motion', e.matches));
+    })();
+  </script>
 </head>
 <body>
 
-<!-- Animated background -->
+<!-- Fundo animado -->
 <div class="bg-orbs" aria-hidden="true"></div>
 <div class="bg-grid" aria-hidden="true"></div>
 <div class="orb3" aria-hidden="true"></div>
@@ -22,34 +36,37 @@
 <nav class="navbar" id="navbar">
   <div class="navbar-inner">
     <a class="navbar-logo" href="#hero" id="nav-logo-link">
-      <div class="logo-placeholder" id="nav-logo-img">G</div>
-      <span id="nav-company-name">GM7 Sistemas</span>
+      <img src="icons/icon.svg" alt="GM7 Log" id="nav-logo-img" onerror="this.style.display='none';document.getElementById('nav-logo-fb').style.display='flex'" />
+      <div class="logo-placeholder" id="nav-logo-fb" style="display:none">G</div>
+      <span id="nav-company-name">GM7 Log</span>
     </a>
     <ul class="navbar-links">
-      <li><a href="#servicos">Serviços</a></li>
-      <li><a href="#features">Por que GM7?</a></li>
-      <li><a href="#sobre">Sobre</a></li>
-      <li><a href="#depoimentos">Depoimentos</a></li>
+      <li><a href="#como-funciona">Como funciona</a></li>
+      <li><a href="#servicos">Solucoes</a></li>
+      <li><a href="#features">Vantagens</a></li>
+      <li><a href="#faq">FAQ</a></li>
       <li><a href="#contato">Contato</a></li>
     </ul>
     <div class="navbar-actions">
       <a class="btn-ghost" href="#contato" id="nav-whatsapp-btn">Falar conosco</a>
       <a class="btn-primary" href="/login">Acessar sistema &rarr;</a>
     </div>
-    <button class="hamburger" id="hamburger-btn" aria-label="Menu">
+    <button class="hamburger" id="hamburger-btn" aria-label="Menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
   </div>
 </nav>
+
 <!-- Mobile menu -->
-<div class="mobile-menu" id="mobile-menu">
-  <a href="#servicos" class="mobile-nav-close">Serviços</a>
-  <a href="#features" class="mobile-nav-close">Por que GM7?</a>
-  <a href="#sobre" class="mobile-nav-close">Sobre</a>
-  <a href="#depoimentos" class="mobile-nav-close">Depoimentos</a>
-  <a href="#contato" class="mobile-nav-close">Contato</a>
-  <a href="#contato" class="mobile-nav-close">Falar conosco</a>
-  <a href="/login" style="color:var(--cyan);font-weight:700;">Acessar sistema &rarr;</a>
+<div class="mobile-menu" id="mobile-menu" aria-hidden="true">
+  <a href="#como-funciona" class="mobile-nav-close">Como funciona</a>
+  <a href="#servicos"      class="mobile-nav-close">Solucoes</a>
+  <a href="#features"      class="mobile-nav-close">Vantagens</a>
+  <a href="#faq"           class="mobile-nav-close">FAQ</a>
+  <a href="#contato"       class="mobile-nav-close">Contato</a>
+  <div class="mobile-menu-divider"></div>
+  <a href="#contato"       class="mobile-nav-close mobile-ghost">Falar conosco</a>
+  <a href="/login"         class="mobile-cta">Acessar sistema &rarr;</a>
 </div>
 
 <main>
@@ -58,140 +75,272 @@
 <section id="hero">
   <div class="container">
     <div class="hero-inner">
-      <div class="hero-content fade-in">
-        <div class="hero-badge">Plataforma #1 para Transportadoras</div>
+      <div class="hero-content animate-up">
+        <div class="hero-badge">
+          <span class="badge-dot"></span>
+          Plataforma #1 para Transportadoras
+        </div>
         <h1 class="hero-title" id="hero-title">
-          Gestão inteligente para <span class="grad-text" id="hero-keyword">transportadoras</span> que crescem
+          Gestao inteligente para
+          <span class="grad-text typing-target" id="hero-keyword">transportadoras</span>
+          que crescem
         </h1>
         <p class="hero-subtitle" id="hero-subtitle">
-          Automatize processos, controle suas finanças e tome decisões baseadas em dados reais com a plataforma completa da GM7 Sistemas.
+          Controle financeiro, frota, motoristas e estoque em uma unica plataforma.
+          Decisoes baseadas em dados reais, nao em achismos.
         </p>
         <div class="hero-ctas">
-          <a href="#contato" class="btn-primary btn-lg" id="hero-cta1">Começar agora &rarr;</a>
-          <a href="#servicos" class="btn-outline-lg" id="hero-cta2">&#128196; Ver serviços</a>
+          <a href="#contato" class="btn-primary btn-lg" id="hero-cta1">
+            Comecar agora <span class="btn-arrow">&rarr;</span>
+          </a>
+          <a href="#servicos" class="btn-outline-lg" id="hero-cta2">
+            <span>&#128196;</span> Ver solucoes
+          </a>
         </div>
         <div class="hero-stats">
           <div class="stat-item">
-            <div class="stat-number"><span class="counter" data-target="50" id="stat-clients">0</span>+</div>
+            <div class="stat-number">
+              <span class="counter" data-target="50" id="stat-clients">0</span>+
+            </div>
             <div class="stat-label" id="stat-clients-label">Clientes ativos</div>
           </div>
+          <div class="stat-divider"></div>
           <div class="stat-item">
-            <div class="stat-number"><span class="counter" data-target="120" id="stat-projects">0</span>+</div>
+            <div class="stat-number">
+              <span class="counter" data-target="120" id="stat-projects">0</span>+
+            </div>
             <div class="stat-label" id="stat-projects-label">Projetos entregues</div>
           </div>
+          <div class="stat-divider"></div>
           <div class="stat-item">
-            <div class="stat-number"><span class="counter" data-target="5" id="stat-years">0</span>+</div>
-            <div class="stat-label" id="stat-years-label">Anos de experiência</div>
+            <div class="stat-number">
+              <span class="counter" data-target="5" id="stat-years">0</span>+
+            </div>
+            <div class="stat-label" id="stat-years-label">Anos de experiencia</div>
           </div>
         </div>
       </div>
 
-      <!-- CSS Dashboard Mockup -->
-      <div class="hero-visual fade-in fade-in-delay-2">
+      <!-- Dashboard mockup animado -->
+      <div class="hero-visual animate-up stagger-2">
+        <div class="mockup-glow" aria-hidden="true"></div>
         <div class="dashboard-mockup">
           <div class="mock-header">
-            <span class="mock-title">Painel Financeiro</span>
-            <div class="mock-dots"><span></span><span></span><span></span></div>
+            <div class="mock-dots" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="mock-title">Painel Financeiro — GM7 Log</span>
+            <div class="mock-live"><span class="live-dot"></span>Ao vivo</div>
           </div>
           <div class="mock-kpis">
             <div class="mock-kpi">
               <div class="mock-kpi-label">Receita</div>
-              <div class="mock-kpi-value green">R$148k</div>
+              <div class="mock-kpi-value green">R$ 148k</div>
+              <div class="mock-kpi-trend up">+12%</div>
             </div>
             <div class="mock-kpi">
               <div class="mock-kpi-label">Custos</div>
-              <div class="mock-kpi-value red" style="color:#F87171">R$62k</div>
+              <div class="mock-kpi-value red">R$ 62k</div>
+              <div class="mock-kpi-trend down">-3%</div>
             </div>
             <div class="mock-kpi">
               <div class="mock-kpi-label">Margem</div>
-              <div class="mock-kpi-value purple">58%</div>
+              <div class="mock-kpi-value cyan">58%</div>
+              <div class="mock-kpi-trend up">+5pp</div>
             </div>
           </div>
           <div class="mock-chart">
-            <div class="mock-chart-label">Receita mensal</div>
+            <div class="mock-chart-header">
+              <span class="mock-chart-label">Receita mensal</span>
+              <span class="mock-chart-period">Ultimos 6 meses</span>
+            </div>
             <div class="mock-bars">
-              <div class="mock-bar"></div>
-              <div class="mock-bar"></div>
-              <div class="mock-bar"></div>
-              <div class="mock-bar"></div>
-              <div class="mock-bar"></div>
-              <div class="mock-bar"></div>
+              <div class="mock-bar-wrap"><div class="mock-bar" style="--h:60%"></div><span>Jan</span></div>
+              <div class="mock-bar-wrap"><div class="mock-bar" style="--h:85%"></div><span>Fev</span></div>
+              <div class="mock-bar-wrap"><div class="mock-bar" style="--h:50%"></div><span>Mar</span></div>
+              <div class="mock-bar-wrap"><div class="mock-bar" style="--h:95%"></div><span>Abr</span></div>
+              <div class="mock-bar-wrap"><div class="mock-bar" style="--h:70%"></div><span>Mai</span></div>
+              <div class="mock-bar-wrap"><div class="mock-bar highlight" style="--h:88%"></div><span>Jun</span></div>
             </div>
           </div>
           <div class="mock-list">
             <div class="mock-row">
-              <div class="mock-row-icon" style="background:rgba(34,211,238,0.15)">🚛</div>
-              <div class="mock-row-text">Frete SP→RJ #1042</div>
-              <div class="mock-row-val">+R$3.200</div>
+              <div class="mock-row-icon truck">🚛</div>
+              <div class="mock-row-text">Frete SP&rarr;RJ #1042</div>
+              <div class="mock-row-val green">+R$ 3.200</div>
             </div>
             <div class="mock-row">
-              <div class="mock-row-icon" style="background:rgba(248,113,113,0.15)">⛽</div>
-              <div class="mock-row-text">Combustível Mai</div>
-              <div class="mock-row-val red">-R$890</div>
+              <div class="mock-row-icon fuel">⛽</div>
+              <div class="mock-row-text">Combustivel Mai</div>
+              <div class="mock-row-val red">-R$ 890</div>
             </div>
             <div class="mock-row">
-              <div class="mock-row-icon" style="background:rgba(52,211,153,0.15)">✅</div>
+              <div class="mock-row-icon check">&#10003;</div>
               <div class="mock-row-text">Conta recebida #88</div>
-              <div class="mock-row-val">+R$5.500</div>
+              <div class="mock-row-val green">+R$ 5.500</div>
             </div>
           </div>
         </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── TRUST BAR ── -->
+<div class="trust-bar">
+  <div class="container">
+    <div class="trust-inner">
+      <span class="trust-label">Confiado por empresas de transporte em todo o Brasil</span>
+      <div class="trust-badges">
+        <div class="trust-badge">🚛 Transportadoras</div>
+        <div class="trust-badge">📦 Logistica</div>
+        <div class="trust-badge">🏭 Distribuidoras</div>
+        <div class="trust-badge">🔧 Oficinas de Frota</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── COMO FUNCIONA ── -->
+<section id="como-funciona" class="section" style="content-visibility:auto;contain-intrinsic-size:auto 600px">
+  <div class="container">
+    <div class="section-header centered animate-up">
+      <div class="section-label">Processo</div>
+      <h2 class="section-title">Simples de usar, <span class="grad-text">poderoso nos resultados</span></h2>
+      <p class="section-sub">Em 3 passos voce ja tem o controle total da sua operacao.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card animate-up stagger-1">
+        <div class="step-number">01</div>
+        <div class="step-icon">🏢</div>
+        <h3>Cadastre sua empresa</h3>
+        <p>Configure o perfil da empresa, adicione usuarios com diferentes niveis de acesso e personalize o sistema para a sua operacao.</p>
+        <div class="step-connector" aria-hidden="true"></div>
+      </div>
+      <div class="step-card animate-up stagger-2">
+        <div class="step-number">02</div>
+        <div class="step-icon">⚡</div>
+        <h3>Lance suas operacoes</h3>
+        <p>Registre veiculos, motoristas, fretes, despesas e receitas. O sistema organiza tudo automaticamente com graficos e relatorios.</p>
+        <div class="step-connector" aria-hidden="true"></div>
+      </div>
+      <div class="step-card animate-up stagger-3">
+        <div class="step-number">03</div>
+        <div class="step-icon">📊</div>
+        <h3>Tome decisoes com dados</h3>
+        <p>Acompanhe DRE, fluxo de caixa, rentabilidade por veiculo e indicadores em tempo real. Gestao de verdade, sem planilhas.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── SERVICES ── -->
-<section id="servicos" class="section">
+<!-- ── STATS BANNER ── -->
+<div class="stats-banner">
   <div class="container">
-    <div class="section-header centered">
-      <div class="section-label">Soluções</div>
-      <h2 class="section-title">O que a <span class="grad-text">GM7</span> oferece</h2>
-      <p class="section-sub">Cada produto foi desenvolvido para resolver os desafios reais do setor de transporte e logística.</p>
+    <div class="stats-inner">
+      <div class="stats-item animate-up stagger-1">
+        <div class="stats-value"><span class="counter" data-target="98">0</span>%</div>
+        <div class="stats-label">Satisfacao dos clientes</div>
+      </div>
+      <div class="stats-divider"></div>
+      <div class="stats-item animate-up stagger-2">
+        <div class="stats-value">R$<span class="counter" data-target="50">0</span>M+</div>
+        <div class="stats-label">Gerenciados na plataforma</div>
+      </div>
+      <div class="stats-divider"></div>
+      <div class="stats-item animate-up stagger-3">
+        <div class="stats-value"><span class="counter" data-target="3000">0</span>+</div>
+        <div class="stats-label">Lancamentos por mes</div>
+      </div>
+      <div class="stats-divider"></div>
+      <div class="stats-item animate-up stagger-4">
+        <div class="stats-value">24/7</div>
+        <div class="stats-label">Disponibilidade do sistema</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SERVICOS ── -->
+<section id="servicos" class="section" style="content-visibility:auto;contain-intrinsic-size:auto 600px">
+  <div class="container">
+    <div class="section-header centered animate-up">
+      <div class="section-label">Solucoes</div>
+      <h2 class="section-title">O que o <span class="grad-text">GM7 Log</span> oferece</h2>
+      <p class="section-sub">Cada modulo foi desenvolvido para resolver os desafios reais do setor de transporte e logistica.</p>
     </div>
     <div class="services-grid" id="services-grid">
-      <!-- Rendered by JS -->
+      <!-- Renderizado pelo JS -->
     </div>
   </div>
 </section>
 
 <!-- ── FEATURES ── -->
-<section id="features" class="section">
+<section id="features" class="section features-section" style="content-visibility:auto;contain-intrinsic-size:auto 600px">
   <div class="container">
     <div class="features-inner">
-      <div class="fade-in">
+      <div class="animate-up">
         <div class="section-label">Vantagens</div>
-        <h2 class="section-title">Por que escolher a <span class="grad-text">GM7?</span></h2>
-        <p class="section-sub">Não vendemos software genérico. Entendemos o dia a dia da sua operação e construímos soluções que funcionam.</p>
+        <h2 class="section-title">Por que escolher o <span class="grad-text">GM7 Log?</span></h2>
+        <p class="section-sub">Nao vendemos software generico. Entendemos o dia a dia da sua operacao e construimos solucoes que funcionam de verdade.</p>
         <ul class="features-checklist">
-          <li><div class="check-icon">✓</div><span>Sistema desenvolvido exclusivamente para o mercado de transporte</span></li>
-          <li><div class="check-icon">✓</div><span>Suporte dedicado com atendimento rápido e humanizado</span></li>
-          <li><div class="check-icon">✓</div><span>Implantação e treinamento completos sem custo extra</span></li>
-          <li><div class="check-icon">✓</div><span>Atualizações constantes baseadas no feedback dos clientes</span></li>
-          <li><div class="check-icon">✓</div><span>Dados seguros com backups automáticos diários</span></li>
-          <li><div class="check-icon">✓</div><span>Acesso web e mobile sem instalação de programas</span></li>
+          <li class="animate-up stagger-1">
+            <div class="check-icon">&#10003;</div>
+            <span>Sistema desenvolvido exclusivamente para o mercado de transporte</span>
+          </li>
+          <li class="animate-up stagger-2">
+            <div class="check-icon">&#10003;</div>
+            <span>Suporte dedicado com atendimento rapido e humanizado</span>
+          </li>
+          <li class="animate-up stagger-3">
+            <div class="check-icon">&#10003;</div>
+            <span>Implantacao e treinamento completos sem custo extra</span>
+          </li>
+          <li class="animate-up stagger-4">
+            <div class="check-icon">&#10003;</div>
+            <span>Atualizacoes constantes baseadas no feedback dos clientes</span>
+          </li>
+          <li class="animate-up stagger-5">
+            <div class="check-icon">&#10003;</div>
+            <span>Dados seguros com backups automaticos diarios</span>
+          </li>
+          <li class="animate-up stagger-6">
+            <div class="check-icon">&#10003;</div>
+            <span>Acesso web e mobile sem instalacao de programas</span>
+          </li>
         </ul>
       </div>
-      <div class="feature-cards fade-in fade-in-delay-1">
+      <div class="feature-cards animate-up stagger-2">
         <div class="feature-card">
           <div class="feature-card-icon">📊</div>
-          <h4>Relatórios em tempo real</h4>
-          <p>Dashboards atualizados com dados ao vivo da sua frota e finanças.</p>
+          <h4>Relatorios em tempo real</h4>
+          <p>Dashboards atualizados com dados ao vivo da sua frota e financas.</p>
         </div>
         <div class="feature-card">
           <div class="feature-card-icon">🔒</div>
-          <h4>Segurança total</h4>
-          <p>Controle de acesso por perfil, logs de auditoria e criptografia.</p>
+          <h4>Seguranca total</h4>
+          <p>Controle de acesso por perfil, logs de auditoria e criptografia HTTPS.</p>
         </div>
         <div class="feature-card">
           <div class="feature-card-icon">📱</div>
           <h4>App para motoristas</h4>
-          <p>PWA que roda em qualquer celular, sem instalação na loja.</p>
+          <p>PWA que roda em qualquer celular, sem instalacao na loja de apps.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">🗺️</div>
+          <h4>Rastreamento GPS</h4>
+          <p>Localizacao em tempo real dos motoristas direto no mapa interativo.</p>
         </div>
         <div class="feature-card">
           <div class="feature-card-icon">🤖</div>
-          <h4>Automação inteligente</h4>
-          <p>Folha de pagamento, relatórios e notificações automáticas.</p>
+          <h4>Automacao inteligente</h4>
+          <p>Folha de pagamento, relatorios e notificacoes automaticas.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon">☁️</div>
+          <h4>100% na nuvem</h4>
+          <p>Acesse de qualquer lugar, a qualquer hora, em qualquer dispositivo.</p>
         </div>
       </div>
     </div>
@@ -199,95 +348,180 @@
 </section>
 
 <!-- ── SOBRE ── -->
-<section id="sobre" class="section">
+<section id="sobre" class="section" style="content-visibility:auto;contain-intrinsic-size:auto 500px">
   <div class="container">
     <div class="sobre-inner">
-      <div class="sobre-img fade-in" id="sobre-img-container">
+      <div class="sobre-img animate-up" id="sobre-img-container">
         <div class="sobre-img-placeholder">
-          <span class="placeholder-icon">🏢</span>
-          <span>Imagem da empresa</span>
+          <div class="sobre-icon-wrap">
+            <img src="icons/icon.svg" alt="GM7 Log" class="sobre-logo-img" />
+          </div>
+          <span class="sobre-img-label">GM7 Sistemas</span>
+          <span class="sobre-img-sub">Tecnologia para quem move o Brasil</span>
         </div>
       </div>
-      <div class="sobre-content fade-in fade-in-delay-1">
-        <div class="section-label">Nossa história</div>
-        <h2 class="section-title" id="sobre-title">Tecnologia com <span class="grad-text">propósito</span></h2>
+      <div class="sobre-content animate-up stagger-2">
+        <div class="section-label">Nossa historia</div>
+        <h2 class="section-title" id="sobre-title">
+          Tecnologia com <span class="grad-text">proposito</span>
+        </h2>
         <p class="section-sub" id="sobre-subtitle">Nascemos para resolver um problema real.</p>
         <p class="sobre-text" id="sobre-text">
-          A GM7 Sistemas nasceu da necessidade real de transportadoras que precisavam de um sistema robusto, simples e acessível. Com anos de experiência no setor, desenvolvemos soluções que vão além do software — entregamos eficiência operacional, controle financeiro e tranquilidade para gestores e proprietários.
+          A GM7 Sistemas nasceu da necessidade real de transportadoras que precisavam de um sistema
+          robusto, simples e acessivel. Com anos de experiencia no setor, desenvolvemos solucoes que
+          vao alem do software — entregamos eficiencia operacional, controle financeiro e tranquilidade
+          para gestores e proprietarios.
         </p>
+        <a href="#contato" class="btn-primary btn-lg sobre-cta">Conhecer a GM7 &rarr;</a>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ── DEPOIMENTOS ── -->
-<section id="depoimentos" class="section">
+<section id="depoimentos" class="section testimonials-section" style="content-visibility:auto;contain-intrinsic-size:auto 500px">
   <div class="container">
-    <div class="section-header centered">
+    <div class="section-header centered animate-up">
       <div class="section-label">Depoimentos</div>
       <h2 class="section-title">O que nossos <span class="grad-text">clientes</span> dizem</h2>
-      <p class="section-sub">Resultados reais de quem já usa o GM7 no dia a dia.</p>
+      <p class="section-sub">Resultados reais de quem ja usa o GM7 Log no dia a dia.</p>
     </div>
     <div class="testimonials-grid" id="testimonials-grid">
       <div class="testimonials-empty">
-        <span class="empty-icon">💬</span>
-        Nenhum depoimento cadastrado ainda.
+        <span class="empty-icon">&#128172;</span>
+        Depoimentos em breve.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section id="faq" class="section faq-section" style="content-visibility:auto;contain-intrinsic-size:auto 500px">
+  <div class="container">
+    <div class="faq-inner">
+      <div class="faq-header animate-up">
+        <div class="section-label">Duvidas</div>
+        <h2 class="section-title">Perguntas <span class="grad-text">frequentes</span></h2>
+        <p class="section-sub">Nao encontrou o que procura? <a href="#contato" class="faq-contact-link">Fale conosco.</a></p>
+      </div>
+      <div class="faq-list animate-up stagger-2" id="faq-list">
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            <span>O sistema funciona no celular?</span>
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+          <div class="faq-answer">
+            <p>Sim! O GM7 Log e uma Progressive Web App (PWA), ou seja, funciona no navegador de qualquer dispositivo — celular, tablet ou computador — sem precisar instalar nada. Os motoristas tem acesso ao app deles diretamente pelo celular.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            <span>Como e feita a implantacao?</span>
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+          <div class="faq-answer">
+            <p>Nossa equipe faz toda a configuracao inicial: cadastro da empresa, usuarios e integracao com seus dados existentes. Treinamos sua equipe pessoalmente ou por videoconferencia, sem custo adicional.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            <span>Os dados sao seguros?</span>
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+          <div class="faq-answer">
+            <p>Absolutamente. Toda a comunicacao e criptografada via HTTPS, as senhas sao armazenadas com hash seguro e os dados ficam em servidor dedicado com backup automatico diario. Cumprimos a LGPD em todas as nossas operacoes.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            <span>Posso ter varios usuarios com permissoes diferentes?</span>
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+          <div class="faq-answer">
+            <p>Sim. O sistema tem controle de acesso por perfil: master, admin, gestor e motorista. Cada perfil ve apenas o que e relevante para sua funcao, mantendo os dados sensiveis protegidos.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            <span>O sistema funciona offline?</span>
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+          <div class="faq-answer">
+            <p>O GM7 Log tem suporte parcial offline via Service Worker — a tela de login e o app shell ficam em cache, garantindo acesso mesmo com conexao instavel. Os dados financeiros sempre buscam a versao mais recente da rede para garantir precisao.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            <span>Qual o custo do sistema?</span>
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+          <div class="faq-answer">
+            <p>O valor e personalizado de acordo com o porte e necessidades da sua empresa. Entre em contato pelo WhatsApp ou formulario abaixo para receber uma proposta sem compromisso.</p>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
 </section>
 
 <!-- ── CONTATO ── -->
-<section id="contato" class="section">
+<section id="contato" class="section" style="content-visibility:auto;contain-intrinsic-size:auto 600px">
   <div class="container">
-    <div class="section-header">
+    <div class="section-header animate-up">
       <div class="section-label">Contato</div>
       <h2 class="section-title">Vamos <span class="grad-text">conversar?</span></h2>
-      <p class="section-sub">Entre em contato e descubra como a GM7 pode transformar a gestão da sua empresa.</p>
+      <p class="section-sub">Entre em contato e descubra como o GM7 pode transformar a gestao da sua empresa.</p>
     </div>
     <div class="contato-inner">
-      <div class="contato-info fade-in">
+      <div class="contato-info animate-up">
         <div class="contato-info-item">
-          <div class="contato-info-icon">📱</div>
+          <div class="contato-info-icon">&#128241;</div>
           <div class="contato-info-text">
             <h4>WhatsApp</h4>
             <a href="#" id="contato-whatsapp-link" target="_blank" rel="noopener">Clique para conversar</a>
           </div>
         </div>
         <div class="contato-info-item">
-          <div class="contato-info-icon">✉️</div>
+          <div class="contato-info-icon">&#9993;&#65039;</div>
           <div class="contato-info-text">
             <h4>E-mail</h4>
-            <a href="#" id="contato-email-link">contato@gm7sistemas.com.br</a>
+            <a href="mailto:contato@gm7sistemas.com.br" id="contato-email-link">contato@gm7sistemas.com.br</a>
           </div>
         </div>
         <div class="contato-info-item">
-          <div class="contato-info-icon">📸</div>
+          <div class="contato-info-icon">&#128247;</div>
           <div class="contato-info-text">
             <h4>Instagram</h4>
-            <a href="#" id="contato-instagram-link" target="_blank" rel="noopener" id="instagram-link">@gm7sistemas</a>
+            <a href="#" id="contato-instagram-link" target="_blank" rel="noopener">@gm7sistemas</a>
           </div>
         </div>
         <div class="contato-info-item">
-          <div class="contato-info-icon">💼</div>
+          <div class="contato-info-icon">&#128188;</div>
           <div class="contato-info-text">
             <h4>LinkedIn</h4>
             <a href="#" id="contato-linkedin-link" target="_blank" rel="noopener">GM7 Sistemas</a>
           </div>
         </div>
         <div class="contato-info-item" id="contato-address-item" style="display:none">
-          <div class="contato-info-icon">📍</div>
+          <div class="contato-info-icon">&#128205;</div>
           <div class="contato-info-text">
-            <h4>Endereço</h4>
+            <h4>Endereco</h4>
             <span id="contato-address-text"></span>
           </div>
         </div>
       </div>
-      <div class="fade-in fade-in-delay-1">
-        <form class="contato-form" id="contato-form">
+      <div class="animate-up stagger-2">
+        <form class="contato-form" id="contato-form" novalidate>
           <div class="form-row">
             <label for="cf-nome">Seu nome</label>
-            <input type="text" id="cf-nome" name="nome" placeholder="João Silva" required />
+            <input type="text" id="cf-nome" name="nome" placeholder="Joao Silva" required />
           </div>
           <div class="form-row">
             <label for="cf-empresa">Empresa</label>
@@ -299,13 +533,31 @@
           </div>
           <div class="form-row">
             <label for="cf-mensagem">Mensagem</label>
-            <textarea id="cf-mensagem" name="mensagem" placeholder="Conte um pouco sobre sua empresa e o que você precisa..." required></textarea>
+            <textarea id="cf-mensagem" name="mensagem" placeholder="Conte um pouco sobre sua empresa e o que voce precisa..." required></textarea>
           </div>
           <button type="submit" class="btn-primary btn-lg form-submit">
-            📲 Enviar e abrir WhatsApp
+            &#128242; Enviar e abrir WhatsApp
           </button>
-          <div class="form-msg" id="form-msg"></div>
+          <div class="form-msg" id="form-msg" role="alert"></div>
         </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA FINAL ── -->
+<section class="cta-final animate-up">
+  <div class="container">
+    <div class="cta-final-inner">
+      <div class="cta-final-glow" aria-hidden="true"></div>
+      <div class="cta-final-content">
+        <div class="section-label" style="justify-content:center">Comece hoje</div>
+        <h2 class="cta-final-title">Pronto para transformar <span class="grad-text">sua operacao?</span></h2>
+        <p class="cta-final-sub">Junte-se aos gestores que ja tomam decisoes baseadas em dados reais.</p>
+        <div class="cta-final-btns">
+          <a href="#contato" class="btn-primary btn-lg">Quero uma demonstracao &rarr;</a>
+          <a href="/login" class="btn-outline-lg">Ja sou cliente &rarr;</a>
+        </div>
       </div>
     </div>
   </div>
@@ -319,41 +571,58 @@
     <div class="footer-inner">
       <div>
         <div class="footer-brand-name">
-          <div class="logo-placeholder" id="footer-logo" style="width:28px;height:28px;font-size:0.8rem;">G</div>
+          <img src="icons/icon.svg" alt="GM7" class="footer-logo-img" />
           <span id="footer-company-name">GM7 Sistemas</span>
         </div>
-        <p class="footer-brand-desc" id="footer-tagline">Tecnologia que move o Brasil. Soluções para transportadoras, gestão e automação.</p>
+        <p class="footer-brand-desc" id="footer-tagline">
+          Tecnologia que move o Brasil.<br>Solucoes para transportadoras, gestao e automacao.
+        </p>
         <div class="footer-socials">
-          <a href="#" class="footer-social-link" id="footer-instagram" title="Instagram">📸</a>
-          <a href="#" class="footer-social-link" id="footer-linkedin" title="LinkedIn">💼</a>
-          <a href="#" class="footer-social-link" id="footer-whatsapp" title="WhatsApp">📱</a>
+          <a href="#" class="footer-social-link" id="footer-instagram" title="Instagram" aria-label="Instagram">&#128247;</a>
+          <a href="#" class="footer-social-link" id="footer-linkedin" title="LinkedIn"   aria-label="LinkedIn">&#128188;</a>
+          <a href="#" class="footer-social-link" id="footer-whatsapp" title="WhatsApp"  aria-label="WhatsApp">&#128241;</a>
         </div>
       </div>
       <div class="footer-col">
-        <h5>Soluções</h5>
+        <h5>Solucoes</h5>
         <ul class="footer-links">
-          <li><a href="#servicos">Gestão de Transportadoras</a></li>
-          <li><a href="#servicos">Automação</a></li>
-          <li><a href="#servicos">Desenvolvimento</a></li>
+          <li><a href="#servicos">Gestao de Transportadoras</a></li>
+          <li><a href="#servicos">Controle de Frota</a></li>
+          <li><a href="#servicos">Financeiro</a></li>
+          <li><a href="#servicos">App de Motoristas</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h5>Empresa</h5>
         <ul class="footer-links">
-          <li><a href="#sobre">Sobre nós</a></li>
+          <li><a href="#sobre">Sobre nos</a></li>
           <li><a href="#depoimentos">Depoimentos</a></li>
+          <li><a href="#faq">FAQ</a></li>
           <li><a href="#contato">Contato</a></li>
           <li><a href="/login">Acessar sistema</a></li>
         </ul>
       </div>
+      <div class="footer-col">
+        <h5>Legal</h5>
+        <ul class="footer-links">
+          <li><a href="/privacidade.html">Politica de Privacidade</a></li>
+          <li><a href="/privacidade.html#cookies">Politica de Cookies</a></li>
+          <li><a href="/privacidade.html#lgpd">LGPD</a></li>
+        </ul>
+      </div>
     </div>
     <div class="footer-bottom">
-      <p class="footer-copy">&copy; <span id="footer-year"></span> <span id="footer-copy-name">GM7 Sistemas</span>. Todos os direitos reservados.</p>
+      <p class="footer-copy">
+        &copy; <span id="footer-year"></span>
+        <span id="footer-copy-name">GM7 Sistemas</span>.
+        Todos os direitos reservados.
+      </p>
       <a href="/gm7-admin" class="footer-admin-link">Painel admin</a>
     </div>
   </div>
 </footer>
 
-<script src="landing.js?v=1"></script>
+<script src="landing.js?v=2"></script>
+<script src="cookies.js?v=1"></script>
 </body>
 </html>

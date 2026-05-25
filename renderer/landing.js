@@ -1,10 +1,13 @@
 /* ===================================================
-   GM7 Sistemas — Landing Page Script
+   GM7 Sistemas — Landing Page Script v2
    =================================================== */
 
 const API_BASE = '/gm7-api';
 
-// ── Default content (fallback when API unavailable) ──
+// ── Reduced motion helper ──
+const reducedMotion = () => document.documentElement.classList.contains('reduced-motion');
+
+// ── Default content ──
 const DEFAULT_CONTENT = {
   marca: {
     nome: 'GM7 Sistemas',
@@ -12,16 +15,16 @@ const DEFAULT_CONTENT = {
     logo: null,
   },
   hero: {
-    title: 'Gestão inteligente para <span class="grad-text" id="hero-keyword">transportadoras</span> que crescem',
-    subtitle: 'Automatize processos, controle suas finanças e tome decisões baseadas em dados reais com a plataforma completa da GM7 Sistemas.',
-    cta1: 'Começar agora →',
-    cta2: '📄 Ver serviços',
+    title: 'Gestao inteligente para <span class="grad-text typing-target" id="hero-keyword">transportadoras</span> que crescem',
+    subtitle: 'Controle financeiro, frota, motoristas e estoque em uma unica plataforma. Decisoes baseadas em dados reais, nao em achismos.',
+    cta1: 'Comecar agora →',
+    cta2: '📄 Ver solucoes',
     stat_clients: '50',
     stat_projects: '120',
     stat_years: '5',
     stat_clients_label: 'Clientes ativos',
     stat_projects_label: 'Projetos entregues',
-    stat_years_label: 'Anos de experiência',
+    stat_years_label: 'Anos de experiencia',
   },
   servicos: [
     {
@@ -69,9 +72,7 @@ async function carregarConteudo() {
       const data = await res.json();
       siteContent = deepMerge(DEFAULT_CONTENT, data);
     }
-  } catch (e) {
-    // silently use defaults
-  }
+  } catch (_) { /* use defaults */ }
   aplicarConteudo();
 }
 
@@ -106,15 +107,12 @@ function aplicarConteudo() {
   if (marca.logo) {
     const navLogoImg = document.getElementById('nav-logo-img');
     if (navLogoImg) {
-      navLogoImg.outerHTML = `<img id="nav-logo-img" src="${marca.logo}" alt="${companyName}" style="width:36px;height:36px;border-radius:8px;object-fit:contain;" />`;
-    }
-    const footerLogo = document.getElementById('footer-logo');
-    if (footerLogo) {
-      footerLogo.outerHTML = `<img id="footer-logo" src="${marca.logo}" alt="${companyName}" style="width:28px;height:28px;border-radius:6px;object-fit:contain;" />`;
+      navLogoImg.src = marca.logo;
+      navLogoImg.style.display = 'block';
     }
   }
 
-  // Hero title — set innerHTML to allow span tags
+  // Hero title (innerHTML allows span tags)
   const heroTitleEl = document.getElementById('hero-title');
   if (heroTitleEl && hero.title) {
     heroTitleEl.innerHTML = hero.title;
@@ -122,20 +120,17 @@ function aplicarConteudo() {
   setText('hero-subtitle', hero.subtitle || '');
 
   const cta1 = document.getElementById('hero-cta1');
-  if (cta1 && hero.cta1) cta1.textContent = hero.cta1;
+  if (cta1 && hero.cta1) cta1.childNodes[0].textContent = hero.cta1 + ' ';
   const cta2 = document.getElementById('hero-cta2');
   if (cta2 && hero.cta2) cta2.textContent = hero.cta2;
 
-  // Stats
-  const statClients = document.getElementById('stat-clients');
-  if (statClients) statClients.dataset.target = hero.stat_clients || '50';
-  const statProjects = document.getElementById('stat-projects');
-  if (statProjects) statProjects.dataset.target = hero.stat_projects || '120';
-  const statYears = document.getElementById('stat-years');
-  if (statYears) statYears.dataset.target = hero.stat_years || '5';
-  setText('stat-clients-label', hero.stat_clients_label || 'Clientes ativos');
+  // Hero stats
+  setCounterTarget('stat-clients',  hero.stat_clients  || '50');
+  setCounterTarget('stat-projects', hero.stat_projects || '120');
+  setCounterTarget('stat-years',    hero.stat_years    || '5');
+  setText('stat-clients-label',  hero.stat_clients_label  || 'Clientes ativos');
   setText('stat-projects-label', hero.stat_projects_label || 'Projetos entregues');
-  setText('stat-years-label', hero.stat_years_label || 'Anos de experiência');
+  setText('stat-years-label',    hero.stat_years_label    || 'Anos de experiencia');
 
   // Services
   renderServices(c.servicos || DEFAULT_CONTENT.servicos);
@@ -174,9 +169,8 @@ function aplicarConteudo() {
   setText('contato-instagram-link', ig || '@gm7sistemas');
 
   const li = contato.linkedin || '';
-  const liLink = li ? li : '#';
-  setAttr('contato-linkedin-link', 'href', liLink);
-  setAttr('footer-linkedin', 'href', liLink);
+  setAttr('contato-linkedin-link', 'href', li || '#');
+  setAttr('footer-linkedin', 'href', li || '#');
 
   const addr = contato.endereco || '';
   if (addr) {
@@ -185,40 +179,47 @@ function aplicarConteudo() {
     setText('contato-address-text', addr);
   }
 
-  // WhatsApp CTA for "Falar conosco" nav button
   const navWaBtn = document.getElementById('nav-whatsapp-btn');
   if (navWaBtn && waLink !== '#') {
     navWaBtn.href = waLink;
     navWaBtn.target = '_blank';
     navWaBtn.rel = 'noopener';
   }
+
+  // After applying content, restart animations and typing
+  observeAnimations();
+  startTypingAnimation();
 }
 
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
-
 function setAttr(id, attr, value) {
   const el = document.getElementById(id);
   if (el) el.setAttribute(attr, value);
 }
+function setCounterTarget(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.dataset.target = value;
+}
 
+// ── Render services grid ──
 function renderServices(servicos) {
   const grid = document.getElementById('services-grid');
   if (!grid) return;
   grid.innerHTML = servicos.map((s, i) => `
-    <div class="service-card ${s.destaque ? 'destaque' : ''} fade-in fade-in-delay-${i}">
+    <div class="service-card ${s.destaque ? 'destaque' : ''} animate-up stagger-${(i % 3) + 1}">
       <span class="service-icon">${s.icone || '⚙️'}</span>
       <h3>${escapeHtml(s.titulo || '')}</h3>
       <p>${escapeHtml(s.descricao || '')}</p>
       ${s.destaque ? '<span class="service-tag">⭐ Destaque</span>' : ''}
     </div>
   `).join('');
-  // Re-observe new elements
-  observeFadeIns();
+  observeAnimations();
 }
 
+// ── Render testimonials ──
 function renderTestimonials(depoimentos) {
   const grid = document.getElementById('testimonials-grid');
   if (!grid) return;
@@ -226,12 +227,12 @@ function renderTestimonials(depoimentos) {
     grid.innerHTML = `
       <div class="testimonials-empty">
         <span class="empty-icon">💬</span>
-        Nenhum depoimento cadastrado ainda.
+        Depoimentos em breve.
       </div>`;
     return;
   }
   grid.innerHTML = depoimentos.map(d => `
-    <div class="testimonial-card fade-in">
+    <div class="testimonial-card animate-up">
       <div class="testimonial-quote">"</div>
       <p class="testimonial-text">${escapeHtml(d.texto || '')}</p>
       <div class="testimonial-author">
@@ -245,57 +246,102 @@ function renderTestimonials(depoimentos) {
       </div>
     </div>
   `).join('');
-  observeFadeIns();
+  observeAnimations();
 }
 
 function escapeHtml(str) {
   return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ── Navbar scroll effect ──
-const navbar = document.getElementById('navbar');
-window.addEventListener('scroll', () => {
-  if (window.scrollY > 20) {
-    navbar.classList.add('scrolled');
-  } else {
-    navbar.classList.remove('scrolled');
+// ── Typing animation ──
+const TYPING_WORDS = ['transportadoras', 'gestores de frota', 'empresas logisticas', 'motoristas'];
+let wordIdx = 0, charIdx = 0, isDeleting = false, typingTimer = null;
+
+function startTypingAnimation() {
+  if (reducedMotion()) return;
+  const el = document.querySelector('.typing-target');
+  if (!el) return;
+
+  clearTimeout(typingTimer);
+  wordIdx = 0; charIdx = 0; isDeleting = false;
+
+  function tick() {
+    const word = TYPING_WORDS[wordIdx];
+    if (isDeleting) {
+      charIdx--;
+      el.textContent = word.substring(0, charIdx);
+    } else {
+      charIdx++;
+      el.textContent = word.substring(0, charIdx);
+    }
+
+    let delay = isDeleting ? 55 : 95;
+
+    if (!isDeleting && charIdx === word.length) {
+      delay = 2400;
+      isDeleting = true;
+    } else if (isDeleting && charIdx === 0) {
+      isDeleting = false;
+      wordIdx = (wordIdx + 1) % TYPING_WORDS.length;
+      delay = 350;
+    }
+
+    typingTimer = setTimeout(tick, delay);
   }
-}, { passive: true });
 
-// ── Hamburger menu ──
-const hamburgerBtn = document.getElementById('hamburger-btn');
-const mobileMenu = document.getElementById('mobile-menu');
-hamburgerBtn.addEventListener('click', () => {
-  hamburgerBtn.classList.toggle('open');
-  mobileMenu.classList.toggle('open');
-});
-document.querySelectorAll('.mobile-nav-close').forEach(el => {
-  el.addEventListener('click', () => {
-    hamburgerBtn.classList.remove('open');
-    mobileMenu.classList.remove('open');
+  // Small initial delay so page settles
+  typingTimer = setTimeout(tick, 800);
+}
+
+// ── FAQ accordion ──
+function initFAQ() {
+  document.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.faq-item');
+      const isOpen = item.classList.contains('open');
+      // Close all open items
+      document.querySelectorAll('.faq-item.open').forEach(openItem => {
+        openItem.classList.remove('open');
+        openItem.querySelector('.faq-question').setAttribute('aria-expanded', 'false');
+      });
+      // Toggle clicked
+      if (!isOpen) {
+        item.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    });
   });
-});
+}
 
-// ── Smooth scroll for hash links ──
-document.querySelectorAll('a[href^="#"]').forEach(a => {
-  a.addEventListener('click', e => {
-    const target = document.querySelector(a.getAttribute('href'));
-    if (target) {
-      e.preventDefault();
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// ── IntersectionObserver for scroll animations ──
+const animObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      animObserver.unobserve(entry.target);
     }
   });
-});
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+function observeAnimations() {
+  document.querySelectorAll('.animate-up:not(.visible), .fade-in:not(.visible)').forEach(el => {
+    animObserver.observe(el);
+  });
+}
 
 // ── Counter animation ──
+let countersAnimated = false;
+
 function animateCounters() {
+  if (countersAnimated) return;
+  countersAnimated = true;
+
   document.querySelectorAll('.counter').forEach(el => {
     const target = parseInt(el.dataset.target || '0', 10);
-    const duration = 1500;
+    if (reducedMotion()) { el.textContent = target; return; }
+    const duration = 1800;
     const start = performance.now();
     function step(now) {
       const elapsed = now - start;
@@ -309,73 +355,110 @@ function animateCounters() {
   });
 }
 
-// ── IntersectionObserver for fade-in and counters ──
-let countersAnimated = false;
-const observer = new IntersectionObserver((entries) => {
+// Trigger counters when hero or stats-banner enters view
+const counterObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      observer.unobserve(entry.target);
+      animateCounters();
+      counterObserver.disconnect();
     }
   });
-}, { threshold: 0.12 });
+}, { threshold: 0.2 });
 
 const heroSection = document.getElementById('hero');
-const heroObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting && !countersAnimated) {
-      countersAnimated = true;
-      animateCounters();
+const statsBanner = document.querySelector('.stats-banner');
+if (heroSection) counterObserver.observe(heroSection);
+if (statsBanner) counterObserver.observe(statsBanner);
+
+// ── Navbar scroll effect ──
+const navbar = document.getElementById('navbar');
+if (navbar) {
+  window.addEventListener('scroll', () => {
+    navbar.classList.toggle('scrolled', window.scrollY > 20);
+  }, { passive: true });
+}
+
+// ── Hamburger menu ──
+const hamburgerBtn = document.getElementById('hamburger-btn');
+const mobileMenu   = document.getElementById('mobile-menu');
+if (hamburgerBtn && mobileMenu) {
+  hamburgerBtn.addEventListener('click', () => {
+    const isOpen = hamburgerBtn.classList.toggle('open');
+    mobileMenu.classList.toggle('open', isOpen);
+    hamburgerBtn.setAttribute('aria-expanded', String(isOpen));
+    mobileMenu.setAttribute('aria-hidden', String(!isOpen));
+  });
+  document.querySelectorAll('.mobile-nav-close').forEach(el => {
+    el.addEventListener('click', () => {
+      hamburgerBtn.classList.remove('open');
+      mobileMenu.classList.remove('open');
+      hamburgerBtn.setAttribute('aria-expanded', 'false');
+      mobileMenu.setAttribute('aria-hidden', 'true');
+    });
+  });
+}
+
+// ── Smooth scroll for hash links ──
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const href = a.getAttribute('href');
+    if (href === '#') return;
+    const target = document.querySelector(href);
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Close mobile menu
+      if (hamburgerBtn && mobileMenu) {
+        hamburgerBtn.classList.remove('open');
+        mobileMenu.classList.remove('open');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+        mobileMenu.setAttribute('aria-hidden', 'true');
+      }
     }
   });
-}, { threshold: 0.3 });
-if (heroSection) heroObserver.observe(heroSection);
-
-function observeFadeIns() {
-  document.querySelectorAll('.fade-in:not(.visible)').forEach(el => observer.observe(el));
-}
-observeFadeIns();
+});
 
 // ── Contact form ──
 const contatoForm = document.getElementById('contato-form');
-const formMsg = document.getElementById('form-msg');
+const formMsg     = document.getElementById('form-msg');
 
-contatoForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const nome = document.getElementById('cf-nome').value.trim();
-  const empresa = document.getElementById('cf-empresa').value.trim();
-  const telefone = document.getElementById('cf-telefone').value.trim();
-  const mensagem = document.getElementById('cf-mensagem').value.trim();
+if (contatoForm) {
+  contatoForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nome     = document.getElementById('cf-nome').value.trim();
+    const empresa  = document.getElementById('cf-empresa').value.trim();
+    const telefone = document.getElementById('cf-telefone').value.trim();
+    const mensagem = document.getElementById('cf-mensagem').value.trim();
 
-  if (!nome || !mensagem) {
-    showFormMsg('Por favor, preencha nome e mensagem.', false);
-    return;
-  }
+    if (!nome || !mensagem) {
+      showFormMsg('Por favor, preencha nome e mensagem.', false);
+      return;
+    }
 
-  // Save to API
-  try {
-    await fetch(`${API_BASE}/contato`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome, empresa, telefone, mensagem }),
-    });
-  } catch (_) { /* silently ignore */ }
+    try {
+      await fetch(`${API_BASE}/contato`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, empresa, telefone, mensagem }),
+      });
+    } catch (_) { /* silently ignore */ }
 
-  showFormMsg('Mensagem enviada! Abrindo WhatsApp...', true);
+    showFormMsg('Mensagem enviada! Abrindo WhatsApp...', true);
 
-  // Open WhatsApp
-  const wa = (siteContent.contato || {}).whatsapp || '';
-  if (wa) {
-    const waNum = wa.replace(/\D/g, '');
-    const waText = encodeURIComponent(`Olá! Sou ${nome}${empresa ? ` da ${empresa}` : ''}. ${mensagem}`);
-    window.open(`https://wa.me/${waNum}?text=${waText}`, '_blank', 'noopener');
-  }
+    const wa = (siteContent.contato || {}).whatsapp || '';
+    if (wa) {
+      const waNum  = wa.replace(/\D/g, '');
+      const waText = encodeURIComponent(`Olá! Sou ${nome}${empresa ? ` da ${empresa}` : ''}. ${mensagem}`);
+      window.open(`https://wa.me/${waNum}?text=${waText}`, '_blank', 'noopener');
+    }
 
-  contatoForm.reset();
-  setTimeout(() => { formMsg.textContent = ''; }, 5000);
-});
+    contatoForm.reset();
+    setTimeout(() => { if (formMsg) formMsg.textContent = ''; }, 5000);
+  });
+}
 
 function showFormMsg(msg, ok) {
+  if (!formMsg) return;
   formMsg.textContent = msg;
   formMsg.className = 'form-msg ' + (ok ? 'ok' : 'err');
 }
@@ -385,4 +468,6 @@ const footerYear = document.getElementById('footer-year');
 if (footerYear) footerYear.textContent = new Date().getFullYear();
 
 // ── Boot ──
+initFAQ();
+observeAnimations();
 carregarConteudo();
