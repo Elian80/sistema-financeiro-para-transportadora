@@ -3708,6 +3708,7 @@ body[data-theme="light"] .edit-inline-form {
 }
 
 .dash-premium-head {
+  order: 1;
   align-items: center;
   border-radius: 14px !important;
   padding: 14px 16px !important;
@@ -3748,6 +3749,7 @@ body[data-theme="light"] .edit-inline-form {
 }
 
 .dash-top-cards {
+  order: 2;
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: 14px;
@@ -3827,6 +3829,7 @@ body[data-theme="light"] .edit-inline-form {
 .dash-stat-orange { color: #f97316; }
 
 .dash-finance-strip {
+  order: 4;
   grid-template-columns: repeat(4, minmax(160px, 1fr)) !important;
 }
 
@@ -3836,6 +3839,7 @@ body[data-theme="light"] .edit-inline-form {
 }
 
 .dash-analytics-grid {
+  order: 3;
   display: grid !important;
   grid-template-columns: minmax(420px, 1.15fr) minmax(300px, 0.85fr) !important;
   gap: 14px;
@@ -3957,10 +3961,12 @@ body[data-theme="light"] .edit-inline-form {
 }
 
 .dash-secondary-kpis {
+  order: 6;
   margin-bottom: 18px;
 }
 
 .dashboard-layout {
+  order: 7;
   grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
 }
 
@@ -4028,6 +4034,7 @@ body[data-theme="light"] .dash-date-chip {
 }
 
 .dash-metrics-strip {
+  order: 5;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
