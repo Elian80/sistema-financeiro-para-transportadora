@@ -310,7 +310,6 @@ const pages = {
         <section class="kpi-card dashboard-hero">
           <div class="kpi-label">Saldo do periodo</div>
           <div class="kpi-value" id="dashboard-saldo">R$ 0,00</div>
-          ${kpiTrend("", "positive")}
           ${sparklineSvg("4,30 18,24 32,27 46,16 60,19 74,10 88,14")}
           <div class="dashboard-note" id="dashboard-receitas-qtd">0 lancamentos</div>
         </section>
