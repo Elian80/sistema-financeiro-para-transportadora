@@ -426,6 +426,21 @@
 <!-- Toast container -->
 <div class="toast-container" id="toast-container"></div>
 
-<script src="landing-admin.js?v=2"></script>
+<script>
+  (function limparServiceWorkerDoAdmin() {
+    if (!("serviceWorker" in navigator)) return;
+
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .then(() => {
+        if (navigator.serviceWorker.controller && !sessionStorage.getItem("gm7_admin_sw_reset")) {
+          sessionStorage.setItem("gm7_admin_sw_reset", "1");
+          window.location.reload();
+        }
+      })
+      .catch(() => {});
+  })();
+</script>
+<script src="landing-admin.js?v=3"></script>
 </body>
 </html>
