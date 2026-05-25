@@ -3849,9 +3849,44 @@ body[data-theme="light"] .edit-inline-form {
 }
 
 .dash-analytics-grid h3 {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
   color: #e5e7eb;
+}
+
+.dash-chart-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.dash-chart-value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dash-chart-value strong {
+  color: #f8fafc;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 850;
+}
+
+.dash-chart-value span {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dash-chart-value span.positive {
+  color: #22c55e;
+}
+
+.dash-chart-value span.negative {
+  color: #ef4444;
 }
 
 .dash-panel-wide {
@@ -3866,6 +3901,55 @@ body[data-theme="light"] .edit-inline-form {
 
 .dash-category-panel canvas {
   max-height: 220px;
+}
+
+.dash-donut-layout {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.86fr) minmax(150px, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 220px;
+}
+
+.dash-donut-layout canvas {
+  min-height: 190px !important;
+  max-height: 210px !important;
+}
+
+.dash-category-legend {
+  display: grid;
+  gap: 14px;
+  align-content: center;
+}
+
+.dash-category-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #dbeafe;
+  font-size: 12px;
+}
+
+.dash-category-row span {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #cbd5e1;
+}
+
+.dash-category-row span i {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.03);
+}
+
+.dash-category-row strong {
+  color: #f8fafc;
+  font-weight: 800;
 }
 
 .dash-extra-chart {
@@ -3896,6 +3980,15 @@ body[data-theme="light"] .dash-analytics-grid h3 {
   color: #0f172a;
 }
 
+body[data-theme="light"] .dash-chart-value strong,
+body[data-theme="light"] .dash-category-row strong {
+  color: #0f172a;
+}
+
+body[data-theme="light"] .dash-category-row span {
+  color: #475569;
+}
+
 body[data-theme="light"] .dash-date-chip {
   background: #ffffff;
   border-color: rgba(37,99,235,0.16);
@@ -3910,6 +4003,10 @@ body[data-theme="light"] .dash-date-chip {
 
   .dash-analytics-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .dash-donut-layout {
+    grid-template-columns: 1fr;
   }
 }
 

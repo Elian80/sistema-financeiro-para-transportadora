@@ -369,8 +369,27 @@ const pages = {
       </div>
 
       <section class="report-charts dash-analytics-grid" style="margin-bottom:18px;">
-        <div class="panel-box chart-card chart-card-wide dash-panel-wide"><h3>Resumo de Custos</h3><canvas id="dash-chart-receitas-despesas" height="150"></canvas></div>
-        <div class="panel-box chart-card dash-category-panel"><h3>Custos por Categoria</h3><canvas id="dash-chart-despesas-classificacao" height="150"></canvas></div>
+        <div class="panel-box chart-card chart-card-wide dash-panel-wide dash-cost-summary-card">
+          <div class="dash-chart-title">
+            <div>
+              <h3>Resumo de Custos</h3>
+              <div class="dash-chart-value">
+                <strong id="dash-custos-resumo-valor">R$ 0,00</strong>
+                <span id="dash-custos-resumo-tendencia" class="positive">+0,0%</span>
+              </div>
+            </div>
+          </div>
+          <canvas id="dash-chart-receitas-despesas" height="150"></canvas>
+        </div>
+        <div class="panel-box chart-card dash-category-panel">
+          <div class="dash-chart-title">
+            <h3>Custos por Categoria</h3>
+          </div>
+          <div class="dash-donut-layout">
+            <canvas id="dash-chart-despesas-classificacao" height="150"></canvas>
+            <div id="dash-categorias-legenda" class="dash-category-legend"></div>
+          </div>
+        </div>
         <div class="panel-box chart-card dash-extra-chart"><h3>Custos por veiculo</h3><canvas id="dash-chart-custos-veiculo" height="150"></canvas></div>
         <div class="panel-box chart-card dash-extra-chart"><h3>Faturamento mensal</h3><canvas id="dash-chart-faturamento-mensal" height="150"></canvas></div>
         <div class="panel-box chart-card dash-extra-chart"><h3>Saldo acumulado</h3><canvas id="dash-chart-saldo-acumulado" height="150"></canvas></div>
@@ -6083,7 +6102,7 @@ function limparGraficosDashboard() {
   dashboardCharts = [];
 }
 
-function criarGraficoDashboard(canvasId, tipo, labels, datasets) {
+function criarGraficoDashboard(canvasId, tipo, labels, datasets, opcoesExtras = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   if (!window.Chart) {
@@ -6096,11 +6115,20 @@ function criarGraficoDashboard(canvasId, tipo, labels, datasets) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: "#e8edf8" } } },
+      cutout: tipo === "doughnut" ? "62%" : undefined,
+      plugins: {
+        legend: {
+          display: opcoesExtras.legendDisplay ?? true,
+          position: opcoesExtras.legendPosition || "top",
+          labels: { color: "#e8edf8", boxWidth: 10, boxHeight: 10, usePointStyle: true }
+        },
+        tooltip: { intersect: false, mode: "index" }
+      },
       scales: tipo === "pie" || tipo === "doughnut" ? {} : {
-        x: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.06)" } },
-        y: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.06)" } }
-      }
+        x: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.035)" } },
+        y: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.045)" }, beginAtZero: true }
+      },
+      ...opcoesExtras
     }
   });
   dashboardCharts.push(chart);
@@ -6108,11 +6136,35 @@ function criarGraficoDashboard(canvasId, tipo, labels, datasets) {
 
 function renderizarGraficoReceitasDespesas(dados) {
   const labels = dados.periodo.length ? dados.periodo.map(i => i.periodo) : ["Periodo"];
+  const custoAtual = normalizarNumero(dados.resumo.custos_operacionais || 0);
+  const valorEl = document.getElementById("dash-custos-resumo-valor");
+  if (valorEl) valorEl.textContent = formatarValor(custoAtual);
+
+  const custosPeriodo = dados.periodo.map(i => normalizarNumero(i.total_custos));
+  const primeiroCusto = custosPeriodo.find(v => v > 0) || 0;
+  const ultimoCusto = [...custosPeriodo].reverse().find(v => v > 0) || custoAtual;
+  const variacao = primeiroCusto ? ((ultimoCusto - primeiroCusto) / primeiroCusto) * 100 : 0;
+  const tendenciaEl = document.getElementById("dash-custos-resumo-tendencia");
+  if (tendenciaEl) {
+    tendenciaEl.textContent = `${variacao >= 0 ? "+" : ""}${formatarPercentual(variacao)}`;
+    tendenciaEl.classList.toggle("negative", variacao > 0);
+    tendenciaEl.classList.toggle("positive", variacao <= 0);
+  }
+
   criarGraficoDashboard("dash-chart-receitas-despesas", "line", labels, [
-    { label: "Receita", data: dados.periodo.length ? dados.periodo.map(i => i.total_receitas) : [dados.resumo.faturamento], borderColor: "#22C55E", backgroundColor: "rgba(34,197,94,0.14)", tension: 0.38, fill: true },
-    { label: "Custo", data: dados.periodo.length ? dados.periodo.map(i => i.total_custos) : [dados.resumo.custos_operacionais], borderColor: "#EF4444", backgroundColor: "rgba(239,68,68,0.1)", tension: 0.38, fill: true },
-    { label: "Lucro", data: dados.periodo.length ? dados.periodo.map(i => i.resultado) : [dados.resumo.lucro_liquido], borderColor: "#22D3EE", backgroundColor: "rgba(34,211,238,0.12)", tension: 0.38, fill: true }
-  ]);
+    {
+      label: "Custos",
+      data: dados.periodo.length ? dados.periodo.map(i => Math.abs(normalizarNumero(i.total_custos))) : [custoAtual],
+      borderColor: "#2388ff",
+      backgroundColor: "rgba(35,136,255,0.18)",
+      pointBackgroundColor: "#38bdf8",
+      pointBorderColor: "#0f172a",
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      tension: 0.38,
+      fill: true
+    }
+  ], { legendDisplay: false });
 }
 
 function renderizarGraficoCustosPorVeiculo(dados) {
@@ -6122,10 +6174,29 @@ function renderizarGraficoCustosPorVeiculo(dados) {
 }
 
 function renderizarGraficoDespesasPorClassificacao(dados) {
-  const despesas = dados.classificacoes.filter(i => String(i.classificacao).startsWith("2.")).slice(0, 8);
+  const despesas = dados.classificacoes
+    .filter(i => String(i.classificacao).startsWith("2."))
+    .sort((a, b) => Math.abs(normalizarNumero(b.total)) - Math.abs(normalizarNumero(a.total)))
+    .slice(0, 4);
+  const cores = ["#0ea5e9", "#4f46e5", "#22c55e", "#f59e0b"];
+  const valores = despesas.map(i => Math.abs(normalizarNumero(i.total)));
+  const total = valores.reduce((soma, valor) => soma + valor, 0) || 1;
   criarGraficoDashboard("dash-chart-despesas-classificacao", "doughnut", despesas.map(i => i.classificacao), [
-    { label: "Despesas", data: despesas.map(i => Math.abs(i.total)), backgroundColor: ["#EF4444", "#F59E0B", "#22D3EE", "#22C55E", "#3B82F6", "#06B6D4", "#64748B", "#F97316"] }
-  ]);
+    { label: "Despesas", data: valores, backgroundColor: cores, borderColor: "rgba(15,23,42,0.95)", borderWidth: 4, hoverOffset: 6 }
+  ], { legendDisplay: false });
+
+  const legenda = document.getElementById("dash-categorias-legenda");
+  if (legenda) {
+    legenda.innerHTML = despesas.length ? despesas.map((item, index) => {
+      const percentual = Math.round((Math.abs(normalizarNumero(item.total)) / total) * 100);
+      return `
+        <div class="dash-category-row">
+          <span><i style="background:${cores[index % cores.length]}"></i>${escapeHtml(item.classificacao || "Categoria")}</span>
+          <strong>${percentual}%</strong>
+        </div>
+      `;
+    }).join("") : `<p class="empty-row">Sem custos no periodo.</p>`;
+  }
 }
 
 function renderizarGraficoFaturamentoMensal(dados) {
