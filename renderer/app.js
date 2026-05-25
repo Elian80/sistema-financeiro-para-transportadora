@@ -360,7 +360,6 @@ const pages = {
       </div>
 
       <div class="kpi-grid" style="margin-bottom:18px;">
-        <section class="kpi-card"><div class="kpi-label">Custos operacionais</div><div class="kpi-value negative" id="dashboard-custos">R$ 0,00</div>${sparklineSvg("4,12 18,18 32,16 46,22 60,19 74,28 88,26")}</section>
         <section class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="dashboard-investimentos">R$ 0,00</div>${sparklineSvg("4,30 18,30 32,24 46,18 60,20 74,14 88,9")}</section>
         <section class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="dashboard-lucro-bruto">R$ 0,00</div>${sparklineSvg("4,32 18,24 32,26 46,18 60,12 74,14 88,8")}</section>
         <section class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value warning" id="dashboard-contas-pendentes">R$ 0,00</div>${sparklineSvg("4,18 18,14 32,22 46,18 60,26 74,22 88,30")}</section>
@@ -6293,7 +6292,8 @@ async function iniciarDashboard() {
   document.getElementById("dashboard-receitas-qtd").textContent = `${receitas.length} lancamento(s)`;
   document.getElementById("dashboard-despesas").textContent = formatarValor(totalDespesas);
   document.getElementById("dashboard-despesas-qtd").textContent = `${despesas.length} lancamento(s)`;
-  document.getElementById("dashboard-custos").textContent = formatarValor(dadosDashboard.resumo.custos_operacionais);
+  const custosEl = document.getElementById("dashboard-custos");
+  if (custosEl) custosEl.textContent = formatarValor(dadosDashboard.resumo.custos_operacionais);
   document.getElementById("dashboard-investimentos").textContent = formatarValor(dadosDashboard.resumo.investimentos);
   document.getElementById("dashboard-lucro-bruto").textContent = formatarValor(dadosDashboard.resumo.lucro_bruto);
   document.getElementById("dashboard-lucro-liquido").textContent = formatarValor(dadosDashboard.resumo.lucro_liquido);
