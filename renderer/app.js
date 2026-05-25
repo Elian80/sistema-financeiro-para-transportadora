@@ -260,7 +260,8 @@ const pages = {
         </div>
       `)}
 
-      <div class="panel-box filter-launcher" style="margin-bottom:18px;">
+      <section class="dash-premium-shell">
+      <div class="panel-box filter-launcher dash-premium-head" style="margin-bottom:18px;">
         <div>
           <h3 style="margin:0;font-size:15px;">Periodo analisado</h3>
           <p id="dashboard-periodo" style="margin:4px 0 0;font-size:13px;">Carregando...</p>
@@ -270,7 +271,42 @@ const pages = {
         </div>
       </div>
 
-      <div class="dashboard-grid" style="margin-bottom:18px;">
+      <div class="dash-top-cards" style="margin-bottom:18px;">
+        <section class="dash-stat-card dash-stat-blue">
+          <div>
+            <span class="dash-stat-label">Veiculos</span>
+            <strong class="dash-stat-value" id="dashboard-veiculos-total">0</strong>
+            <small>Frota cadastrada</small>
+          </div>
+          <span class="dash-stat-icon"><i data-lucide="truck"></i></span>
+        </section>
+        <section class="dash-stat-card dash-stat-green">
+          <div>
+            <span class="dash-stat-label">Em movimento</span>
+            <strong class="dash-stat-value" id="dashboard-veiculos-ativos-card">0</strong>
+            <small>Veiculos ativos</small>
+          </div>
+          <span class="dash-stat-icon"><i data-lucide="route"></i></span>
+        </section>
+        <section class="dash-stat-card dash-stat-indigo">
+          <div>
+            <span class="dash-stat-label">Parados</span>
+            <strong class="dash-stat-value" id="dashboard-veiculos-inativos-card">0</strong>
+            <small>Sem operacao</small>
+          </div>
+          <span class="dash-stat-icon"><i data-lucide="parking-circle"></i></span>
+        </section>
+        <section class="dash-stat-card dash-stat-orange">
+          <div>
+            <span class="dash-stat-label">Manutencoes</span>
+            <strong class="dash-stat-value" id="dashboard-veiculos-manutencao-card">0</strong>
+            <small>Em manutencao</small>
+          </div>
+          <span class="dash-stat-icon"><i data-lucide="wrench"></i></span>
+        </section>
+      </div>
+
+      <div class="dashboard-grid dash-finance-strip" style="margin-bottom:18px;">
         <section class="kpi-card dashboard-hero">
           <div class="kpi-label">Saldo do periodo</div>
           <div class="kpi-value" id="dashboard-saldo">R$ 0,00</div>
@@ -332,13 +368,13 @@ const pages = {
         <section class="kpi-card"><div class="kpi-label">Frota ativa</div><div class="kpi-value" id="dashboard-frota-ativa">0</div>${sparklineSvg("4,26 18,26 32,22 46,22 60,18 74,18 88,14")}</section>
       </div>
 
-      <section class="report-charts" style="margin-bottom:18px;">
-        <div class="panel-box chart-card chart-card-wide"><h3>Evolucao financeira</h3><canvas id="dash-chart-receitas-despesas" height="150"></canvas></div>
-        <div class="panel-box"><h3>Custos por veiculo</h3><canvas id="dash-chart-custos-veiculo" height="150"></canvas></div>
-        <div class="panel-box"><h3>Despesas por classificacao</h3><canvas id="dash-chart-despesas-classificacao" height="150"></canvas></div>
-        <div class="panel-box"><h3>Faturamento mensal</h3><canvas id="dash-chart-faturamento-mensal" height="150"></canvas></div>
-        <div class="panel-box"><h3>Saldo acumulado</h3><canvas id="dash-chart-saldo-acumulado" height="150"></canvas></div>
-        <div class="panel-box"><h3>Contas a receber</h3><canvas id="dash-chart-contas-receber" height="150"></canvas></div>
+      <section class="report-charts dash-analytics-grid" style="margin-bottom:18px;">
+        <div class="panel-box chart-card chart-card-wide dash-panel-wide"><h3>Resumo de Custos</h3><canvas id="dash-chart-receitas-despesas" height="150"></canvas></div>
+        <div class="panel-box chart-card dash-category-panel"><h3>Custos por Categoria</h3><canvas id="dash-chart-despesas-classificacao" height="150"></canvas></div>
+        <div class="panel-box chart-card dash-extra-chart"><h3>Custos por veiculo</h3><canvas id="dash-chart-custos-veiculo" height="150"></canvas></div>
+        <div class="panel-box chart-card dash-extra-chart"><h3>Faturamento mensal</h3><canvas id="dash-chart-faturamento-mensal" height="150"></canvas></div>
+        <div class="panel-box chart-card dash-extra-chart"><h3>Saldo acumulado</h3><canvas id="dash-chart-saldo-acumulado" height="150"></canvas></div>
+        <div class="panel-box chart-card dash-extra-chart"><h3>Contas a receber</h3><canvas id="dash-chart-contas-receber" height="150"></canvas></div>
       </section>
 
       <div class="dashboard-layout" style="margin-bottom:18px;">
@@ -360,6 +396,7 @@ const pages = {
           <div id="dashboard-classificacoes" class="ranking-list"><p class="empty-row">Carregando...</p></div>
         </section>
       </div>
+      </section>
 
       <section class="panel-box" style="margin-bottom:18px;">
         <div class="table-toolbar">
@@ -6176,6 +6213,8 @@ async function iniciarDashboard() {
   const frotaOperante = veiculos.length ? (ativos / veiculos.length) * 100 : 0;
 
   document.getElementById("dashboard-periodo").textContent = `${lancamentos.length} lancamento(s) · ${periodoLabel}`;
+  const periodoChip = document.getElementById("dash-periodo-chip");
+  if (periodoChip) periodoChip.textContent = periodoLabel.replace("Periodo: ", "");
   document.getElementById("dashboard-margem-liquida").textContent = formatarPercentual(margemLiquida);
   document.getElementById("dashboard-ticket-medio").textContent = formatarValor(ticketMedio);
   document.getElementById("dashboard-frota-operante").textContent = formatarPercentual(frotaOperante);
@@ -6190,6 +6229,14 @@ async function iniciarDashboard() {
   document.getElementById("dashboard-contas-pendentes").textContent = formatarValor(dadosDashboard.resumo.valores_pendentes_a_receber);
   document.getElementById("dashboard-patrimonio").textContent = formatarValor(dadosDashboard.patrimonio.patrimonio_liquido);
   document.getElementById("dashboard-frota-ativa").textContent = ativos;
+  const totalVeiculosEl = document.getElementById("dashboard-veiculos-total");
+  if (totalVeiculosEl) totalVeiculosEl.textContent = veiculos.length;
+  const ativosCardEl = document.getElementById("dashboard-veiculos-ativos-card");
+  if (ativosCardEl) ativosCardEl.textContent = ativos;
+  const inativosCardEl = document.getElementById("dashboard-veiculos-inativos-card");
+  if (inativosCardEl) inativosCardEl.textContent = inativos;
+  const manutencaoCardEl = document.getElementById("dashboard-veiculos-manutencao-card");
+  if (manutencaoCardEl) manutencaoCardEl.textContent = manutencao;
   document.getElementById("dashboard-frota-total").textContent = `${veiculos.length} veiculo(s) cadastrados`;
   document.getElementById("dashboard-veiculos-ativos").textContent = ativos;
   document.getElementById("dashboard-veiculos-manutencao").textContent = manutencao;
