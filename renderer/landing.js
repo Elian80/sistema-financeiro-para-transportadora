@@ -1,62 +1,38 @@
 /* ===================================================
-   GM7 Sistemas — Landing Page Script v2
+   GM7 Sistemas — Landing Page v3
+   GSAP + ScrollTrigger + Canvas particles
    =================================================== */
 
 const API_BASE = '/gm7-api';
-
-// ── Reduced motion helper ──
-const reducedMotion = () => document.documentElement.classList.contains('reduced-motion');
+const rm = () => document.documentElement.classList.contains('rm');
 
 // ── Default content ──
 const DEFAULT_CONTENT = {
   marca: {
     nome: 'GM7 Sistemas',
-    tagline: 'Tecnologia que move o Brasil. Soluções para transportadoras, gestão e automação.',
+    tagline: 'Software sob medida, automação e sistemas de gestão para empresas que querem crescer.',
     logo: null,
   },
   hero: {
-    title: 'Gestao inteligente para <span class="grad-text typing-target" id="hero-keyword">transportadoras</span> que crescem',
-    subtitle: 'Controle financeiro, frota, motoristas e estoque em uma unica plataforma. Decisoes baseadas em dados reais, nao em achismos.',
-    cta1: 'Comecar agora →',
-    cta2: '📄 Ver solucoes',
-    stat_clients: '50',
-    stat_projects: '120',
-    stat_years: '5',
-    stat_clients_label: 'Clientes ativos',
+    stat_clients:        '50',
+    stat_projects:       '120',
+    stat_years:          '5',
+    stat_clients_label:  'Clientes ativos',
     stat_projects_label: 'Projetos entregues',
-    stat_years_label: 'Anos de experiencia',
+    stat_years_label:    'Anos de mercado',
   },
-  servicos: [
-    {
-      icone: '🚛',
-      titulo: 'Gestão para Transportadoras',
-      descricao: 'Sistema completo de gestão financeira, controle de frota, motoristas, folha de pagamento e relatórios para transportadoras de todos os portes.',
-      destaque: true,
-    },
-    {
-      icone: '⚡',
-      titulo: 'Automação Multitarefas',
-      descricao: 'Automatize rotinas operacionais, integrações entre sistemas, geração de relatórios e notificações para sua equipe.',
-      destaque: false,
-    },
-    {
-      icone: '💻',
-      titulo: 'Desenvolvimento Personalizado',
-      descricao: 'Criamos soluções sob medida para os desafios únicos do seu negócio — desde apps mobile até sistemas web completos.',
-      destaque: false,
-    },
-  ],
+  servicos: [], // empty = use static HTML cards
   sobre: {
-    title: 'Tecnologia com <span class="grad-text">propósito</span>',
-    subtitle: 'Nascemos para resolver um problema real.',
-    texto: 'A GM7 Sistemas nasceu da necessidade real de transportadoras que precisavam de um sistema robusto, simples e acessível. Com anos de experiência no setor, desenvolvemos soluções que vão além do software — entregamos eficiência operacional, controle financeiro e tranquilidade para gestores e proprietários.',
+    title:   'Tecnologia com <span class="grad-text">propósito</span>',
+    subtitle: 'Nascemos para resolver problemas reais.',
+    texto: 'A GM7 Sistemas nasceu da necessidade real de transportadoras que precisavam de um sistema robusto, simples e acessível. Hoje somos um estúdio de desenvolvimento que atende empresas de múltiplos segmentos — entregando eficiência operacional, controle financeiro e automação que funcionam de verdade no dia a dia.',
     imagem: null,
   },
   depoimentos: [],
   contato: {
     whatsapp: '',
-    email: 'contato@gm7sistemas.com.br',
-    instagram: '',
+    email:    'contato@gm7sistemas.com.br',
+    instagram:'',
     linkedin: '',
     endereco: '',
   },
@@ -64,410 +40,407 @@ const DEFAULT_CONTENT = {
 
 let siteContent = DEFAULT_CONTENT;
 
-// ── Fetch content from API ──
+// ── Fetch & apply content ──
 async function carregarConteudo() {
   try {
     const res = await fetch(`${API_BASE}/content`);
-    if (res.ok) {
-      const data = await res.json();
-      siteContent = deepMerge(DEFAULT_CONTENT, data);
-    }
-  } catch (_) { /* use defaults */ }
+    if (res.ok) siteContent = deepMerge(DEFAULT_CONTENT, await res.json());
+  } catch (_) {}
   aplicarConteudo();
 }
 
 function deepMerge(base, override) {
-  const result = { ...base };
-  for (const key of Object.keys(override || {})) {
-    if (override[key] !== null && typeof override[key] === 'object' && !Array.isArray(override[key])) {
-      result[key] = deepMerge(base[key] || {}, override[key]);
-    } else {
-      result[key] = override[key];
-    }
+  const r = { ...base };
+  for (const k of Object.keys(override || {})) {
+    if (override[k] !== null && typeof override[k] === 'object' && !Array.isArray(override[k]))
+      r[k] = deepMerge(base[k] || {}, override[k]);
+    else r[k] = override[k];
   }
-  return result;
+  return r;
 }
 
-// ── Apply content to DOM ──
 function aplicarConteudo() {
-  const c = siteContent;
-  const marca = c.marca || {};
-  const hero = c.hero || {};
-  const sobre = c.sobre || {};
-  const contato = c.contato || {};
+  const { marca, hero, sobre, contato, depoimentos, servicos } = siteContent;
 
   // Marca
-  const companyName = marca.nome || 'GM7 Sistemas';
-  setText('nav-company-name', companyName);
-  setText('footer-company-name', companyName);
-  setText('footer-copy-name', companyName);
+  const nome = marca.nome || 'GM7 Sistemas';
+  setText('nav-company-name',   nome);
+  setText('footer-company-name', nome);
+  setText('footer-copy-name',    nome);
+  setText('sobre-company-name',  nome);
   setText('footer-tagline', marca.tagline || '');
 
-  // Logo
   if (marca.logo) {
-    const navLogoImg = document.getElementById('nav-logo-img');
-    if (navLogoImg) {
-      navLogoImg.src = marca.logo;
-      navLogoImg.style.display = 'block';
-    }
+    const img = document.getElementById('nav-logo-img');
+    if (img) { img.src = marca.logo; img.style.display = 'block'; }
   }
-
-  // Hero title (innerHTML allows span tags)
-  const heroTitleEl = document.getElementById('hero-title');
-  if (heroTitleEl && hero.title) {
-    heroTitleEl.innerHTML = hero.title;
-  }
-  setText('hero-subtitle', hero.subtitle || '');
-
-  const cta1 = document.getElementById('hero-cta1');
-  if (cta1 && hero.cta1) cta1.childNodes[0].textContent = hero.cta1 + ' ';
-  const cta2 = document.getElementById('hero-cta2');
-  if (cta2 && hero.cta2) cta2.textContent = hero.cta2;
 
   // Hero stats
-  setCounterTarget('stat-clients',  hero.stat_clients  || '50');
-  setCounterTarget('stat-projects', hero.stat_projects || '120');
-  setCounterTarget('stat-years',    hero.stat_years    || '5');
-  setText('stat-clients-label',  hero.stat_clients_label  || 'Clientes ativos');
-  setText('stat-projects-label', hero.stat_projects_label || 'Projetos entregues');
-  setText('stat-years-label',    hero.stat_years_label    || 'Anos de experiencia');
-
-  // Services
-  renderServices(c.servicos || DEFAULT_CONTENT.servicos);
+  setTarget('stat-clients-label',  hero.stat_clients_label  || 'Clientes ativos');
+  setTarget('stat-projects-label', hero.stat_projects_label || 'Projetos entregues');
+  setTarget('stat-years-label',    hero.stat_years_label    || 'Anos de mercado');
+  setCounterTarget('[data-target="50"]',  hero.stat_clients  || '50');
+  setCounterTarget('[data-target="120"]', hero.stat_projects || '120');
+  setCounterTarget('[data-target="5"]',   hero.stat_years    || '5');
 
   // Sobre
-  const sobreTitleEl = document.getElementById('sobre-title');
-  if (sobreTitleEl && sobre.title) sobreTitleEl.innerHTML = sobre.title;
-  setText('sobre-subtitle', sobre.subtitle || '');
-  setText('sobre-text', sobre.texto || '');
-
+  const sobreTitle = document.getElementById('sobre-title');
+  if (sobreTitle && sobre.title) sobreTitle.innerHTML = sobre.title;
+  setText('sobre-sub', sobre.subtitle || '');
+  setText('sobre-text', sobre.texto  || '');
   if (sobre.imagem) {
-    const imgContainer = document.getElementById('sobre-img-container');
-    if (imgContainer) {
-      imgContainer.innerHTML = `<img src="${sobre.imagem}" alt="Sobre a GM7" style="width:100%;height:100%;object-fit:cover;" />`;
-    }
+    const img = document.getElementById('sobre-img-container');
+    if (img) img.innerHTML = `<img src="${sobre.imagem}" alt="Sobre" style="width:100%;object-fit:cover" />`;
   }
-
-  // Testimonials
-  renderTestimonials(c.depoimentos || []);
 
   // Contato
   const wa = contato.whatsapp || '';
-  const waLink = wa ? `https://wa.me/${wa.replace(/\D/g, '')}` : '#';
-  setAttr('contato-whatsapp-link', 'href', waLink);
-  setAttr('footer-whatsapp', 'href', waLink);
+  const waLink = wa ? `https://wa.me/${wa.replace(/\D/g,'')}` : '#';
+  setHref('contato-whatsapp-link', waLink);
+  setHref('footer-whatsapp',       waLink);
   setText('contato-whatsapp-link', wa ? `WhatsApp: ${wa}` : 'Clique para conversar');
-
   const email = contato.email || '';
-  setAttr('contato-email-link', 'href', email ? `mailto:${email}` : '#');
+  setHref('contato-email-link', email ? `mailto:${email}` : '#');
   setText('contato-email-link', email || 'contato@gm7sistemas.com.br');
-
   const ig = contato.instagram || '';
-  const igLink = ig ? `https://instagram.com/${ig.replace('@', '')}` : '#';
-  setAttr('contato-instagram-link', 'href', igLink);
-  setAttr('footer-instagram', 'href', igLink);
+  const igLink = ig ? `https://instagram.com/${ig.replace('@','')}` : '#';
+  setHref('contato-instagram-link', igLink); setHref('footer-instagram', igLink);
   setText('contato-instagram-link', ig || '@gm7sistemas');
-
   const li = contato.linkedin || '';
-  setAttr('contato-linkedin-link', 'href', li || '#');
-  setAttr('footer-linkedin', 'href', li || '#');
-
-  const addr = contato.endereco || '';
-  if (addr) {
-    const addrItem = document.getElementById('contato-address-item');
-    if (addrItem) addrItem.style.display = 'flex';
-    setText('contato-address-text', addr);
+  setHref('contato-linkedin-link', li || '#'); setHref('footer-linkedin', li || '#');
+  if (contato.endereco) {
+    const el = document.getElementById('contato-address-item');
+    if (el) el.style.display = 'flex';
+    setText('contato-address-text', contato.endereco);
   }
+  const navWa = document.getElementById('nav-whatsapp-btn');
+  if (navWa && waLink !== '#') { navWa.href = waLink; navWa.target = '_blank'; navWa.rel = 'noopener'; }
 
-  const navWaBtn = document.getElementById('nav-whatsapp-btn');
-  if (navWaBtn && waLink !== '#') {
-    navWaBtn.href = waLink;
-    navWaBtn.target = '_blank';
-    navWaBtn.rel = 'noopener';
-  }
+  // Services — only render if API returned custom ones
+  if (servicos && servicos.length > 0) renderServices(servicos);
 
-  // After applying content, restart animations and typing
-  observeAnimations();
-  startTypingAnimation();
+  // Testimonials
+  renderTestimonials(depoimentos || []);
 }
 
-function setText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
-}
-function setAttr(id, attr, value) {
-  const el = document.getElementById(id);
-  if (el) el.setAttribute(attr, value);
-}
-function setCounterTarget(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.dataset.target = value;
+function setText(id, val)  { const e=document.getElementById(id); if(e) e.textContent=val; }
+function setHref(id, val)  { const e=document.getElementById(id); if(e) e.href=val; }
+function setTarget(id,val) { const e=document.getElementById(id); if(e) e.textContent=val; }
+function setCounterTarget(sel, val) {
+  document.querySelectorAll(sel).forEach(e => { e.dataset.target = val; });
 }
 
-// ── Render services grid ──
 function renderServices(servicos) {
   const grid = document.getElementById('services-grid');
   if (!grid) return;
-  grid.innerHTML = servicos.map((s, i) => `
-    <div class="service-card ${s.destaque ? 'destaque' : ''} animate-up stagger-${(i % 3) + 1}">
-      <span class="service-icon">${s.icone || '⚙️'}</span>
-      <h3>${escapeHtml(s.titulo || '')}</h3>
-      <p>${escapeHtml(s.descricao || '')}</p>
-      ${s.destaque ? '<span class="service-tag">⭐ Destaque</span>' : ''}
-    </div>
-  `).join('');
-  observeAnimations();
+  grid.innerHTML = servicos.map((s,i) => `
+    <div class="sol-card ${s.destaque?'sol-card--featured':''}" data-reveal data-delay="${i*0.08}">
+      <span class="sol-icon">${s.icone||'⚙️'}</span>
+      <h3>${esc(s.titulo||'')}</h3>
+      <p>${esc(s.descricao||'')}</p>
+      ${s.tag ? `<span class="sol-tag">${esc(s.tag)}</span>` : ''}
+    </div>`).join('');
+  setupScrollReveal();
 }
 
-// ── Render testimonials ──
-function renderTestimonials(depoimentos) {
+function renderTestimonials(deps) {
   const grid = document.getElementById('testimonials-grid');
   if (!grid) return;
-  if (!depoimentos || depoimentos.length === 0) {
-    grid.innerHTML = `
-      <div class="testimonials-empty">
-        <span class="empty-icon">💬</span>
-        Depoimentos em breve.
-      </div>`;
+  if (!deps.length) {
+    grid.innerHTML = `<div class="dep-empty"><span>💬</span>Depoimentos em breve.</div>`;
     return;
   }
-  grid.innerHTML = depoimentos.map(d => `
-    <div class="testimonial-card animate-up">
-      <div class="testimonial-quote">"</div>
-      <p class="testimonial-text">${escapeHtml(d.texto || '')}</p>
-      <div class="testimonial-author">
-        <div class="testimonial-photo">
-          ${d.foto ? `<img src="${d.foto}" alt="${escapeHtml(d.nome || '')}" />` : '👤'}
-        </div>
-        <div>
-          <div class="testimonial-name">${escapeHtml(d.nome || '')}</div>
-          <div class="testimonial-company">${escapeHtml(d.empresa || '')}</div>
-        </div>
+  grid.innerHTML = deps.map(d => `
+    <div class="dep-card" data-reveal>
+      <div class="dep-quote">"</div>
+      <p class="dep-text">${esc(d.texto||'')}</p>
+      <div class="dep-author">
+        <div class="dep-photo">${d.foto ? `<img src="${d.foto}" alt="">` : '👤'}</div>
+        <div><div class="dep-name">${esc(d.nome||'')}</div><div class="dep-company">${esc(d.empresa||'')}</div></div>
       </div>
-    </div>
-  `).join('');
-  observeAnimations();
+    </div>`).join('');
+  setupScrollReveal();
 }
 
-function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Typing animation ──
-const TYPING_WORDS = ['transportadoras', 'gestores de frota', 'empresas logisticas', 'motoristas'];
-let wordIdx = 0, charIdx = 0, isDeleting = false, typingTimer = null;
+// ══════════════════════════════════════════
+// CANVAS PARTICLES
+// ══════════════════════════════════════════
+function initCanvas() {
+  const canvas = document.getElementById('gm7-canvas');
+  if (!canvas || rm()) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, pts = [];
 
-function startTypingAnimation() {
-  if (reducedMotion()) return;
-  const el = document.querySelector('.typing-target');
-  if (!el) return;
+  const resize = () => {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  };
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
 
-  clearTimeout(typingTimer);
-  wordIdx = 0; charIdx = 0; isDeleting = false;
+  const COLORS = ['rgba(34,211,238,', 'rgba(99,102,241,', 'rgba(52,211,153,'];
+  const N = Math.min(70, Math.floor(window.innerWidth / 18));
 
-  function tick() {
-    const word = TYPING_WORDS[wordIdx];
-    if (isDeleting) {
-      charIdx--;
-      el.textContent = word.substring(0, charIdx);
-    } else {
-      charIdx++;
-      el.textContent = word.substring(0, charIdx);
-    }
-
-    let delay = isDeleting ? 55 : 95;
-
-    if (!isDeleting && charIdx === word.length) {
-      delay = 2400;
-      isDeleting = true;
-    } else if (isDeleting && charIdx === 0) {
-      isDeleting = false;
-      wordIdx = (wordIdx + 1) % TYPING_WORDS.length;
-      delay = 350;
-    }
-
-    typingTimer = setTimeout(tick, delay);
+  for (let i = 0; i < N; i++) {
+    pts.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.8 + 0.4,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      a: Math.random() * 0.5 + 0.15,
+      c: COLORS[Math.floor(Math.random() * COLORS.length)],
+    });
   }
 
-  // Small initial delay so page settles
-  typingTimer = setTimeout(tick, 800);
+  let raf;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // Draw connecting lines
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 130) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(99,102,241,${0.12 * (1 - dist/130)})`;
+          ctx.lineWidth = 0.6;
+          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    // Draw dots
+    pts.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -10) p.x = W + 10;
+      if (p.x > W + 10) p.x = -10;
+      if (p.y < -10) p.y = H + 10;
+      if (p.y > H + 10) p.y = -10;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `${p.c}${p.a})`;
+      ctx.fill();
+    });
+    raf = requestAnimationFrame(draw);
+  }
+  draw();
+  // Pause when tab hidden
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else draw();
+  });
 }
 
-// ── FAQ accordion ──
-function initFAQ() {
-  document.querySelectorAll('.faq-question').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const item = btn.closest('.faq-item');
-      const isOpen = item.classList.contains('open');
-      // Close all open items
-      document.querySelectorAll('.faq-item.open').forEach(openItem => {
-        openItem.classList.remove('open');
-        openItem.querySelector('.faq-question').setAttribute('aria-expanded', 'false');
-      });
-      // Toggle clicked
-      if (!isOpen) {
-        item.classList.add('open');
-        btn.setAttribute('aria-expanded', 'true');
-      }
+// ══════════════════════════════════════════
+// GSAP HERO ANIMATION
+// ══════════════════════════════════════════
+function initHeroAnim() {
+  if (rm() || typeof gsap === 'undefined') {
+    // fallback: show everything
+    document.querySelectorAll('[data-hero]').forEach(el => { el.style.opacity = '1'; el.style.transform = 'none'; });
+    document.querySelectorAll('.clip-wrap > span').forEach(el => { el.style.transform = 'none'; });
+    return;
+  }
+
+  const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
+
+  // Line reveals (clip-wrap overflow:hidden)
+  tl.from('.clip-wrap > span', {
+    yPercent: 110, opacity: 0, stagger: 0.12, duration: 1,
+  }, 0)
+  .to('.hero-eyebrow', { opacity: 1, y: 0, duration: 0.6 }, 0.1)
+  .to('.hero-sub',   { opacity: 1, y: 0, duration: 0.7 }, 0.5)
+  .to('.hero-ctas',  { opacity: 1, y: 0, duration: 0.6 }, 0.65)
+  .to('.hero-stats', { opacity: 1, y: 0, duration: 0.6 }, 0.8)
+  .to('.hero-visual',{ opacity: 1, x: 0, duration: 0.9, ease: 'power3.out' }, 0.4);
+
+  gsap.set('.hero-eyebrow', { opacity: 0, y: 16 });
+  gsap.set('.hero-sub',     { opacity: 0, y: 20 });
+  gsap.set('.hero-ctas',    { opacity: 0, y: 20 });
+  gsap.set('.hero-stats',   { opacity: 0, y: 20 });
+  gsap.set('.hero-visual',  { opacity: 0, x: 40 });
+  gsap.set('.clip-wrap > span', { yPercent: 110 });
+  tl.invalidate().restart();
+}
+
+// ══════════════════════════════════════════
+// GSAP SCROLL REVEAL
+// ══════════════════════════════════════════
+function setupScrollReveal() {
+  if (rm() || typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
+    document.querySelectorAll('[data-reveal]').forEach(el => {
+      el.style.opacity = '1'; el.style.transform = 'none';
+    });
+    return;
+  }
+
+  document.querySelectorAll('[data-reveal]:not(.revealed)').forEach(el => {
+    el.classList.add('revealed');
+    const y     = parseFloat(el.dataset.y     || '40');
+    const delay = parseFloat(el.dataset.delay || '0');
+
+    gsap.from(el, {
+      scrollTrigger: {
+        trigger: el,
+        start:   'top 88%',
+        once:    true,
+      },
+      y, opacity: 0, delay,
+      duration: 0.85,
+      ease: 'power3.out',
     });
   });
 }
 
-// ── IntersectionObserver for scroll animations ──
-const animObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      animObserver.unobserve(entry.target);
-    }
-  });
-}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-
-function observeAnimations() {
-  document.querySelectorAll('.animate-up:not(.visible), .fade-in:not(.visible)').forEach(el => {
-    animObserver.observe(el);
-  });
-}
-
-// ── Counter animation ──
-let countersAnimated = false;
-
+// ══════════════════════════════════════════
+// COUNTER ANIMATION
+// ══════════════════════════════════════════
+let countersDone = false;
 function animateCounters() {
-  if (countersAnimated) return;
-  countersAnimated = true;
-
+  if (countersDone) return;
+  countersDone = true;
   document.querySelectorAll('.counter').forEach(el => {
     const target = parseInt(el.dataset.target || '0', 10);
-    if (reducedMotion()) { el.textContent = target; return; }
-    const duration = 1800;
-    const start = performance.now();
-    function step(now) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      el.textContent = Math.floor(eased * target);
-      if (progress < 1) requestAnimationFrame(step);
-      else el.textContent = target;
-    }
-    requestAnimationFrame(step);
+    if (rm()) { el.textContent = target; return; }
+    const dur = 1800, start = performance.now();
+    (function step(now) {
+      const p = Math.min((now - start) / dur, 1);
+      el.textContent = Math.floor((1 - Math.pow(1-p, 3)) * target);
+      if (p < 1) requestAnimationFrame(step); else el.textContent = target;
+    })(start);
   });
 }
 
-// Trigger counters when hero or stats-banner enters view
-const counterObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      animateCounters();
-      counterObserver.disconnect();
-    }
-  });
-}, { threshold: 0.2 });
-
-const heroSection = document.getElementById('hero');
-const statsBanner = document.querySelector('.stats-banner');
-if (heroSection) counterObserver.observe(heroSection);
-if (statsBanner) counterObserver.observe(statsBanner);
-
-// ── Navbar scroll effect ──
-const navbar = document.getElementById('navbar');
-if (navbar) {
-  window.addEventListener('scroll', () => {
-    navbar.classList.toggle('scrolled', window.scrollY > 20);
-  }, { passive: true });
-}
-
-// ── Hamburger menu ──
-const hamburgerBtn = document.getElementById('hamburger-btn');
-const mobileMenu   = document.getElementById('mobile-menu');
-if (hamburgerBtn && mobileMenu) {
-  hamburgerBtn.addEventListener('click', () => {
-    const isOpen = hamburgerBtn.classList.toggle('open');
-    mobileMenu.classList.toggle('open', isOpen);
-    hamburgerBtn.setAttribute('aria-expanded', String(isOpen));
-    mobileMenu.setAttribute('aria-hidden', String(!isOpen));
-  });
-  document.querySelectorAll('.mobile-nav-close').forEach(el => {
-    el.addEventListener('click', () => {
-      hamburgerBtn.classList.remove('open');
-      mobileMenu.classList.remove('open');
-      hamburgerBtn.setAttribute('aria-expanded', 'false');
-      mobileMenu.setAttribute('aria-hidden', 'true');
-    });
+// Trigger counters on hero or stats-bar
+function watchCounters() {
+  if (typeof IntersectionObserver === 'undefined') { animateCounters(); return; }
+  const io = new IntersectionObserver(entries => {
+    if (entries.some(e => e.isIntersecting)) { animateCounters(); io.disconnect(); }
+  }, { threshold: 0.2 });
+  ['hero', 'stats-bar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) io.observe(el);
   });
 }
 
-// ── Smooth scroll for hash links ──
+// ══════════════════════════════════════════
+// NAVBAR
+// ══════════════════════════════════════════
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  if (nav) nav.classList.toggle('scrolled', window.scrollY > 24);
+}, { passive: true });
+
+// ══════════════════════════════════════════
+// HAMBURGER
+// ══════════════════════════════════════════
+const hbtn = document.getElementById('hamburger');
+const mmenu = document.getElementById('mobile-menu');
+if (hbtn && mmenu) {
+  hbtn.addEventListener('click', () => {
+    const open = hbtn.classList.toggle('open');
+    mmenu.classList.toggle('open', open);
+    hbtn.setAttribute('aria-expanded', String(open));
+    mmenu.setAttribute('aria-hidden', String(!open));
+  });
+  mmenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    hbtn.classList.remove('open'); mmenu.classList.remove('open');
+    hbtn.setAttribute('aria-expanded','false'); mmenu.setAttribute('aria-hidden','true');
+  }));
+}
+
+// ══════════════════════════════════════════
+// SMOOTH SCROLL
+// ══════════════════════════════════════════
 document.querySelectorAll('a[href^="#"]').forEach(a => {
   a.addEventListener('click', e => {
     const href = a.getAttribute('href');
     if (href === '#') return;
     const target = document.querySelector(href);
-    if (target) {
-      e.preventDefault();
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Close mobile menu
-      if (hamburgerBtn && mobileMenu) {
-        hamburgerBtn.classList.remove('open');
-        mobileMenu.classList.remove('open');
-        hamburgerBtn.setAttribute('aria-expanded', 'false');
-        mobileMenu.setAttribute('aria-hidden', 'true');
-      }
-    }
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
 });
 
-// ── Contact form ──
-const contatoForm = document.getElementById('contato-form');
-const formMsg     = document.getElementById('form-msg');
+// ══════════════════════════════════════════
+// FAQ ACCORDION
+// ══════════════════════════════════════════
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.closest('.faq-item');
+    const open = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(el => {
+      el.classList.remove('open');
+      el.querySelector('.faq-q').setAttribute('aria-expanded','false');
+    });
+    if (!open) { item.classList.add('open'); btn.setAttribute('aria-expanded','true'); }
+  });
+});
 
-if (contatoForm) {
-  contatoForm.addEventListener('submit', async (e) => {
+// ══════════════════════════════════════════
+// CONTACT FORM
+// ══════════════════════════════════════════
+const form    = document.getElementById('contato-form');
+const formMsg = document.getElementById('form-msg');
+if (form) {
+  form.addEventListener('submit', async e => {
     e.preventDefault();
     const nome     = document.getElementById('cf-nome').value.trim();
     const empresa  = document.getElementById('cf-empresa').value.trim();
     const telefone = document.getElementById('cf-telefone').value.trim();
     const mensagem = document.getElementById('cf-mensagem').value.trim();
-
-    if (!nome || !mensagem) {
-      showFormMsg('Por favor, preencha nome e mensagem.', false);
-      return;
-    }
-
+    if (!nome || !mensagem) { showMsg('Preencha nome e mensagem.', false); return; }
     try {
       await fetch(`${API_BASE}/contato`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, empresa, telefone, mensagem }),
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({nome, empresa, telefone, mensagem}),
       });
-    } catch (_) { /* silently ignore */ }
-
-    showFormMsg('Mensagem enviada! Abrindo WhatsApp...', true);
-
-    const wa = (siteContent.contato || {}).whatsapp || '';
+    } catch (_) {}
+    showMsg('Enviado! Abrindo WhatsApp...', true);
+    const wa = (siteContent.contato||{}).whatsapp||'';
     if (wa) {
-      const waNum  = wa.replace(/\D/g, '');
-      const waText = encodeURIComponent(`Olá! Sou ${nome}${empresa ? ` da ${empresa}` : ''}. ${mensagem}`);
-      window.open(`https://wa.me/${waNum}?text=${waText}`, '_blank', 'noopener');
+      const t = encodeURIComponent(`Olá! Sou ${nome}${empresa?` da ${empresa}`:''}.  ${mensagem}`);
+      window.open(`https://wa.me/${wa.replace(/\D/g,'')}?text=${t}`, '_blank', 'noopener');
     }
-
-    contatoForm.reset();
-    setTimeout(() => { if (formMsg) formMsg.textContent = ''; }, 5000);
+    form.reset();
+    setTimeout(() => { if (formMsg) formMsg.textContent=''; }, 5000);
   });
 }
-
-function showFormMsg(msg, ok) {
+function showMsg(msg, ok) {
   if (!formMsg) return;
   formMsg.textContent = msg;
-  formMsg.className = 'form-msg ' + (ok ? 'ok' : 'err');
+  formMsg.className = 'cf-msg ' + (ok ? 'ok' : 'err');
 }
 
-// ── Footer year ──
-const footerYear = document.getElementById('footer-year');
-if (footerYear) footerYear.textContent = new Date().getFullYear();
+// ══════════════════════════════════════════
+// FOOTER YEAR
+// ══════════════════════════════════════════
+const fy = document.getElementById('footer-year');
+if (fy) fy.textContent = new Date().getFullYear();
 
-// ── Boot ──
-initFAQ();
-observeAnimations();
-carregarConteudo();
+// ══════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initCanvas();
+
+  if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+    gsap.registerPlugin(ScrollTrigger);
+    initHeroAnim();
+    setupScrollReveal();
+  } else {
+    // GSAP failed to load — show everything
+    document.querySelectorAll('[data-reveal]').forEach(el => { el.style.opacity='1'; el.style.transform='none'; });
+    ['hero-eyebrow','hero-sub','hero-ctas','hero-stats','hero-visual'].forEach(cl => {
+      const e = document.querySelector('.'+cl); if(e){e.style.opacity='1';e.style.transform='none';}
+    });
+  }
+
+  watchCounters();
+  carregarConteudo();
+});
