@@ -10,7 +10,7 @@
 // - Limpeza automática de caches antigos na ativação.
 // =========================================================
 
-const CACHE_NAME = "financeiro-pwa-v71";
+const CACHE_NAME = "financeiro-pwa-v72";
 const ICON_CACHE  = "financeiro-icons-v1"; // cache exclusivo para ícones da empresa
 
 const APP_SHELL = [

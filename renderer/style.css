@@ -2564,6 +2564,12 @@ body.sidebar-collapsed .nav-btn::before {
   font-weight: 800;
 }
 
+.kpi-trend:empty {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .kpi-trend.positive {
   background: rgba(34, 197, 94, 0.13);
   color: #22C55E;
