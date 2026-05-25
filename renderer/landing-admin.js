@@ -44,7 +44,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     mostrarAdmin();
     carregarConteudo();
   } catch (err) {
-    errEl.textContent = 'Erro ao conectar com o servidor.';
+    errEl.textContent = `Erro ao conectar com o servidor: ${err.message || 'falha de rede'}.`;
   }
 });
 

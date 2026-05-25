@@ -10,7 +10,7 @@
 // - Limpeza automática de caches antigos na ativação.
 // =========================================================
 
-const CACHE_NAME = "financeiro-pwa-v65";
+const CACHE_NAME = "financeiro-pwa-v66";
 const ICON_CACHE  = "financeiro-icons-v1"; // cache exclusivo para ícones da empresa
 
 const APP_SHELL = [
@@ -175,6 +175,7 @@ self.addEventListener("fetch", (event) => {
       "/localizacoes-motoristas", "/folha-pagamento", "/classificacoes",
       "/plano-contas", "/contas-receber", "/relatorios", "/ativos",
       "/passivos", "/estoque", "/configuracoes-empresa", "/auth",
+      "/gm7-api",
     ].some((path) => url.pathname.startsWith(path))
   ) {
     event.respondWith(fetch(request));
