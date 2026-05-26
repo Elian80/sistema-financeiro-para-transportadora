@@ -7668,3 +7668,259 @@ body.sidebar-open .sidebar-backdrop {
     align-items: flex-start;
   }
 }
+
+/* ============================================================
+   Tema claro - acabamento final
+   Remove residuos escuros e bordas pesadas das camadas dark/GM7.
+   ============================================================ */
+body[data-theme="light"] {
+  --bg: #f6f8fb;
+  --panel: #ffffff;
+  --panel-strong: #f8fafc;
+  --surface: #f8fafc;
+  --surface-hover: #eef4ff;
+  --line: rgba(15, 23, 42, 0.075);
+  --text: #0f172a;
+  --muted: #64748b;
+  --blue: #2563eb;
+  --blue-2: #1d4ed8;
+  --green: #16a34a;
+  --amber: #d97706;
+  --red: #dc2626;
+  --shadow: 0 10px 28px rgba(15, 23, 42, 0.055);
+  background:
+    radial-gradient(ellipse at 18% -10%, rgba(37, 99, 235, 0.08), transparent 34%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%) !important;
+  color: var(--text) !important;
+}
+
+body[data-theme="light"] #app-bg-canvas {
+  opacity: 0.02 !important;
+  mix-blend-mode: multiply !important;
+}
+
+body[data-theme="light"] .app-shell,
+body[data-theme="light"] .main-area,
+body[data-theme="light"] .page-content {
+  color: var(--text) !important;
+}
+
+body[data-theme="light"] .sidebar,
+body[data-theme="light"] .topbar,
+body[data-theme="light"] .page-content,
+body[data-theme="light"] .panel-box,
+body[data-theme="light"] .kpi-card,
+body[data-theme="light"] .vehicle-card,
+body[data-theme="light"] .account-group,
+body[data-theme="light"] .modal-content,
+body[data-theme="light"] .filter-popup-card,
+body[data-theme="light"] .gm7-hero-panel,
+body[data-theme="light"] .gm7-fleet-card,
+body[data-theme="light"] .gm7-balance-panel,
+body[data-theme="light"] .gm7-map-panel,
+body[data-theme="light"] .gm7-metric-card,
+body[data-theme="light"] .gm7-panel {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: var(--shadow) !important;
+  color: var(--text) !important;
+}
+
+body[data-theme="light"] .page-content {
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+body[data-theme="light"] .sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 250, 252, 0.95)) !important;
+}
+
+body[data-theme="light"] .topbar {
+  background: rgba(255, 255, 255, 0.90) !important;
+  backdrop-filter: blur(14px) saturate(1.04);
+}
+
+body[data-theme="light"] .sidebar::before,
+body[data-theme="light"] .gm7-hero-panel::before,
+body[data-theme="light"] .gm7-balance-panel::before,
+body[data-theme="light"] .gm7-map-panel::before,
+body[data-theme="light"] .gm7-panel::before {
+  opacity: 0 !important;
+}
+
+body[data-theme="light"] .sidebar-head,
+body[data-theme="light"] .sidebar-footer,
+body[data-theme="light"] .topbar-search,
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea,
+body[data-theme="light"] .table-wrap,
+body[data-theme="light"] .ghost-btn,
+body[data-theme="light"] .small-btn,
+body[data-theme="light"] .icon-btn,
+body[data-theme="light"] .sidebar-toggle,
+body[data-theme="light"] .mobile-menu-btn,
+body[data-theme="light"] .sidebar-logout-btn,
+body[data-theme="light"] .gm7-period-selector,
+body[data-theme="light"] .gm7-period-btn,
+body[data-theme="light"] .gm7-period-clear,
+body[data-theme="light"] .gm7-hero-score,
+body[data-theme="light"] .gm7-fleet-status-chart,
+body[data-theme="light"] .gm7-hours-kpis div,
+body[data-theme="light"] .gm7-assets-list div,
+body[data-theme="light"] .gm7-balance-meta span,
+body[data-theme="light"] .dash-chart-value span {
+  background: #f8fafc !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+  color: var(--text) !important;
+}
+
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea {
+  background: #ffffff !important;
+}
+
+body[data-theme="light"] input:focus,
+body[data-theme="light"] select:focus,
+body[data-theme="light"] textarea:focus {
+  border-color: rgba(37, 99, 235, 0.34) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10) !important;
+}
+
+body[data-theme="light"] .gm7-hero-panel {
+  background:
+    radial-gradient(ellipse at 84% 0%, rgba(37, 99, 235, 0.08), transparent 36%),
+    #ffffff !important;
+}
+
+body[data-theme="light"] .brand-icon,
+body[data-theme="light"] .primary-btn,
+body[data-theme="light"] .gm7-period-btn.active,
+body[data-theme="light"] .gm7-period-apply {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  border-color: rgba(37, 99, 235, 0.22) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18) !important;
+}
+
+body[data-theme="light"] .nav-btn,
+body[data-theme="light"] .mobile-bottom-nav .mbn-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #64748b !important;
+  box-shadow: none !important;
+}
+
+body[data-theme="light"] .nav-btn:hover {
+  background: #eef4ff !important;
+  border-color: rgba(37, 99, 235, 0.10) !important;
+  color: #1d4ed8 !important;
+}
+
+body[data-theme="light"] .nav-btn.active,
+body[data-theme="light"] .mobile-bottom-nav .mbn-btn.active {
+  background: #eaf2ff !important;
+  border-color: rgba(37, 99, 235, 0.14) !important;
+  color: #1d4ed8 !important;
+  box-shadow: inset 3px 0 0 #2563eb !important;
+}
+
+body[data-theme="light"] .nav-btn.active::after {
+  background: #2563eb !important;
+  box-shadow: none !important;
+}
+
+body[data-theme="light"] .nav-icon,
+body[data-theme="light"] .gm7-card-icon,
+body[data-theme="light"] .gm7-panel-icon,
+body[data-theme="light"] .gm7-metric-card > span {
+  background: #eef4ff !important;
+  border-color: rgba(37, 99, 235, 0.10) !important;
+  color: #2563eb !important;
+  box-shadow: none !important;
+}
+
+body[data-theme="light"] h1,
+body[data-theme="light"] h2,
+body[data-theme="light"] h3,
+body[data-theme="light"] .brand h1,
+body[data-theme="light"] .topbar h2,
+body[data-theme="light"] .kpi-value,
+body[data-theme="light"] .gm7-hero-copy h2,
+body[data-theme="light"] .gm7-hero-score strong,
+body[data-theme="light"] .gm7-balance-value,
+body[data-theme="light"] .gm7-panel-head h3,
+body[data-theme="light"] .gm7-fleet-card strong,
+body[data-theme="light"] .gm7-metric-card strong,
+body[data-theme="light"] .gm7-hours-kpis strong,
+body[data-theme="light"] .gm7-assets-list strong,
+body[data-theme="light"] .dash-chart-value strong,
+body[data-theme="light"] .dash-category-row strong,
+body[data-theme="light"] .status-line strong {
+  color: var(--text) !important;
+  text-shadow: none !important;
+}
+
+body[data-theme="light"] p,
+body[data-theme="light"] label,
+body[data-theme="light"] small,
+body[data-theme="light"] em,
+body[data-theme="light"] .brand p,
+body[data-theme="light"] .topbar p,
+body[data-theme="light"] .dashboard-note,
+body[data-theme="light"] .table-toolbar span,
+body[data-theme="light"] .gm7-panel-head span,
+body[data-theme="light"] .gm7-fleet-card small,
+body[data-theme="light"] .gm7-fleet-card em,
+body[data-theme="light"] .gm7-metric-card small,
+body[data-theme="light"] .gm7-donut-center span,
+body[data-theme="light"] .gm7-fleet-status-legend span,
+body[data-theme="light"] .status-line span,
+body[data-theme="light"] .dash-category-row span {
+  color: var(--muted) !important;
+}
+
+body[data-theme="light"] .data-table {
+  background: #ffffff !important;
+}
+
+body[data-theme="light"] .data-table th {
+  background: #f8fafc !important;
+  color: #475569 !important;
+  border-color: var(--line) !important;
+}
+
+body[data-theme="light"] .data-table td {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.065) !important;
+}
+
+body[data-theme="light"] .data-table tbody tr:nth-child(even) td {
+  background: #fbfdff !important;
+}
+
+body[data-theme="light"] .data-table tbody tr:hover td {
+  background: #eef4ff !important;
+}
+
+body[data-theme="light"] .mobile-bottom-nav {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-top-color: var(--line) !important;
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.07) !important;
+}
+
+body[data-theme="light"] .mobile-bottom-nav .mbn-btn.active {
+  box-shadow: none !important;
+}
+
+body[data-theme="light"] .filter-popup {
+  background: rgba(248, 250, 252, 0.64) !important;
+  backdrop-filter: none !important;
+}
+
+body[data-theme="light"].sidebar-open .sidebar-backdrop {
+  background: rgba(15, 23, 42, 0.18) !important;
+}
