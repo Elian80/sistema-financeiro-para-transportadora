@@ -7435,3 +7435,236 @@ body.sidebar-open .sidebar-backdrop {
     max-height: 160px !important;
   }
 }
+
+/* ============================================================
+   Dashboard inicial mobile - primeira dobra mais util
+   ============================================================ */
+@media (max-width: 768px) {
+  .gm7-dashboard-shell {
+    gap: 9px;
+  }
+
+  .gm7-hero-panel {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+    padding: 12px !important;
+    border-radius: 14px !important;
+    min-height: 0 !important;
+  }
+
+  .gm7-hero-panel::before {
+    opacity: 0.45;
+  }
+
+  .gm7-hero-copy {
+    display: grid;
+    gap: 7px;
+  }
+
+  .gm7-kicker,
+  .gm7-fleet-orbit {
+    display: none !important;
+  }
+
+  .gm7-hero-copy h2 {
+    margin: 0 !important;
+    max-width: 100%;
+    font-size: 20px !important;
+    line-height: 1.12 !important;
+    letter-spacing: 0;
+  }
+
+  .gm7-hero-copy p {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .gm7-hero-copy > p:first-of-type {
+    display: none;
+  }
+
+  #dashboard-periodo {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .gm7-hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin-top: 0 !important;
+  }
+
+  .gm7-live-pill {
+    display: none;
+  }
+
+  .gm7-period-pill {
+    width: 100%;
+    min-height: 30px;
+    justify-content: flex-start;
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  .gm7-period-selector {
+    margin-top: 0 !important;
+    padding: 8px;
+    gap: 8px;
+    border-radius: 13px;
+  }
+
+  .gm7-period-presets {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 5px;
+  }
+
+  .gm7-period-btn,
+  .gm7-period-apply,
+  .gm7-period-clear {
+    min-height: 30px !important;
+    padding: 0 6px !important;
+    border-radius: 9px !important;
+    font-size: 10px !important;
+  }
+
+  .gm7-period-custom {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .gm7-period-custom select,
+  .gm7-period-custom input {
+    min-height: 34px !important;
+    height: 34px;
+    font-size: 11px !important;
+    border-radius: 10px !important;
+  }
+
+  .gm7-period-custom select {
+    grid-column: 1 / -1;
+  }
+
+  .gm7-hero-score {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 11px !important;
+    border-radius: 12px !important;
+  }
+
+  .gm7-hero-score span {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .gm7-hero-score strong {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    margin: 0 !important;
+    font-size: 24px !important;
+  }
+
+  .gm7-hero-score small {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .gm7-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+
+  .gm7-fleet-card {
+    min-height: 76px !important;
+    padding: 10px !important;
+    gap: 8px !important;
+    border-radius: 13px !important;
+  }
+
+  .gm7-card-icon {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 10px !important;
+  }
+
+  .gm7-card-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .gm7-fleet-card small {
+    min-height: 0 !important;
+    font-size: 10px !important;
+    line-height: 1.1;
+  }
+
+  .gm7-fleet-card strong {
+    margin: 2px 0 !important;
+    font-size: 22px !important;
+  }
+
+  .gm7-fleet-card em {
+    display: none;
+  }
+
+  .gm7-command-grid {
+    gap: 9px;
+  }
+
+  .gm7-balance-panel,
+  .gm7-map-panel,
+  .gm7-panel,
+  .gm7-table-panel,
+  .gm7-maintenance-panel {
+    padding: 12px !important;
+  }
+
+  .gm7-panel-head {
+    margin-bottom: 9px !important;
+  }
+
+  .gm7-panel-head h3 {
+    font-size: 15px !important;
+  }
+
+  .gm7-panel-icon {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 10px !important;
+  }
+
+  .gm7-balance-value {
+    margin-bottom: 8px !important;
+    font-size: 28px !important;
+  }
+
+  .gm7-balance-meta {
+    margin-bottom: 8px !important;
+    gap: 6px;
+  }
+
+  .gm7-balance-meta span {
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .gm7-period-presets {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .gm7-overview-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .gm7-fleet-card {
+    align-items: flex-start;
+  }
+}
