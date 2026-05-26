@@ -7924,3 +7924,98 @@ body[data-theme="light"] .filter-popup {
 body[data-theme="light"].sidebar-open .sidebar-backdrop {
   background: rgba(15, 23, 42, 0.18) !important;
 }
+
+/* ============================================================
+   Dashboard - filtros expansivos no centro operacional
+   ============================================================ */
+.gm7-filter-toggle {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  background: rgba(97, 175, 239, 0.10);
+  color: #D7EEFF;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.gm7-filter-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+.gm7-filter-toggle:hover,
+.gm7-filter-toggle.is-active {
+  transform: translateY(-1px);
+  border-color: rgba(97, 175, 239, 0.26);
+  background: rgba(97, 175, 239, 0.18);
+  color: #FFFFFF;
+}
+
+.gm7-period-selector {
+  overflow: hidden;
+  transform-origin: top;
+  transition: max-height 0.22s ease, opacity 0.18s ease, transform 0.18s ease, margin 0.18s ease, padding 0.18s ease, border-color 0.18s ease;
+}
+
+.gm7-period-selector.is-collapsed {
+  max-height: 0 !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-color: transparent !important;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px) scaleY(0.98);
+}
+
+.gm7-period-selector:not(.is-collapsed) {
+  max-height: 260px;
+  opacity: 1;
+}
+
+body[data-theme="light"] .gm7-filter-toggle {
+  background: #eef4ff !important;
+  border-color: rgba(37, 99, 235, 0.14) !important;
+  color: #1d4ed8 !important;
+  box-shadow: none !important;
+}
+
+body[data-theme="light"] .gm7-filter-toggle:hover,
+body[data-theme="light"] .gm7-filter-toggle.is-active {
+  background: #dbeafe !important;
+  border-color: rgba(37, 99, 235, 0.22) !important;
+}
+
+@media (min-width: 769px) {
+  .gm7-hero-actions {
+    align-items: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .gm7-hero-actions {
+    grid-template-columns: 1fr auto;
+  }
+
+  .gm7-period-pill {
+    min-width: 0;
+  }
+
+  .gm7-filter-toggle {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 10px;
+    font-size: 11px;
+  }
+
+  .gm7-period-selector:not(.is-collapsed) {
+    max-height: 420px;
+  }
+}

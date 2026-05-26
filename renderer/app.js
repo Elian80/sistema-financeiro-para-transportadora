@@ -256,8 +256,12 @@ const pages = {
             <div class="gm7-hero-actions">
               <span class="gm7-live-pill"><i></i> Operacao em tempo real</span>
               <span class="gm7-period-pill" id="dash-periodo-chip">Todos os dados</span>
+              <button type="button" class="gm7-filter-toggle" id="btn-dashboard-opcoes" aria-expanded="false" aria-controls="dashboard-period-selector">
+                <span data-lucide="sliders-horizontal"></span>
+                Filtros
+              </button>
             </div>
-            <div class="gm7-period-selector" aria-label="Seletor de periodo do dashboard">
+            <div class="gm7-period-selector is-collapsed" id="dashboard-period-selector" aria-label="Seletor de periodo do dashboard" aria-hidden="true">
               <div class="gm7-period-presets">
                 <button type="button" class="gm7-period-btn active" data-dashboard-period="all">Tudo</button>
                 <button type="button" class="gm7-period-btn" data-dashboard-period="today">Hoje</button>
@@ -6408,6 +6412,17 @@ function sincronizarPresetPeriodoDashboard() {
   });
 }
 
+function alternarOpcoesDashboard(forcarAberto) {
+  const painel = document.getElementById("dashboard-period-selector");
+  const botao = document.getElementById("btn-dashboard-opcoes");
+  if (!painel || !botao) return;
+  const aberto = typeof forcarAberto === "boolean" ? forcarAberto : painel.classList.contains("is-collapsed");
+  painel.classList.toggle("is-collapsed", !aberto);
+  painel.setAttribute("aria-hidden", String(!aberto));
+  botao.setAttribute("aria-expanded", String(aberto));
+  botao.classList.toggle("is-active", aberto);
+}
+
 async function iniciarDashboard() {
   if (document.getElementById("dash-veiculo-id"))
     await carregarSelectVeiculosGenerico("dash-veiculo-id", "Todos");
@@ -6501,14 +6516,20 @@ async function iniciarDashboard() {
       botao.classList.add("active");
       aplicarPeriodoDashboard(botao.dataset.dashboardPeriod);
       await iniciarDashboard();
+      alternarOpcoesDashboard(false);
     });
   });
   ["dash-data-inicial", "dash-data-final", "dash-veiculo-id"].forEach((id) => {
     document.getElementById(id)?.addEventListener("change", sincronizarPresetPeriodoDashboard);
   });
   sincronizarPresetPeriodoDashboard();
+  const botaoOpcoesDashboard = document.getElementById("btn-dashboard-opcoes");
+  if (botaoOpcoesDashboard) {
+    botaoOpcoesDashboard.onclick = () => alternarOpcoesDashboard();
+  }
   document.getElementById("btn-dashboard-filtrar")?.addEventListener("click", async () => {
     await iniciarDashboard();
+    alternarOpcoesDashboard(false);
     fecharPopupFiltros("painel-filtros-dashboard");
   });
   document.getElementById("btn-dashboard-limpar")?.addEventListener("click", async () => {
@@ -6519,6 +6540,7 @@ async function iniciarDashboard() {
     const sel = document.getElementById("dash-veiculo-id");
     if (sel) sel.value = "";
     await iniciarDashboard();
+    alternarOpcoesDashboard(false);
     fecharPopupFiltros("painel-filtros-dashboard");
   });
 }
