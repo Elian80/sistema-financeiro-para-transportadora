@@ -4965,6 +4965,7 @@ function aplicarTema() {
   const tema = ["dark", "light", "gm7"].includes(temaSalvo) ? temaSalvo : "dark";
   document.body.dataset.theme = tema;
   document.documentElement.style.setProperty("--blue", tema === "gm7" ? "#1D4ED8" : (config.corPrincipal || "#22D3EE"));
+  atualizarTemaGraficosDashboard();
 }
 
 // Inicializa a página de configurações: pré-preenche com dados salvos e
@@ -6167,6 +6168,41 @@ function limparGraficosDashboard() {
   dashboardCharts = [];
 }
 
+function obterTemaGraficosDashboard() {
+  const claro = document.body.dataset.theme === "light";
+  return {
+    text: claro ? "#0f172a" : "#D7DEE7",
+    muted: claro ? "#64748b" : "#9AA4B2",
+    grid: claro ? "rgba(15,23,42,0.08)" : "rgba(255,255,255,0.045)",
+    tooltipBg: claro ? "rgba(255,255,255,0.98)" : "rgba(24,26,31,0.96)",
+    tooltipBorder: claro ? "rgba(37,99,235,0.18)" : "rgba(97,175,239,0.22)"
+  };
+}
+
+function atualizarTemaGraficosDashboard() {
+  if (!dashboardCharts.length) return;
+  const temaGrafico = obterTemaGraficosDashboard();
+  dashboardCharts.forEach((chart) => {
+    const options = chart.options || {};
+    if (options.plugins?.legend?.labels) {
+      options.plugins.legend.labels.color = temaGrafico.text;
+    }
+    if (options.plugins?.tooltip) {
+      options.plugins.tooltip.backgroundColor = temaGrafico.tooltipBg;
+      options.plugins.tooltip.borderColor = temaGrafico.tooltipBorder;
+      options.plugins.tooltip.titleColor = temaGrafico.text;
+      options.plugins.tooltip.bodyColor = temaGrafico.text;
+    }
+    ["x", "y"].forEach((axis) => {
+      if (options.scales?.[axis]) {
+        if (options.scales[axis].ticks) options.scales[axis].ticks.color = temaGrafico.muted;
+        if (options.scales[axis].grid) options.scales[axis].grid.color = temaGrafico.grid;
+      }
+    });
+    chart.update("none");
+  });
+}
+
 function criarGraficoDashboard(canvasId, tipo, labels, datasets, opcoesExtras = {}) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
@@ -6174,6 +6210,7 @@ function criarGraficoDashboard(canvasId, tipo, labels, datasets, opcoesExtras = 
     criarGrafico(canvasId, tipo, labels, datasets);
     return;
   }
+  const temaGrafico = obterTemaGraficosDashboard();
   const chart = new Chart(canvas, {
     type: tipo,
     data: { labels, datasets },
@@ -6185,23 +6222,23 @@ function criarGraficoDashboard(canvasId, tipo, labels, datasets, opcoesExtras = 
         legend: {
           display: opcoesExtras.legendDisplay ?? true,
           position: opcoesExtras.legendPosition || "top",
-          labels: { color: "#D7DEE7", boxWidth: 10, boxHeight: 10, usePointStyle: true }
+          labels: { color: temaGrafico.text, boxWidth: 10, boxHeight: 10, usePointStyle: true }
         },
         tooltip: {
           intersect: false,
           mode: "index",
-          backgroundColor: "rgba(24, 26, 31, 0.96)",
-          borderColor: "rgba(97, 175, 239, 0.22)",
+          backgroundColor: temaGrafico.tooltipBg,
+          borderColor: temaGrafico.tooltipBorder,
           borderWidth: 1,
-          titleColor: "#F2F6FA",
-          bodyColor: "#D7DEE7",
+          titleColor: temaGrafico.text,
+          bodyColor: temaGrafico.text,
           padding: 12,
           cornerRadius: 12
         }
       },
       scales: tipo === "pie" || tipo === "doughnut" ? {} : {
-        x: { ticks: { color: "#9AA4B2" }, grid: { color: "rgba(255,255,255,0.035)" } },
-        y: { ticks: { color: "#9AA4B2" }, grid: { color: "rgba(255,255,255,0.045)" }, beginAtZero: true }
+        x: { ticks: { color: temaGrafico.muted }, grid: { color: temaGrafico.grid } },
+        y: { ticks: { color: temaGrafico.muted }, grid: { color: temaGrafico.grid }, beginAtZero: true }
       },
       ...opcoesExtras
     }

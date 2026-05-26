@@ -5924,9 +5924,7 @@ body[data-theme="gm7"] {
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
 }
 
-html,
-body,
-body[data-theme="light"] {
+body[data-theme="gm7"] {
   background:
     radial-gradient(ellipse at 18% -8%, rgba(29, 78, 216, 0.16), transparent 35%),
     radial-gradient(ellipse at 98% 88%, rgba(198, 120, 221, 0.055), transparent 30%),
@@ -6617,6 +6615,200 @@ body.sidebar-collapsed .nav-icon {
 
 .gm7-hours-kpis small {
   align-self: center;
+}
+
+/* Reparos de isolamento do tema claro e proporcao dos graficos.
+   O dashboard GM7 existe como terceira variacao; no tema claro ele herda a
+   estrutura, mas volta para superficies claras e graficos dimensionados. */
+.gm7-balance-panel canvas,
+.dash-analytics-grid canvas {
+  display: block;
+  width: 100% !important;
+  height: 240px !important;
+  min-height: 240px !important;
+  max-height: 240px !important;
+}
+
+.gm7-donut-wrap {
+  width: 176px;
+  height: 176px;
+  min-height: 176px;
+  max-width: 100%;
+  justify-self: center;
+}
+
+.gm7-fleet-status-chart canvas {
+  width: 176px !important;
+  height: 176px !important;
+  min-height: 176px !important;
+  max-height: 176px !important;
+}
+
+.dash-donut-layout canvas,
+.gm7-category-panel .dash-donut-layout canvas {
+  width: 220px !important;
+  height: 220px !important;
+  min-height: 220px !important;
+  max-height: 220px !important;
+  justify-self: center;
+}
+
+body[data-theme="light"] {
+  background:
+    radial-gradient(ellipse at 14% -12%, rgba(37, 99, 235, 0.10), transparent 32%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%) !important;
+  color: #0f172a !important;
+}
+
+body[data-theme="light"] #app-bg-canvas {
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+}
+
+body[data-theme="light"] .sidebar {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
+}
+
+body[data-theme="light"] .sidebar-head,
+body[data-theme="light"] .sidebar-footer {
+  background: rgba(248, 250, 252, 0.78) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+body[data-theme="light"] .topbar {
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.07) !important;
+}
+
+body[data-theme="light"] .gm7-hero-panel,
+body[data-theme="light"] .gm7-fleet-card,
+body[data-theme="light"] .gm7-balance-panel,
+body[data-theme="light"] .gm7-map-panel,
+body[data-theme="light"] .gm7-metric-card,
+body[data-theme="light"] .gm7-panel,
+body[data-theme="light"] .panel-box,
+body[data-theme="light"] .kpi-card,
+body[data-theme="light"] .vehicle-card,
+body[data-theme="light"] .modal-content,
+body[data-theme="light"] .filter-popup-card {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08) !important;
+}
+
+body[data-theme="light"] .gm7-hero-panel {
+  background:
+    radial-gradient(ellipse at 72% 20%, rgba(37, 99, 235, 0.12), transparent 36%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(241, 245, 249, 0.92)) !important;
+}
+
+body[data-theme="light"] .gm7-fleet-status-chart,
+body[data-theme="light"] .gm7-period-selector,
+body[data-theme="light"] .gm7-hours-kpis div,
+body[data-theme="light"] .gm7-assets-list div,
+body[data-theme="light"] .gm7-hero-score,
+body[data-theme="light"] .topbar-search,
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea,
+body[data-theme="light"] .table-wrap,
+body[data-theme="light"] .ghost-btn,
+body[data-theme="light"] .small-btn,
+body[data-theme="light"] .icon-btn,
+body[data-theme="light"] .sidebar-toggle,
+body[data-theme="light"] .mobile-menu-btn {
+  background: rgba(248, 250, 252, 0.86) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  color: #0f172a !important;
+}
+
+body[data-theme="light"] .gm7-hero-copy h2,
+body[data-theme="light"] .gm7-hero-score strong,
+body[data-theme="light"] .gm7-balance-value,
+body[data-theme="light"] .gm7-panel-head h3,
+body[data-theme="light"] .gm7-fleet-card strong,
+body[data-theme="light"] .gm7-metric-card strong,
+body[data-theme="light"] .gm7-hours-kpis strong,
+body[data-theme="light"] .gm7-assets-list strong,
+body[data-theme="light"] .gm7-donut-center strong,
+body[data-theme="light"] .kpi-value,
+body[data-theme="light"] .dash-chart-value strong,
+body[data-theme="light"] .dash-category-row strong,
+body[data-theme="light"] .status-line strong,
+body[data-theme="light"] .brand h1,
+body[data-theme="light"] .topbar h2 {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+body[data-theme="light"] .gm7-hero-copy p,
+body[data-theme="light"] .gm7-hero-score span,
+body[data-theme="light"] .gm7-hero-score small,
+body[data-theme="light"] .gm7-panel-head span,
+body[data-theme="light"] .gm7-metric-card small,
+body[data-theme="light"] .gm7-fleet-card small,
+body[data-theme="light"] .gm7-fleet-card em,
+body[data-theme="light"] .gm7-hours-kpis small,
+body[data-theme="light"] .gm7-assets-list span,
+body[data-theme="light"] .gm7-donut-center span,
+body[data-theme="light"] .gm7-fleet-status-legend span,
+body[data-theme="light"] .kpi-label,
+body[data-theme="light"] label,
+body[data-theme="light"] .dashboard-note,
+body[data-theme="light"] .table-toolbar span,
+body[data-theme="light"] .status-line span,
+body[data-theme="light"] .brand p,
+body[data-theme="light"] .nav-btn {
+  color: #64748b !important;
+}
+
+body[data-theme="light"] .nav-btn:hover {
+  background: rgba(37, 99, 235, 0.07) !important;
+  border-color: rgba(37, 99, 235, 0.12) !important;
+  color: #1d4ed8 !important;
+}
+
+body[data-theme="light"] .nav-btn.active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.06)) !important;
+  border-color: rgba(37, 99, 235, 0.16) !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.10) !important;
+}
+
+body[data-theme="light"] .nav-icon {
+  background: rgba(37, 99, 235, 0.07) !important;
+  color: #2563eb !important;
+}
+
+body[data-theme="light"] .data-table th {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+body[data-theme="light"] .data-table td {
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+body[data-theme="light"] .data-table tbody tr:hover td {
+  background: rgba(37, 99, 235, 0.055) !important;
+}
+
+@media (max-width: 700px) {
+  .gm7-donut-wrap,
+  .gm7-fleet-status-chart canvas {
+    width: 188px !important;
+    height: 188px !important;
+  }
+
+  .dash-donut-layout canvas,
+  .gm7-category-panel .dash-donut-layout canvas {
+    width: 200px !important;
+    height: 200px !important;
+  }
 }
 
 .gm7-hours-kpis strong {
