@@ -102,7 +102,22 @@ foreach ($item in $IncludeItems) {
   }
 }
 
-Compress-Archive -Path (Join-Path $StageDir "*") -DestinationPath $PackagePath -Force
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::Open($PackagePath, [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+  Get-ChildItem -LiteralPath $StageDir -Recurse -File | ForEach-Object {
+    $entryName = $_.FullName.Substring($StageDir.Length).TrimStart("\", "/").Replace("\", "/")
+    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+      $zip,
+      $_.FullName,
+      $entryName,
+      [System.IO.Compression.CompressionLevel]::Optimal
+    ) | Out-Null
+  }
+} finally {
+  $zip.Dispose()
+}
 
 Write-Host "Pacote gerado em:" -ForegroundColor Green
 Write-Host $PackagePath
