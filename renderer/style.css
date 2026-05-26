@@ -8019,3 +8019,159 @@ body[data-theme="light"] .gm7-filter-toggle.is-active {
     max-height: 420px;
   }
 }
+
+/* ============================================================
+   Mobile - graficos iniciais ainda mais compactos
+   ============================================================ */
+@media (max-width: 768px) {
+  .gm7-command-grid {
+    gap: 8px !important;
+  }
+
+  .gm7-balance-panel,
+  .gm7-map-panel {
+    padding: 10px !important;
+    border-radius: 13px !important;
+  }
+
+  .gm7-balance-panel .gm7-panel-head,
+  .gm7-map-panel .gm7-panel-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 28px;
+    align-items: center;
+    margin-bottom: 6px !important;
+    gap: 8px;
+  }
+
+  .gm7-balance-panel .gm7-panel-head span,
+  .gm7-map-panel .gm7-panel-head span {
+    font-size: 10px;
+    line-height: 1.1;
+  }
+
+  .gm7-balance-panel .gm7-panel-head h3,
+  .gm7-map-panel .gm7-panel-head h3 {
+    margin-top: 1px;
+    font-size: 13px !important;
+    line-height: 1.12;
+  }
+
+  .gm7-balance-panel .gm7-panel-icon,
+  .gm7-map-panel .gm7-panel-icon {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 9px !important;
+  }
+
+  .gm7-balance-value {
+    margin-bottom: 5px !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+  }
+
+  .gm7-balance-meta {
+    margin-bottom: 5px !important;
+  }
+
+  .gm7-balance-meta span {
+    padding: 4px 6px !important;
+    font-size: 9px !important;
+  }
+
+  .gm7-balance-panel canvas,
+  .dash-analytics-grid canvas {
+    height: 110px !important;
+    min-height: 110px !important;
+    max-height: 110px !important;
+  }
+
+  .gm7-map-panel {
+    min-height: 0 !important;
+  }
+
+  .gm7-map-grid {
+    display: none !important;
+  }
+
+  .gm7-map-content {
+    gap: 7px !important;
+  }
+
+  .gm7-fleet-status-chart {
+    display: grid !important;
+    grid-template-columns: 104px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    border-radius: 12px !important;
+  }
+
+  .gm7-donut-wrap,
+  .gm7-fleet-status-chart canvas {
+    width: 104px !important;
+    height: 104px !important;
+    min-width: 104px !important;
+    min-height: 104px !important;
+    max-width: 104px !important;
+    max-height: 104px !important;
+  }
+
+  .gm7-donut-center strong {
+    font-size: 18px !important;
+  }
+
+  .gm7-donut-center span {
+    font-size: 8px !important;
+  }
+
+  .gm7-fleet-status-legend {
+    gap: 6px !important;
+  }
+
+  .gm7-fleet-status-legend span {
+    gap: 6px !important;
+    font-size: 10px !important;
+    line-height: 1.1;
+  }
+
+  .gm7-fleet-status-legend i {
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  .gm7-status-summary {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px !important;
+  }
+
+  .gm7-status-summary .status-line {
+    min-height: 30px;
+    padding: 6px 8px !important;
+    border-radius: 9px !important;
+  }
+
+  .gm7-status-summary .status-line span {
+    font-size: 10px !important;
+  }
+
+  .gm7-status-summary .status-line strong {
+    font-size: 13px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .gm7-fleet-status-chart {
+    grid-template-columns: 96px minmax(0, 1fr) !important;
+  }
+
+  .gm7-donut-wrap,
+  .gm7-fleet-status-chart canvas {
+    width: 96px !important;
+    height: 96px !important;
+    min-width: 96px !important;
+    min-height: 96px !important;
+    max-width: 96px !important;
+    max-height: 96px !important;
+  }
+}
