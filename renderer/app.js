@@ -244,186 +244,275 @@ function calcularInssAutomatico(baseCalculo) {
 const pages = {
   dashboard: {
     title: "Dashboard",
-    subtitle: "Visao geral da operacao e do financeiro",
+    subtitle: "Visão geral da sua frota em tempo real.",
     render: () => `
-      <section class="dash-premium-shell">
+      <section class="gm7-dashboard-shell">
+        <header class="gm7-hero-panel">
+          <div class="gm7-hero-copy">
+            <span class="gm7-kicker">GM7 Sistemas · Fleet Command</span>
+            <h2>Centro de controle operacional</h2>
+            <p>Visão geral da sua frota em tempo real.</p>
+            <p id="dashboard-periodo">Todos os dados</p>
+            <div class="gm7-hero-actions">
+              <span class="gm7-live-pill"><i></i> Operacao em tempo real</span>
+              <span class="gm7-period-pill" id="dash-periodo-chip">Todos os dados</span>
+            </div>
+            <div class="gm7-period-selector" aria-label="Seletor de periodo do dashboard">
+              <div class="gm7-period-presets">
+                <button type="button" class="gm7-period-btn active" data-dashboard-period="all">Tudo</button>
+                <button type="button" class="gm7-period-btn" data-dashboard-period="today">Hoje</button>
+                <button type="button" class="gm7-period-btn" data-dashboard-period="7d">7 dias</button>
+                <button type="button" class="gm7-period-btn" data-dashboard-period="30d">30 dias</button>
+                <button type="button" class="gm7-period-btn" data-dashboard-period="month">Mes</button>
+              </div>
+              <div class="gm7-period-custom">
+                <input type="date" id="dash-data-inicial" aria-label="Data inicial" />
+                <input type="date" id="dash-data-final" aria-label="Data final" />
+                <select id="dash-veiculo-id" aria-label="Veiculo"><option value="">Todos</option></select>
+                <button type="button" class="gm7-period-apply" id="btn-dashboard-filtrar">Aplicar</button>
+                <button type="button" class="gm7-period-clear" id="btn-dashboard-limpar" aria-label="Limpar filtros">Limpar</button>
+              </div>
+            </div>
+          </div>
+          <div class="gm7-fleet-orbit" aria-hidden="true">
+            <div class="gm7-orbit-ring"></div>
+            <div class="gm7-orbit-core"><span data-lucide="truck"></span></div>
+            <span class="gm7-orbit-dot dot-a"></span>
+            <span class="gm7-orbit-dot dot-b"></span>
+            <span class="gm7-orbit-dot dot-c"></span>
+          </div>
+          <div class="gm7-hero-score">
+            <span>Frota operante</span>
+            <strong id="dashboard-frota-operante">0%</strong>
+            <small id="dashboard-frota-total">0 veiculo(s) cadastrados</small>
+          </div>
+        </header>
 
-      <div class="dash-top-cards" style="margin-bottom:18px;">
-        <section class="dash-stat-card dash-stat-blue">
-          <div>
-            <span class="dash-stat-label">Veiculos</span>
-            <strong class="dash-stat-value" id="dashboard-veiculos-total">0</strong>
-            <small>Frota cadastrada</small>
-          </div>
-          <span class="dash-stat-icon"><i data-lucide="truck"></i></span>
-        </section>
-        <section class="dash-stat-card dash-stat-green">
-          <div>
-            <span class="dash-stat-label">Em movimento</span>
-            <strong class="dash-stat-value" id="dashboard-veiculos-ativos-card">0</strong>
-            <small>Veiculos ativos</small>
-          </div>
-          <span class="dash-stat-icon"><i data-lucide="route"></i></span>
-        </section>
-        <section class="dash-stat-card dash-stat-indigo">
-          <div>
-            <span class="dash-stat-label">Parados</span>
-            <strong class="dash-stat-value" id="dashboard-veiculos-inativos-card">0</strong>
-            <small>Sem operacao</small>
-          </div>
-          <span class="dash-stat-icon"><i data-lucide="parking-circle"></i></span>
-        </section>
-        <section class="dash-stat-card dash-stat-orange">
-          <div>
-            <span class="dash-stat-label">Manutencoes</span>
-            <strong class="dash-stat-value" id="dashboard-veiculos-manutencao-card">0</strong>
-            <small>Em manutencao</small>
-          </div>
-          <span class="dash-stat-icon"><i data-lucide="wrench"></i></span>
-        </section>
-      </div>
-
-      <div class="dashboard-grid dash-finance-strip" style="margin-bottom:18px;">
-        <section class="kpi-card dashboard-hero">
-          <div class="kpi-label">Saldo do periodo</div>
-          <div class="kpi-value" id="dashboard-saldo">R$ 0,00</div>
-          ${sparklineSvg("4,30 18,24 32,27 46,16 60,19 74,10 88,14")}
-          <div class="dashboard-note" id="dashboard-receitas-qtd">0 lancamentos</div>
-        </section>
-        <section class="kpi-card">
-          <div class="kpi-label">Receitas</div>
-          <div class="kpi-value positive" id="dashboard-receitas">R$ 0,00</div>
-          ${sparklineSvg("4,31 18,25 32,20 46,22 60,12 74,10 88,6")}
-          <div class="dashboard-note" id="dashboard-despesas-qtd">0 despesas</div>
-        </section>
-        <section class="kpi-card">
-          <div class="kpi-label">Despesas</div>
-          <div class="kpi-value negative" id="dashboard-despesas">R$ 0,00</div>
-          ${sparklineSvg("4,12 18,16 32,13 46,22 60,20 74,28 88,25")}
-          <div class="dashboard-note">Custos + despesas</div>
-        </section>
-        <section class="kpi-card">
-          <div class="kpi-label">Lucro liquido</div>
-          <div class="kpi-value" id="dashboard-lucro-liquido">R$ 0,00</div>
-          ${sparklineSvg("4,30 18,28 32,20 46,22 60,16 74,10 88,12")}
-          <div class="dashboard-note">Receitas menos despesas totais</div>
-        </section>
-      </div>
-      <span id="dashboard-frota-total" hidden></span>
-
-      <div class="dash-metrics-strip">
-        <div class="dash-metric-card">
-          <div>
-            <div class="dash-metric-label">Margem liquida</div>
-            <div class="dash-metric-value" id="dashboard-margem-liquida">0,0%</div>
-          </div>
-          <span class="kpi-trend positive" id="dash-trend-margem">—</span>
-        </div>
-        <div class="dash-metric-card">
-          <div>
-            <div class="dash-metric-label">Ticket medio</div>
-            <div class="dash-metric-value positive" id="dashboard-ticket-medio">R$ 0,00</div>
-          </div>
-          <span class="kpi-trend positive" id="dash-trend-ticket">—</span>
-        </div>
-        <div class="dash-metric-card">
-          <div>
-            <div class="dash-metric-label">Frota operante</div>
-            <div class="dash-metric-value" id="dashboard-frota-operante">0%</div>
-          </div>
-          <span class="kpi-trend positive" id="dash-trend-frota">—</span>
-        </div>
-      </div>
-
-      <div class="kpi-grid" style="margin-bottom:18px;">
-        <section class="kpi-card"><div class="kpi-label">Investimentos</div><div class="kpi-value" id="dashboard-investimentos">R$ 0,00</div>${sparklineSvg("4,30 18,30 32,24 46,18 60,20 74,14 88,9")}</section>
-        <section class="kpi-card"><div class="kpi-label">Lucro bruto</div><div class="kpi-value" id="dashboard-lucro-bruto">R$ 0,00</div>${sparklineSvg("4,32 18,24 32,26 46,18 60,12 74,14 88,8")}</section>
-        <section class="kpi-card"><div class="kpi-label">Contas pendentes</div><div class="kpi-value warning" id="dashboard-contas-pendentes">R$ 0,00</div>${sparklineSvg("4,18 18,14 32,22 46,18 60,26 74,22 88,30")}</section>
-        <section class="kpi-card"><div class="kpi-label">Patrimonio liquido</div><div class="kpi-value" id="dashboard-patrimonio">R$ 0,00</div>${sparklineSvg("4,32 18,24 32,27 46,18 60,20 74,12 88,10")}</section>
-        <section class="kpi-card"><div class="kpi-label">Frota ativa</div><div class="kpi-value" id="dashboard-frota-ativa">0</div>${sparklineSvg("4,26 18,26 32,22 46,22 60,18 74,18 88,14")}</section>
-      </div>
-
-      <section class="report-charts dash-analytics-grid" style="margin-bottom:18px;">
-        <div class="panel-box chart-card chart-card-wide dash-panel-wide dash-cost-summary-card">
-          <div class="dash-chart-title">
+        <section class="gm7-overview-grid">
+          <article class="gm7-fleet-card gm7-card-blue">
+            <span class="gm7-card-icon" data-lucide="truck"></span>
             <div>
-              <h3>Resumo de Custos</h3>
+              <small>Frota total</small>
+              <strong id="dashboard-veiculos-total">0</strong>
+              <em>veiculos cadastrados</em>
+            </div>
+          </article>
+          <article class="gm7-fleet-card gm7-card-green">
+            <span class="gm7-card-icon" data-lucide="route"></span>
+            <div>
+              <small>Em movimento</small>
+              <strong id="dashboard-veiculos-ativos-card">0</strong>
+              <em>ativos na operacao</em>
+            </div>
+          </article>
+          <article class="gm7-fleet-card gm7-card-red">
+            <span class="gm7-card-icon" data-lucide="parking-circle"></span>
+            <div>
+              <small>Parados</small>
+              <strong id="dashboard-veiculos-inativos-card">0</strong>
+              <em>sem operacao</em>
+            </div>
+          </article>
+          <article class="gm7-fleet-card gm7-card-amber">
+            <span class="gm7-card-icon" data-lucide="wrench"></span>
+            <div>
+              <small>Manutencao</small>
+              <strong id="dashboard-veiculos-manutencao-card">0</strong>
+              <em>em acompanhamento</em>
+            </div>
+          </article>
+        </section>
+
+        <section class="gm7-command-grid">
+          <article class="gm7-balance-panel">
+            <div class="gm7-panel-head">
+              <div>
+                <span>Performance financeira</span>
+                <h3>Saldo do periodo</h3>
+              </div>
+              <span class="gm7-panel-icon" data-lucide="activity"></span>
+            </div>
+            <strong class="gm7-balance-value" id="dashboard-saldo">R$ 0,00</strong>
+            <div class="gm7-balance-meta">
+              <span id="dashboard-receitas-qtd">0 lancamentos</span>
+              <span id="dashboard-despesas-qtd">0 despesas</span>
+            </div>
+            <canvas id="dash-chart-receitas-despesas" height="150"></canvas>
+          </article>
+
+          <article class="gm7-map-panel">
+            <div class="gm7-map-grid" aria-hidden="true">
+              <span class="route-node node-1"></span>
+              <span class="route-node node-2"></span>
+              <span class="route-node node-3"></span>
+              <span class="route-line line-1"></span>
+              <span class="route-line line-2"></span>
+            </div>
+            <div class="gm7-map-content">
+              <span class="gm7-panel-icon" data-lucide="map"></span>
+              <h3>Status da frota</h3>
+              <div class="gm7-fleet-status-chart">
+                <div class="gm7-donut-wrap">
+                  <canvas id="dash-chart-status-frota" height="150"></canvas>
+                  <div class="gm7-donut-center">
+                    <strong id="dashboard-status-frota-total">0</strong>
+                    <span>veículos</span>
+                  </div>
+                </div>
+                <div class="gm7-fleet-status-legend">
+                  <span><i class="fleet-active"></i>Em movimento</span>
+                  <span><i class="fleet-maintenance"></i>Em manutenção</span>
+                  <span><i class="fleet-inactive"></i>Inativos</span>
+                </div>
+              </div>
+              <div class="status-summary gm7-status-summary">
+                <div class="status-line"><span>Ativos</span><strong id="dashboard-veiculos-ativos">0</strong></div>
+                <div class="status-line"><span>Manutencao</span><strong id="dashboard-veiculos-manutencao">0</strong></div>
+                <div class="status-line"><span>Inativos</span><strong id="dashboard-veiculos-inativos">0</strong></div>
+                <div class="status-line"><span>Motoristas</span><strong id="dashboard-motoristas">0</strong></div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="gm7-finance-grid">
+          <article class="gm7-metric-card">
+            <small>Receitas</small>
+            <strong class="positive" id="dashboard-receitas">R$ 0,00</strong>
+            <span data-lucide="trending-up"></span>
+          </article>
+          <article class="gm7-metric-card">
+            <small>Despesas</small>
+            <strong class="negative" id="dashboard-despesas">R$ 0,00</strong>
+            <span data-lucide="trending-down"></span>
+          </article>
+          <article class="gm7-metric-card">
+            <small>Lucro liquido</small>
+            <strong id="dashboard-lucro-liquido">R$ 0,00</strong>
+            <span data-lucide="wallet"></span>
+          </article>
+          <article class="gm7-metric-card">
+            <small>Margem liquida</small>
+            <strong id="dashboard-margem-liquida">0,0%</strong>
+            <span data-lucide="percent"></span>
+          </article>
+          <article class="gm7-metric-card">
+            <small>Ticket medio</small>
+            <strong class="positive" id="dashboard-ticket-medio">R$ 0,00</strong>
+            <span data-lucide="receipt-text"></span>
+          </article>
+          <article class="gm7-metric-card">
+            <small>Contas pendentes</small>
+            <strong class="warning" id="dashboard-contas-pendentes">R$ 0,00</strong>
+            <span data-lucide="timer"></span>
+          </article>
+        </section>
+
+        <section class="gm7-analytics-grid">
+          <article class="gm7-panel gm7-category-panel">
+            <div class="gm7-panel-head">
+              <div>
+                <span>Custos operacionais</span>
+                <h3>Por classificacao</h3>
+              </div>
               <div class="dash-chart-value">
                 <strong id="dash-custos-resumo-valor">R$ 0,00</strong>
                 <span id="dash-custos-resumo-tendencia" class="positive">+0,0%</span>
               </div>
             </div>
-          </div>
-          <canvas id="dash-chart-receitas-despesas" height="150"></canvas>
-        </div>
-        <div class="panel-box chart-card dash-category-panel">
-          <div class="dash-chart-title">
-            <h3>Custos por Categoria</h3>
-          </div>
-          <div class="dash-donut-layout">
-            <canvas id="dash-chart-despesas-classificacao" height="150"></canvas>
-            <div id="dash-categorias-legenda" class="dash-category-legend"></div>
-          </div>
-        </div>
-        <div class="panel-box chart-card dash-extra-chart"><h3>Custos por veiculo</h3><canvas id="dash-chart-custos-veiculo" height="150"></canvas></div>
-        <div class="panel-box chart-card dash-extra-chart"><h3>Faturamento mensal</h3><canvas id="dash-chart-faturamento-mensal" height="150"></canvas></div>
-        <div class="panel-box chart-card dash-extra-chart"><h3>Saldo acumulado</h3><canvas id="dash-chart-saldo-acumulado" height="150"></canvas></div>
-        <div class="panel-box chart-card dash-extra-chart"><h3>Contas a receber</h3><canvas id="dash-chart-contas-receber" height="150"></canvas></div>
-      </section>
+            <div class="dash-donut-layout">
+              <canvas id="dash-chart-despesas-classificacao" height="150"></canvas>
+              <div id="dash-categorias-legenda" class="dash-category-legend"></div>
+            </div>
+          </article>
 
-      <div class="dashboard-layout" style="margin-bottom:18px;">
-        <section class="panel-box">
-          <div class="table-toolbar">
-            <div><h3 style="margin:0;">Resumo da frota</h3><span>Status operacional dos veiculos</span></div>
+          <article class="gm7-panel">
+            <div class="gm7-panel-head">
+              <div>
+                <span>Ranking financeiro</span>
+                <h3>Maiores classificacoes</h3>
+              </div>
+            </div>
+            <div id="dashboard-classificacoes" class="ranking-list"><p class="empty-row">Carregando...</p></div>
+          </article>
+        </section>
+
+        <section class="gm7-operations-grid">
+          <article class="gm7-panel gm7-hours-panel">
+            <div class="gm7-panel-head">
+              <div>
+                <span>Produtividade de maquinas</span>
+                <h3>Horas por maquina</h3>
+              </div>
+            </div>
+            <div class="form-grid gm7-hours-filters">
+              <div class="field"><label>Veiculo</label><select id="dash-horas-veiculo"><option value="">Todas as maquinas</option></select></div>
+              <div class="field"><label>Data inicial</label><input type="date" id="dash-horas-data-inicial" /></div>
+              <div class="field"><label>Data final</label><input type="date" id="dash-horas-data-final" /></div>
+            </div>
+            <div class="gm7-hours-kpis">
+              <div><small>Total de horas</small><strong id="dash-horas-total">0h</strong></div>
+              <div><small>Dias trabalhados</small><strong id="dash-dias-total">0</strong></div>
+              <div><small>Valor gerado</small><strong class="positive" id="dash-horas-valor">R$ 0,00</strong></div>
+            </div>
+          </article>
+
+          <article class="gm7-panel gm7-assets-panel">
+            <div class="gm7-panel-head">
+              <div>
+                <span>Capital operacional</span>
+                <h3>Indicadores patrimoniais</h3>
+              </div>
+            </div>
+            <div class="gm7-assets-list">
+              <div><span>Investimentos</span><strong id="dashboard-investimentos">R$ 0,00</strong></div>
+              <div><span>Lucro bruto</span><strong id="dashboard-lucro-bruto">R$ 0,00</strong></div>
+              <div><span>Patrimonio liquido</span><strong id="dashboard-patrimonio">R$ 0,00</strong></div>
+              <div><span>Frota ativa</span><strong id="dashboard-frota-ativa">0</strong></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="gm7-panel gm7-maintenance-panel">
+          <div class="gm7-panel-head">
+            <div>
+              <span>Controle preventivo</span>
+              <h3>Tabela de Manutenções</h3>
+            </div>
+            <span class="gm7-panel-icon" data-lucide="wrench"></span>
           </div>
-          <div class="status-summary">
-            <div class="status-line"><span>Ativos</span><strong id="dashboard-veiculos-ativos">0</strong></div>
-            <div class="status-line"><span>Manutencao</span><strong id="dashboard-veiculos-manutencao">0</strong></div>
-            <div class="status-line"><span>Inativos</span><strong id="dashboard-veiculos-inativos">0</strong></div>
-            <div class="status-line"><span>Motoristas</span><strong id="dashboard-motoristas">0</strong></div>
+          <div class="table-wrap">
+            <table class="data-table gm7-maintenance-table">
+              <thead>
+                <tr><th>Veículo</th><th>Placa</th><th>Tipo de serviço</th><th>Vencimento</th><th>Status</th><th>Observação</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="dashboard-manutencoes-tabela">
+                <tr><td colspan="7" class="empty-row">Carregando manutenções...</td></tr>
+              </tbody>
+            </table>
           </div>
         </section>
-        <section class="panel-box">
-          <div class="table-toolbar">
-            <div><h3 style="margin:0;">Financeiro por classificacao</h3><span>Maiores valores no periodo</span></div>
+
+        <section class="gm7-panel gm7-table-panel">
+          <div class="gm7-panel-head">
+            <div>
+              <span id="dashboard-total-lancamentos">0 registros</span>
+              <h3>Ultimos lancamentos</h3>
+            </div>
           </div>
-          <div id="dashboard-classificacoes" class="ranking-list"><p class="empty-row">Carregando...</p></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Data</th><th>Classificacao</th><th>Veiculo</th><th>Descricao</th><th>Valor</th></tr></thead>
+              <tbody id="dashboard-ultimos-lancamentos"><tr><td colspan="5" class="empty-row">Carregando...</td></tr></tbody>
+            </table>
+          </div>
         </section>
-      </div>
-      </section>
 
-      <section class="panel-box" style="margin-bottom:18px;">
-        <div class="table-toolbar">
-          <div>
-            <h3 style="margin:0;">Horas por maquina</h3>
-            <span>Horas e valor gerado por veiculo no periodo</span>
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="field"><label>Veiculo</label><select id="dash-horas-veiculo"><option value="">Todas as maquinas</option></select></div>
-          <div class="field"><label>Data inicial</label><input type="date" id="dash-horas-data-inicial" /></div>
-          <div class="field"><label>Data final</label><input type="date" id="dash-horas-data-final" /></div>
-          <div class="field dash-hours-action"><label>&nbsp;</label><button type="button" class="icon-btn subtle-icon-btn" id="btn-dashboard-horas" aria-label="Atualizar horas" title="Atualizar"><span data-lucide="refresh-cw" aria-hidden="true"></span></button></div>
-        </div>
-        <div class="kpi-grid" style="margin-top:14px;">
-          <div class="kpi-card"><div class="kpi-label">Total de horas</div><div class="kpi-value" id="dash-horas-total">0h</div></div>
-          <div class="kpi-card"><div class="kpi-label">Dias trabalhados</div><div class="kpi-value" id="dash-dias-total">0</div></div>
-          <div class="kpi-card"><div class="kpi-label">Valor gerado</div><div class="kpi-value positive" id="dash-horas-valor">R$ 0,00</div></div>
-        </div>
-      </section>
-
-      <section class="panel-box">
-        <div class="table-toolbar">
-          <div>
-            <h3 style="margin:0;">Ultimos lancamentos</h3>
-            <span id="dashboard-total-lancamentos">0 registros</span>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead><tr><th>Data</th><th>Classificacao</th><th>Veiculo</th><th>Descricao</th><th>Valor</th></tr></thead>
-            <tbody id="dashboard-ultimos-lancamentos"><tr><td colspan="5" class="empty-row">Carregando...</td></tr></tbody>
-          </table>
+        <div class="gm7-hidden-charts" aria-hidden="true">
+          <canvas id="dash-chart-custos-veiculo" height="150"></canvas>
+          <canvas id="dash-chart-faturamento-mensal" height="150"></canvas>
+          <canvas id="dash-chart-saldo-acumulado" height="150"></canvas>
+          <canvas id="dash-chart-contas-receber" height="150"></canvas>
         </div>
       </section>
     `
@@ -1248,7 +1337,7 @@ const pages = {
             </div>
             <input type="hidden" id="config-logo" />
           </div>
-          <div class="field"><label>Tema</label><select id="config-tema"><option value="dark">Escuro</option><option value="light">Claro</option></select></div>
+          <div class="field"><label>Tema</label><select id="config-tema"><option value="dark">Escuro</option><option value="light">Claro</option><option value="gm7">GM7 Fleet</option></select></div>
           <div class="field"><label>Cor principal</label><input type="color" id="config-cor" value="#4f8cff" /></div>
           <div class="field"><label>Moeda</label><input id="config-moeda" value="BRL" /></div>
           <div class="field full"><label>Dados do relatorio</label><input id="config-relatorio" placeholder="Rodape ou observacoes dos relatorios" /></div>
@@ -4872,9 +4961,10 @@ async function sincronizarConfiguracaoEmpresa() {
 // data-theme no <body> controla as variáveis CSS globais do tema.
 function aplicarTema() {
   const config = carregarConfiguracoesLocais();
-  const tema = config.tema || localStorage.getItem("financeiro_tema") || "dark";
+  const temaSalvo = config.tema || localStorage.getItem("financeiro_tema") || "dark";
+  const tema = ["dark", "light", "gm7"].includes(temaSalvo) ? temaSalvo : "dark";
   document.body.dataset.theme = tema;
-  document.documentElement.style.setProperty("--blue", config.corPrincipal || "#22D3EE");
+  document.documentElement.style.setProperty("--blue", tema === "gm7" ? "#1D4ED8" : (config.corPrincipal || "#22D3EE"));
 }
 
 // Inicializa a página de configurações: pré-preenche com dados salvos e
@@ -6095,13 +6185,23 @@ function criarGraficoDashboard(canvasId, tipo, labels, datasets, opcoesExtras = 
         legend: {
           display: opcoesExtras.legendDisplay ?? true,
           position: opcoesExtras.legendPosition || "top",
-          labels: { color: "#e8edf8", boxWidth: 10, boxHeight: 10, usePointStyle: true }
+          labels: { color: "#D7DEE7", boxWidth: 10, boxHeight: 10, usePointStyle: true }
         },
-        tooltip: { intersect: false, mode: "index" }
+        tooltip: {
+          intersect: false,
+          mode: "index",
+          backgroundColor: "rgba(24, 26, 31, 0.96)",
+          borderColor: "rgba(97, 175, 239, 0.22)",
+          borderWidth: 1,
+          titleColor: "#F2F6FA",
+          bodyColor: "#D7DEE7",
+          padding: 12,
+          cornerRadius: 12
+        }
       },
       scales: tipo === "pie" || tipo === "doughnut" ? {} : {
-        x: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.035)" } },
-        y: { ticks: { color: "#98a3bd" }, grid: { color: "rgba(255,255,255,0.045)" }, beginAtZero: true }
+        x: { ticks: { color: "#9AA4B2" }, grid: { color: "rgba(255,255,255,0.035)" } },
+        y: { ticks: { color: "#9AA4B2" }, grid: { color: "rgba(255,255,255,0.045)" }, beginAtZero: true }
       },
       ...opcoesExtras
     }
@@ -6130,10 +6230,10 @@ function renderizarGraficoReceitasDespesas(dados) {
     {
       label: "Custos",
       data: dados.periodo.length ? dados.periodo.map(i => Math.abs(normalizarNumero(i.total_custos))) : [custoAtual],
-      borderColor: "#2388ff",
-      backgroundColor: "rgba(35,136,255,0.18)",
-      pointBackgroundColor: "#38bdf8",
-      pointBorderColor: "#0f172a",
+      borderColor: "#61AFEF",
+      backgroundColor: "rgba(97,175,239,0.18)",
+      pointBackgroundColor: "#56B6C2",
+      pointBorderColor: "#181A1F",
       pointRadius: 3,
       pointHoverRadius: 5,
       tension: 0.38,
@@ -6144,7 +6244,7 @@ function renderizarGraficoReceitasDespesas(dados) {
 
 function renderizarGraficoCustosPorVeiculo(dados) {
   criarGraficoDashboard("dash-chart-custos-veiculo", "bar", dados.veiculos.slice(0, 8).map(i => i.nome_veiculo), [
-    { label: "Custo total", data: dados.veiculos.slice(0, 8).map(i => i.custo_total_veiculo), backgroundColor: "#3B82F6", borderRadius: 10 }
+    { label: "Custo total", data: dados.veiculos.slice(0, 8).map(i => i.custo_total_veiculo), backgroundColor: "#61AFEF", borderRadius: 10 }
   ]);
 }
 
@@ -6153,11 +6253,11 @@ function renderizarGraficoDespesasPorClassificacao(dados) {
     .filter(i => String(i.classificacao).startsWith("2."))
     .sort((a, b) => Math.abs(normalizarNumero(b.total)) - Math.abs(normalizarNumero(a.total)))
     .slice(0, 4);
-  const cores = ["#0ea5e9", "#4f46e5", "#22c55e", "#f59e0b"];
+  const cores = ["#61AFEF", "#C678DD", "#98C379", "#E5C07B"];
   const valores = despesas.map(i => Math.abs(normalizarNumero(i.total)));
   const total = valores.reduce((soma, valor) => soma + valor, 0) || 1;
   criarGraficoDashboard("dash-chart-despesas-classificacao", "doughnut", despesas.map(i => i.classificacao), [
-    { label: "Despesas", data: valores, backgroundColor: cores, borderColor: "rgba(15,23,42,0.95)", borderWidth: 4, hoverOffset: 6 }
+    { label: "Despesas", data: valores, backgroundColor: cores, borderColor: "rgba(24,26,31,0.95)", borderWidth: 4, hoverOffset: 6 }
   ], { legendDisplay: false });
 
   const legenda = document.getElementById("dash-categorias-legenda");
@@ -6176,7 +6276,7 @@ function renderizarGraficoDespesasPorClassificacao(dados) {
 
 function renderizarGraficoFaturamentoMensal(dados) {
   criarGraficoDashboard("dash-chart-faturamento-mensal", "line", dados.periodo.map(i => i.periodo), [
-    { label: "Faturamento", data: dados.periodo.map(i => i.total_receitas), borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.18)" }
+    { label: "Faturamento", data: dados.periodo.map(i => i.total_receitas), borderColor: "#98C379", backgroundColor: "rgba(152,195,121,0.18)" }
   ]);
 }
 
@@ -6187,13 +6287,13 @@ function renderizarGraficoSaldoAcumulado(dados) {
     return acumulado;
   });
   criarGraficoDashboard("dash-chart-saldo-acumulado", "line", dados.periodo.map(i => i.periodo), [
-    { label: "Saldo acumulado", data: valores, borderColor: "#4f8cff", backgroundColor: "rgba(79,140,255,0.18)" }
+    { label: "Saldo acumulado", data: valores, borderColor: "#61AFEF", backgroundColor: "rgba(97,175,239,0.18)" }
   ]);
 }
 
 function renderizarGraficoContasReceber(dados) {
   criarGraficoDashboard("dash-chart-contas-receber", "pie", ["Pendente", "Recebido"], [
-    { label: "Contas a receber", data: [dados.resumo.valores_pendentes_a_receber, dados.contas.resumo?.contas_a_receber_recebido || 0], backgroundColor: ["#f59e0b", "#22c55e"] }
+    { label: "Contas a receber", data: [dados.resumo.valores_pendentes_a_receber, dados.contas.resumo?.contas_a_receber_recebido || 0], backgroundColor: ["#E5C07B", "#98C379"] }
   ]);
 }
 
@@ -6220,6 +6320,55 @@ async function atualizarHorasMaquinasDashboard() {
   document.getElementById("dash-horas-total").textContent = `${normalizarNumero(dados.total_horas).toLocaleString("pt-BR")}h`;
   document.getElementById("dash-dias-total").textContent = dados.dias_trabalhados || 0;
   document.getElementById("dash-horas-valor").textContent = formatarValor(dados.valor_total || 0);
+}
+
+function dataIsoLocal(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function aplicarPeriodoDashboard(tipo) {
+  const inicial = document.getElementById("dash-data-inicial");
+  const final = document.getElementById("dash-data-final");
+  if (!inicial || !final) return;
+
+  const hoje = new Date();
+  let inicio = "";
+  let fim = "";
+
+  if (tipo === "today") {
+    inicio = dataIsoLocal(hoje);
+    fim = dataIsoLocal(hoje);
+  }
+  if (tipo === "7d") {
+    const data = new Date(hoje);
+    data.setDate(data.getDate() - 6);
+    inicio = dataIsoLocal(data);
+    fim = dataIsoLocal(hoje);
+  }
+  if (tipo === "30d") {
+    const data = new Date(hoje);
+    data.setDate(data.getDate() - 29);
+    inicio = dataIsoLocal(data);
+    fim = dataIsoLocal(hoje);
+  }
+  if (tipo === "month") {
+    inicio = dataIsoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    fim = dataIsoLocal(hoje);
+  }
+
+  inicial.value = inicio;
+  final.value = fim;
+}
+
+function sincronizarPresetPeriodoDashboard() {
+  const inicial = document.getElementById("dash-data-inicial")?.value || "";
+  const final = document.getElementById("dash-data-final")?.value || "";
+  document.querySelectorAll("[data-dashboard-period]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.dashboardPeriod === "all" && !inicial && !final);
+  });
 }
 
 async function iniciarDashboard() {
@@ -6280,6 +6429,8 @@ async function iniciarDashboard() {
   document.getElementById("dashboard-frota-ativa").textContent = ativos;
   const totalVeiculosEl = document.getElementById("dashboard-veiculos-total");
   if (totalVeiculosEl) totalVeiculosEl.textContent = veiculos.length;
+  const statusFrotaTotalEl = document.getElementById("dashboard-status-frota-total");
+  if (statusFrotaTotalEl) statusFrotaTotalEl.textContent = veiculos.length;
   const ativosCardEl = document.getElementById("dashboard-veiculos-ativos-card");
   if (ativosCardEl) ativosCardEl.textContent = ativos;
   const inativosCardEl = document.getElementById("dashboard-veiculos-inativos-card");
@@ -6293,8 +6444,10 @@ async function iniciarDashboard() {
   document.getElementById("dashboard-motoristas").textContent = motoristas.length;
 
   renderizarRankingClassificacoes(lancamentos);
+  renderizarTabelaManutencoesDashboard(veiculos);
   renderizarUltimosLancamentosDashboard(lancamentos);
   limparGraficosDashboard();
+  renderizarGraficoStatusFrota(ativos, manutencao, inativos);
   renderizarGraficoReceitasDespesas(dadosDashboard);
   renderizarGraficoCustosPorVeiculo(dadosDashboard);
   renderizarGraficoDespesasPorClassificacao(dadosDashboard);
@@ -6302,7 +6455,21 @@ async function iniciarDashboard() {
   renderizarGraficoSaldoAcumulado(dadosDashboard);
   renderizarGraficoContasReceber(dadosDashboard);
   await atualizarHorasMaquinasDashboard();
-  document.getElementById("btn-dashboard-horas")?.addEventListener("click", atualizarHorasMaquinasDashboard);
+  ["dash-horas-veiculo", "dash-horas-data-inicial", "dash-horas-data-final"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("change", atualizarHorasMaquinasDashboard);
+  });
+  document.querySelectorAll("[data-dashboard-period]").forEach((botao) => {
+    botao.addEventListener("click", async () => {
+      document.querySelectorAll("[data-dashboard-period]").forEach((item) => item.classList.remove("active"));
+      botao.classList.add("active");
+      aplicarPeriodoDashboard(botao.dataset.dashboardPeriod);
+      await iniciarDashboard();
+    });
+  });
+  ["dash-data-inicial", "dash-data-final", "dash-veiculo-id"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("change", sincronizarPresetPeriodoDashboard);
+  });
+  sincronizarPresetPeriodoDashboard();
   document.getElementById("btn-dashboard-filtrar")?.addEventListener("click", async () => {
     await iniciarDashboard();
     fecharPopupFiltros("painel-filtros-dashboard");
@@ -6317,6 +6484,85 @@ async function iniciarDashboard() {
     await iniciarDashboard();
     fecharPopupFiltros("painel-filtros-dashboard");
   });
+}
+
+function renderizarGraficoStatusFrota(ativos, manutencao, inativos) {
+  criarGraficoDashboard("dash-chart-status-frota", "doughnut", ["Em movimento", "Em manutenção", "Inativos"], [
+    {
+      label: "Frota",
+      data: [ativos, manutencao, inativos],
+      backgroundColor: ["#10B981", "#F59E0B", "#EF4444"],
+      borderColor: "rgba(7,11,20,0.95)",
+      borderWidth: 4,
+      hoverOffset: 6
+    }
+  ], {
+    legendDisplay: false,
+    cutout: "68%"
+  });
+}
+
+function renderizarTabelaManutencoesDashboard(veiculos) {
+  const tabela = document.getElementById("dashboard-manutencoes-tabela");
+  if (!tabela) return;
+
+  const manutencoes = veiculos
+    .filter((veiculo) => normalizarTexto(veiculo.status) === "manutencao")
+    .slice(0, 8);
+
+  if (!manutencoes.length) {
+    tabela.innerHTML = `
+      <tr>
+        <td colspan="7" class="empty-row">Nenhum veículo em manutenção no momento.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  tabela.innerHTML = manutencoes.map((veiculo) => `
+    <tr>
+      <td>${escapeHtml(veiculo.nome || veiculo.modelo || "Veículo")}</td>
+      <td>${escapeHtml(veiculo.placa || "-")}</td>
+      <td>${escapeHtml(tipoServicoManutencao(veiculo))}</td>
+      <td>${escapeHtml(vencimentoManutencao(veiculo))}</td>
+      <td><span class="status-pill ${classeStatusManutencao(veiculo)}">${escapeHtml(veiculo.status || "Manutencao")}</span></td>
+      <td>${escapeHtml(veiculo.observacao || "Sem observação registrada")}</td>
+      <td>
+        <button class="gm7-row-action-btn" type="button" onclick="editarVeiculoPorId(${veiculo.id})" title="Editar veículo" aria-label="Editar veículo">
+          <span data-lucide="ellipsis"></span>
+        </button>
+      </td>
+    </tr>
+  `).join("");
+  window.lucide?.createIcons();
+}
+
+function classeStatusManutencao(veiculo) {
+  const texto = normalizarTexto(`${veiculo.status || ""} ${veiculo.observacao || ""}`);
+  if (texto.includes("atras") || texto.includes("crit") || texto.includes("urgente")) return "maintenance-critical";
+  if (texto.includes("concl") || texto.includes("feito") || texto.includes("ativo")) return "maintenance-ok";
+  if (texto.includes("pend") || texto.includes("manutenc") || texto.includes("prevent")) return "maintenance-warning";
+  return "maintenance-neutral";
+}
+
+function tipoServicoManutencao(veiculo) {
+  const texto = normalizarTexto(`${veiculo.observacao || ""} ${veiculo.tipo || ""}`);
+  if (texto.includes("oleo") || texto.includes("filtro")) return "Troca de óleo";
+  if (texto.includes("pneu") || texto.includes("roda")) return "Pneus";
+  if (texto.includes("freio")) return "Freios";
+  if (texto.includes("eletric")) return "Elétrica";
+  if (texto.includes("motor")) return "Motor";
+  if (texto.includes("prevent")) return "Preventiva";
+  return "Manutenção geral";
+}
+
+function vencimentoManutencao(veiculo) {
+  const texto = String(veiculo.observacao || "");
+  const dataIso = texto.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (dataIso) return formatarDataCurta(dataIso[1]);
+  const dataBr = texto.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+  if (dataBr) return `${dataBr[1]}/${dataBr[2]}/${dataBr[3]}`;
+  return "A definir";
 }
 
 function renderizarRankingClassificacoes(lancamentos) {
@@ -6801,12 +7047,14 @@ logoutBtn.addEventListener("click", () => {
 if (themeToggleBtn) {
   themeToggleBtn.addEventListener("click", () => {
     const atual = document.body.dataset.theme || "dark";
-    const proximo = atual === "dark" ? "light" : "dark";
+    const ordemTemas = ["dark", "light", "gm7"];
+    const proximo = ordemTemas[(ordemTemas.indexOf(atual) + 1) % ordemTemas.length] || "dark";
     localStorage.setItem("financeiro_tema", proximo);
     const config = carregarConfiguracoesLocais();
-    localStorage.setItem("financeiro_configuracoes", JSON.stringify({ ...config, tema: proximo }));
+    localStorage.setItem(_chaveConfiguracao(), JSON.stringify({ ...config, tema: proximo }));
     aplicarTema();
-    mostrarToast(`Tema ${proximo === "dark" ? "escuro" : "claro"} aplicado.`, "success");
+    const nomesTema = { dark: "escuro", light: "claro", gm7: "GM7 Fleet" };
+    mostrarToast(`Tema ${nomesTema[proximo] || proximo} aplicado.`, "success");
   });
 }
 
