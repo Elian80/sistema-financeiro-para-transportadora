@@ -7201,3 +7201,237 @@ body[data-theme="light"]:not([data-theme="gm7"]) .filter-popup-card {
     font-size: 9px;
   }
 }
+
+/* ============================================================
+   Densidade do dashboard e sidebar mobile sem blur
+   ============================================================ */
+body.sidebar-open .sidebar-backdrop {
+  background: rgba(2, 6, 23, 0.42) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.gm7-dashboard-shell {
+  gap: 14px;
+}
+
+.gm7-hero-panel {
+  min-height: 190px;
+  padding: clamp(18px, 2vw, 24px);
+  grid-template-columns: minmax(300px, 1.1fr) minmax(180px, 240px) minmax(200px, 260px);
+  gap: 16px;
+}
+
+.gm7-hero-copy h2 {
+  margin: 12px 0 8px;
+  font-size: clamp(28px, 3.1vw, 42px);
+}
+
+.gm7-hero-actions {
+  margin-top: 14px;
+}
+
+.gm7-fleet-orbit {
+  width: min(230px, 100%);
+}
+
+.gm7-orbit-core {
+  width: 84px;
+  height: 84px;
+  border-radius: 24px;
+}
+
+.gm7-orbit-core svg {
+  width: 38px;
+  height: 38px;
+}
+
+.gm7-hero-score {
+  padding: 16px;
+  border-radius: 15px;
+}
+
+.gm7-hero-score strong {
+  font-size: clamp(30px, 3.4vw, 44px);
+}
+
+.gm7-overview-grid {
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.gm7-finance-grid {
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.gm7-command-grid,
+.gm7-analytics-grid,
+.gm7-operations-grid {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: 14px;
+}
+
+.gm7-fleet-card {
+  min-height: 100px;
+  padding: 14px;
+  gap: 12px;
+  border-radius: 16px;
+}
+
+.gm7-card-icon,
+.gm7-panel-icon,
+.gm7-metric-card > span {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
+
+.gm7-fleet-card strong {
+  font-size: 28px;
+}
+
+.gm7-fleet-card small,
+.gm7-fleet-card em {
+  font-size: 11px;
+}
+
+.gm7-balance-panel,
+.gm7-map-panel,
+.gm7-panel {
+  padding: 16px;
+}
+
+.gm7-panel-head {
+  margin-bottom: 12px;
+}
+
+.gm7-panel-head h3 {
+  font-size: 16px;
+}
+
+.gm7-balance-value {
+  font-size: clamp(30px, 3.3vw, 44px);
+}
+
+.gm7-metric-card {
+  min-height: 100px;
+  padding: 13px;
+  gap: 6px;
+}
+
+.gm7-metric-card strong {
+  font-size: clamp(16px, 1.35vw, 21px);
+}
+
+.gm7-map-panel {
+  min-height: 292px;
+}
+
+.gm7-hours-kpis {
+  margin-top: 12px;
+}
+
+.gm7-hours-kpis div,
+.gm7-assets-list div {
+  padding: 11px;
+}
+
+.gm7-balance-panel canvas,
+.dash-analytics-grid canvas {
+  height: 190px !important;
+  min-height: 190px !important;
+  max-height: 190px !important;
+}
+
+.gm7-donut-wrap,
+.gm7-fleet-status-chart canvas {
+  width: 146px !important;
+  height: 146px !important;
+  min-height: 146px !important;
+  max-height: 146px !important;
+}
+
+.gm7-fleet-status-chart {
+  grid-template-columns: minmax(120px, 150px) minmax(110px, 1fr);
+  gap: 10px;
+  padding: 10px;
+}
+
+.gm7-donut-center strong {
+  font-size: 24px;
+}
+
+.gm7-donut-center span {
+  font-size: 10px;
+}
+
+.dash-donut-layout canvas,
+.gm7-category-panel .dash-donut-layout canvas {
+  width: 176px !important;
+  height: 176px !important;
+  min-height: 176px !important;
+  max-height: 176px !important;
+}
+
+.dash-donut-layout {
+  min-height: 182px;
+  gap: 12px;
+}
+
+.gm7-dashboard-shell .data-table th,
+.gm7-dashboard-shell .data-table td {
+  padding: 11px 12px;
+}
+
+@media (max-width: 1440px) {
+  .gm7-finance-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1180px) {
+  .gm7-command-grid,
+  .gm7-analytics-grid,
+  .gm7-operations-grid,
+  .gm7-hero-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .gm7-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .gm7-dashboard-shell {
+    gap: 10px;
+  }
+
+  .gm7-hero-panel {
+    min-height: 0;
+  }
+
+  .gm7-balance-panel canvas,
+  .dash-analytics-grid canvas {
+    height: 180px !important;
+    min-height: 180px !important;
+    max-height: 180px !important;
+  }
+
+  .gm7-donut-wrap,
+  .gm7-fleet-status-chart canvas {
+    width: 138px !important;
+    height: 138px !important;
+    min-height: 138px !important;
+    max-height: 138px !important;
+  }
+
+  .dash-donut-layout canvas,
+  .gm7-category-panel .dash-donut-layout canvas {
+    width: 160px !important;
+    height: 160px !important;
+    min-height: 160px !important;
+    max-height: 160px !important;
+  }
+}
