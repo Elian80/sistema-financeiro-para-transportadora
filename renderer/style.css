@@ -6849,3 +6849,355 @@ body[data-theme="light"] .data-table tbody tr:hover td {
     width: 100%;
   }
 }
+
+/* ============================================================
+   Hotfix responsivo GM7
+   Mantem o tema GM7 isolado e estabiliza mobile/bottom nav.
+   ============================================================ */
+body:not([data-theme="gm7"]) .sidebar {
+  width: 278px;
+  flex-basis: 278px;
+  padding: 18px;
+  border-radius: var(--radius-xl);
+}
+
+body:not([data-theme="gm7"]) .topbar,
+body:not([data-theme="gm7"]) .panel-box,
+body:not([data-theme="gm7"]) .kpi-card,
+body:not([data-theme="gm7"]) .vehicle-card,
+body:not([data-theme="gm7"]) .modal-content,
+body:not([data-theme="gm7"]) .filter-popup-card {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+body:not([data-theme="gm7"]) .nav-btn {
+  min-height: 46px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+}
+
+body:not([data-theme="gm7"]) .nav-icon {
+  background: transparent !important;
+}
+
+body[data-theme="light"]:not([data-theme="gm7"]) .topbar,
+body[data-theme="light"]:not([data-theme="gm7"]) .panel-box,
+body[data-theme="light"]:not([data-theme="gm7"]) .kpi-card,
+body[data-theme="light"]:not([data-theme="gm7"]) .vehicle-card,
+body[data-theme="light"]:not([data-theme="gm7"]) .modal-content,
+body[data-theme="light"]:not([data-theme="gm7"]) .filter-popup-card {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07) !important;
+}
+
+.gm7-dashboard-shell,
+.gm7-dashboard-shell * {
+  box-sizing: border-box;
+}
+
+.gm7-dashboard-shell {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.gm7-hero-panel,
+.gm7-fleet-card,
+.gm7-balance-panel,
+.gm7-map-panel,
+.gm7-metric-card,
+.gm7-panel {
+  min-width: 0;
+}
+
+.gm7-command-grid,
+.gm7-analytics-grid,
+.gm7-operations-grid {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr);
+}
+
+.gm7-overview-grid,
+.gm7-finance-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.gm7-dashboard-shell .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gm7-dashboard-shell .data-table {
+  min-width: 760px;
+}
+
+.gm7-balance-panel canvas,
+.dash-analytics-grid canvas {
+  aspect-ratio: auto !important;
+}
+
+@media (max-width: 1180px) {
+  body:not([data-theme="gm7"]) .sidebar {
+    width: 248px;
+    flex-basis: 248px;
+  }
+
+  .gm7-command-grid,
+  .gm7-analytics-grid,
+  .gm7-operations-grid,
+  .gm7-hero-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: hidden;
+  }
+
+  .main-area {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .topbar {
+    min-height: 58px;
+    max-width: 100%;
+    padding: 10px 12px !important;
+    border-radius: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .topbar-brand,
+  .page-heading {
+    min-width: 0;
+  }
+
+  .topbar h2,
+  .topbar-brand-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-actions {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .topbar-actions .ghost-btn,
+  .topbar-actions .install-pwa-btn {
+    display: none !important;
+  }
+
+  .page-content {
+    width: 100%;
+    max-width: 100%;
+    padding: 12px !important;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: hidden !important;
+  }
+
+  .mobile-bottom-nav {
+    height: calc(66px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(66px + env(safe-area-inset-bottom, 0px));
+    padding: 4px 6px max(6px, env(safe-area-inset-bottom, 0px)) !important;
+    align-items: stretch;
+    gap: 2px;
+  }
+
+  .mobile-bottom-nav .mbn-btn,
+  .mobile-bottom-nav .nav-btn.mbn-btn {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 56px !important;
+    flex: 1 1 0 !important;
+    padding: 6px 2px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--muted);
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    text-align: center !important;
+  }
+
+  .mobile-bottom-nav .mbn-btn.active {
+    color: var(--blue) !important;
+  }
+
+  .mobile-bottom-nav .mbn-label {
+    max-width: 100%;
+    font-size: 10px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-bottom-nav .mbn-icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+  }
+
+  .sidebar,
+  body:not([data-theme="gm7"]) .sidebar,
+  body[data-theme="gm7"] .sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    width: min(300px, 86vw) !important;
+    flex-basis: auto !important;
+    height: 100dvh !important;
+    border-radius: 0 20px 20px 0 !important;
+    transform: translateX(-104%) !important;
+    z-index: 1001 !important;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 14px max(16px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.sidebar-open .sidebar {
+    transform: translateX(0) !important;
+  }
+
+  body.sidebar-collapsed .sidebar {
+    width: min(300px, 86vw) !important;
+  }
+
+  .sidebar .nav-btn {
+    width: 100% !important;
+    min-height: 46px !important;
+    padding: 0 12px !important;
+    justify-content: flex-start !important;
+  }
+
+  .gm7-dashboard-shell {
+    gap: 12px;
+  }
+
+  .gm7-hero-panel,
+  .gm7-balance-panel,
+  .gm7-map-panel,
+  .gm7-panel,
+  .gm7-table-panel,
+  .gm7-maintenance-panel {
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .gm7-hero-copy h2 {
+    font-size: 28px !important;
+    line-height: 1.05;
+  }
+
+  .gm7-overview-grid,
+  .gm7-finance-grid,
+  .gm7-hours-kpis,
+  .dash-top-cards,
+  .dash-finance-strip,
+  .dash-metrics-strip {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gm7-command-grid,
+  .gm7-analytics-grid,
+  .gm7-operations-grid,
+  .dash-analytics-grid,
+  .dashboard-grid,
+  .dashboard-layout {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .gm7-fleet-card,
+  .gm7-metric-card {
+    min-height: 0 !important;
+  }
+
+  .gm7-fleet-status-chart,
+  .dash-donut-layout {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+  }
+
+  .gm7-balance-panel canvas,
+  .dash-analytics-grid canvas {
+    height: 220px !important;
+    min-height: 220px !important;
+    max-height: 220px !important;
+  }
+
+  .gm7-donut-wrap,
+  .gm7-fleet-status-chart canvas {
+    width: 172px !important;
+    height: 172px !important;
+    min-height: 172px !important;
+    max-height: 172px !important;
+  }
+
+  .dash-donut-layout canvas,
+  .gm7-category-panel .dash-donut-layout canvas {
+    width: 188px !important;
+    height: 188px !important;
+    min-height: 188px !important;
+    max-height: 188px !important;
+  }
+
+  .gm7-period-presets,
+  .gm7-period-custom {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .gm7-period-custom input,
+  .gm7-period-custom select,
+  .gm7-period-apply,
+  .gm7-period-clear {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .page-content {
+    padding-inline: 10px !important;
+  }
+
+  .gm7-hero-copy h2 {
+    font-size: 25px !important;
+  }
+
+  .gm7-period-presets,
+  .gm7-period-custom {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-bottom-nav .mbn-label {
+    font-size: 9px;
+  }
+}
