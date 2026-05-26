@@ -258,7 +258,7 @@ const pages = {
               <span class="gm7-period-pill" id="dash-periodo-chip">Todos os dados</span>
               <button type="button" class="gm7-filter-toggle" id="btn-dashboard-opcoes" aria-expanded="false" aria-controls="dashboard-period-selector">
                 <span data-lucide="sliders-horizontal"></span>
-                Filtros
+                Opcoes
               </button>
             </div>
             <div class="gm7-period-selector is-collapsed" id="dashboard-period-selector" aria-label="Seletor de periodo do dashboard" aria-hidden="true">

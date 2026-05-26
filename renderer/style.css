@@ -8175,3 +8175,103 @@ body[data-theme="light"] .gm7-filter-toggle.is-active {
     max-height: 96px !important;
   }
 }
+
+/* ============================================================
+   Mobile - centro operacional como barra compacta
+   ============================================================ */
+@media (max-width: 768px) {
+  .gm7-hero-panel {
+    padding: 7px 9px !important;
+    border-radius: 12px !important;
+    gap: 0 !important;
+    min-height: 0 !important;
+    background:
+      linear-gradient(135deg, rgba(15, 23, 36, 0.94), rgba(18, 28, 43, 0.88)) !important;
+  }
+
+  .gm7-hero-copy {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .gm7-hero-copy h2 {
+    margin: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gm7-hero-copy > p,
+  #dashboard-periodo,
+  .gm7-period-pill,
+  .gm7-live-pill,
+  .gm7-hero-score {
+    display: none !important;
+  }
+
+  .gm7-hero-actions {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0;
+    margin: 0 !important;
+    min-width: 0;
+  }
+
+  .gm7-filter-toggle {
+    min-height: 30px !important;
+    padding: 0 10px !important;
+    border-radius: 999px !important;
+    font-size: 10px !important;
+    gap: 5px !important;
+    white-space: nowrap;
+  }
+
+  .gm7-filter-toggle svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+
+  .gm7-period-selector {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-top: 7px !important;
+  }
+
+  .gm7-period-selector.is-collapsed {
+    margin-top: 0 !important;
+  }
+
+  .gm7-overview-grid {
+    margin-top: 0 !important;
+  }
+
+  .gm7-fleet-card small {
+    display: none !important;
+  }
+
+  .gm7-fleet-card strong {
+    font-size: 20px !important;
+  }
+
+  .gm7-fleet-card {
+    min-height: 62px !important;
+  }
+
+  .gm7-balance-panel .gm7-panel-head span,
+  .gm7-map-panel .gm7-panel-head span {
+    display: none !important;
+  }
+
+  .gm7-balance-meta {
+    display: none !important;
+  }
+}
+
+body[data-theme="light"] .gm7-hero-panel {
+  background: rgba(255, 255, 255, 0.94) !important;
+}
