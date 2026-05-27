@@ -8331,3 +8331,105 @@ body[data-theme="light"] .gm7-hero-panel {
     display: none !important;
   }
 }
+
+/* ============================================================
+   Contraste final de botoes por tema
+   Evita texto com a mesma cor do fundo em GM7, claro e escuro.
+   ============================================================ */
+.primary-btn,
+button.primary-btn,
+.gm7-period-btn.active,
+.gm7-period-apply,
+.nav-btn.active,
+body[data-theme="gm7"] .primary-btn,
+body[data-theme="gm7"] button.primary-btn,
+body[data-theme="gm7"] .gm7-period-btn.active,
+body[data-theme="gm7"] .gm7-period-apply,
+body[data-theme="gm7"] .nav-btn.active {
+  color: #ffffff !important;
+}
+
+.primary-btn *,
+button.primary-btn *,
+.gm7-period-btn.active *,
+.gm7-period-apply *,
+.nav-btn.active *,
+body[data-theme="gm7"] .primary-btn *,
+body[data-theme="gm7"] .gm7-period-btn.active *,
+body[data-theme="gm7"] .gm7-period-apply *,
+body[data-theme="gm7"] .nav-btn.active * {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+body[data-theme="gm7"] .ghost-btn,
+body[data-theme="gm7"] .small-btn,
+body[data-theme="gm7"] .gm7-period-btn,
+body[data-theme="gm7"] .gm7-period-clear,
+body[data-theme="gm7"] .gm7-filter-toggle {
+  color: #dbeafe !important;
+}
+
+body[data-theme="gm7"] .ghost-btn:hover,
+body[data-theme="gm7"] .small-btn:hover,
+body[data-theme="gm7"] .gm7-period-btn:hover,
+body[data-theme="gm7"] .gm7-period-clear:hover,
+body[data-theme="gm7"] .gm7-filter-toggle:hover,
+body[data-theme="gm7"] .gm7-filter-toggle.is-active {
+  color: #ffffff !important;
+}
+
+body[data-theme="light"] .primary-btn,
+body[data-theme="light"] button.primary-btn,
+body[data-theme="light"] .gm7-period-btn.active,
+body[data-theme="light"] .gm7-period-apply {
+  color: #ffffff !important;
+}
+
+body[data-theme="light"] .ghost-btn,
+body[data-theme="light"] .small-btn,
+body[data-theme="light"] .gm7-period-btn,
+body[data-theme="light"] .gm7-period-clear {
+  color: #1e293b !important;
+}
+
+body[data-theme="light"] .nav-btn.active,
+body[data-theme="light"] .mobile-bottom-nav .mbn-btn.active {
+  color: #1d4ed8 !important;
+}
+
+body[data-theme="light"] .nav-btn.active *,
+body[data-theme="light"] .mobile-bottom-nav .mbn-btn.active * {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+body[data-theme="dark"] .primary-btn,
+body[data-theme="dark"] button.primary-btn,
+body[data-theme="dark"] .nav-btn.active {
+  color: #ffffff !important;
+}
+
+.status-pill.pago,
+.status-pill.recebido,
+.status-pill.ativo,
+.status-pill.concluido,
+.status-pill.atrasado,
+.status-pill.erro,
+.status-pill.critico,
+.status-pill.critical,
+.status-pill.urgente,
+.gm7-dashboard-shell .status-pill.green,
+.gm7-dashboard-shell .status-pill.ativo,
+.gm7-dashboard-shell .status-pill.concluido,
+.gm7-dashboard-shell .status-pill.recebido,
+.gm7-dashboard-shell .status-pill.pago,
+.gm7-dashboard-shell .status-pill.red,
+.gm7-dashboard-shell .status-pill.vermelho,
+.gm7-dashboard-shell .status-pill.critical,
+.gm7-dashboard-shell .status-pill.critico,
+.gm7-dashboard-shell .status-pill.atrasado,
+.gm7-dashboard-shell .status-pill.urgente,
+.gm7-dashboard-shell .status-pill.erro {
+  color: #ffffff !important;
+}
