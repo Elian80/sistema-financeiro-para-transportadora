@@ -8328,6 +8328,6 @@ body[data-theme="light"] .gm7-hero-panel {
   }
 
   body.sidebar-collapsed .sidebar-footer {
-    padding: 10px 6px !important;
+    display: none !important;
   }
 }
