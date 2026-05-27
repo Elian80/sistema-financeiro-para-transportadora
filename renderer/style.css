@@ -8275,3 +8275,59 @@ body[data-theme="light"] .gm7-filter-toggle.is-active {
 body[data-theme="light"] .gm7-hero-panel {
   background: rgba(255, 255, 255, 0.94) !important;
 }
+
+/* ============================================================
+   Sidebar recolhida - prioridade final desktop
+   Corrige overrides de tema que mantinham a barra sempre larga.
+   ============================================================ */
+@media (min-width: 901px) {
+  body.sidebar-collapsed .sidebar,
+  body.sidebar-collapsed:not([data-theme="gm7"]) .sidebar,
+  body.sidebar-collapsed[data-theme="gm7"] .sidebar {
+    width: 86px !important;
+    flex: 0 0 86px !important;
+    flex-basis: 86px !important;
+    padding-inline: 12px !important;
+  }
+
+  body.sidebar-collapsed .sidebar-head {
+    justify-content: center !important;
+    padding-inline: 0 !important;
+  }
+
+  body.sidebar-collapsed .brand-copy,
+  body.sidebar-collapsed .nav-label,
+  body.sidebar-collapsed .sidebar-user-info {
+    display: none !important;
+  }
+
+  body.sidebar-collapsed .brand {
+    justify-content: center !important;
+  }
+
+  body.sidebar-collapsed .brand-icon {
+    width: 44px !important;
+    height: 44px !important;
+    flex-basis: 44px !important;
+  }
+
+  body.sidebar-collapsed .nav {
+    padding-right: 0 !important;
+  }
+
+  body.sidebar-collapsed .nav-btn,
+  body.sidebar-collapsed:not([data-theme="gm7"]) .nav-btn {
+    min-height: 46px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  body.sidebar-collapsed .nav-icon {
+    margin: 0 !important;
+  }
+
+  body.sidebar-collapsed .sidebar-footer {
+    padding: 10px 6px !important;
+  }
+}
