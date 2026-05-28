@@ -2953,16 +2953,146 @@ function renderizarReciboPagamento(folha, item, motorista) {
   `;
 }
 
+function imprimirHtmlFolhaPagamento(htmlRecibo) {
+  const iframeAnterior = document.getElementById("folha-pagamento-print-frame");
+  if (iframeAnterior) iframeAnterior.remove();
+
+  const iframe = document.createElement("iframe");
+  iframe.id = "folha-pagamento-print-frame";
+  iframe.title = "Impressao da folha de pagamento";
+  iframe.style.position = "fixed";
+  iframe.style.left = "-10000px";
+  iframe.style.top = "0";
+  iframe.style.width = "210mm";
+  iframe.style.height = "297mm";
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
+
+  const documento = iframe.contentDocument || iframe.contentWindow.document;
+  documento.open();
+  documento.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Folha de pagamento</title>
+  <style>
+    @page { size: A4 portrait; margin: 5mm; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #000000;
+      font-family: "Times New Roman", Times, serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .payroll-adelia-model {
+      display: block;
+      width: 200mm;
+      min-height: 287mm;
+      padding: 18mm 15mm 10mm 13mm;
+      margin: 0;
+      background: #ffffff;
+      color: #000000;
+      border: 2px solid #000000;
+    }
+    .salary-slip-adelia {
+      width: 172mm;
+      max-width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 8.2pt;
+      line-height: 1.05;
+      color: #000000;
+      background: #ffffff;
+      margin: 0 0 8mm 0;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .salary-slip-adelia:last-child { margin-bottom: 0; }
+    .salary-slip-adelia col:nth-child(1) { width: 12%; }
+    .salary-slip-adelia col:nth-child(2) { width: 9%; }
+    .salary-slip-adelia col:nth-child(3) { width: 14%; }
+    .salary-slip-adelia col:nth-child(4) { width: 16%; }
+    .salary-slip-adelia col:nth-child(5) { width: 17%; }
+    .salary-slip-adelia col:nth-child(6) { width: 15%; }
+    .salary-slip-adelia col:nth-child(7) { width: 17%; }
+    .salary-slip-adelia td {
+      height: 4.45mm;
+      padding: 0 1.1mm;
+      border: 1px solid #000000;
+      background: #ffffff;
+      color: #000000;
+      vertical-align: middle;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .salary-slip-adelia .slip-model-title,
+    .salary-slip-adelia .slip-model-title td {
+      height: 6mm;
+      border: none !important;
+      background: #e2f0d9 !important;
+      font-size: 8.5pt;
+      font-weight: 700;
+      text-align: right;
+    }
+    .salary-slip-adelia .slip-company-row td,
+    .salary-slip-adelia .slip-label,
+    .salary-slip-adelia .slip-company { background: #e7e6e6 !important; }
+    .salary-slip-adelia .slip-doc-title,
+    .salary-slip-adelia .slip-period {
+      background: #d0cece !important;
+      text-align: center;
+    }
+    .salary-slip-adelia .slip-period { font-weight: 700; }
+    .salary-slip-adelia .slip-head,
+    .salary-slip-adelia .slip-total-head { text-align: center; }
+    .salary-slip-adelia .slip-company,
+    .salary-slip-adelia .slip-employee-name,
+    .salary-slip-adelia .slip-label { text-align: center; }
+    .salary-slip-adelia .slip-desc { text-align: left; }
+    .salary-slip-adelia .slip-center { text-align: center; }
+    .salary-slip-adelia .slip-money { text-align: right; }
+    .salary-slip-adelia .slip-item-row td {
+      border-top: 1px solid #000000;
+      border-bottom: 0;
+    }
+    .salary-slip-adelia .slip-item-row + .slip-item-row td { border-top: 0; }
+    .salary-slip-adelia .slip-blank {
+      border-left: 0 !important;
+      border-right: 0 !important;
+      background: #ffffff !important;
+    }
+    .salary-slip-adelia .slip-net-label,
+    .salary-slip-adelia .slip-net-value { background: #92d050 !important; }
+    .slip-copy-label td {
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+      height: 3mm;
+      font-size: 6.5pt;
+    }
+  </style>
+</head>
+<body>${htmlRecibo}</body>
+</html>`);
+  documento.close();
+
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(() => iframe.remove(), 1000);
+  }, 250);
+}
+
 // Busca os dados do motorista, gera o HTML do recibo e dispara window.print().
-// O recibo é injetado em #recibo-folha-container (criado dinamicamente se necessário).
-// A impressão inclui apenas o elemento com classe .print-area via CSS de mídia.
+// A impressao usa iframe isolado para evitar conflito com o CSS global de impressao.
 async function imprimirReciboFolha(folha, item) {
   const motoristas = await carregarMotoristas();
   const motorista = motoristas.find((registro) => registro.id === item.motorista_id) || {};
-  const container = document.getElementById("recibo-folha-container") || document.body.appendChild(document.createElement("div"));
-  container.id = "recibo-folha-container";
-  container.innerHTML = renderizarReciboPagamento(folha, item, motorista);
-  window.print();
+  imprimirHtmlFolhaPagamento(renderizarReciboPagamento(folha, item, motorista));
 }
 
 window.imprimirFolhaSalva = async (folhaId) => {
