@@ -602,14 +602,89 @@ const pages = {
     title: "Empregados",
     subtitle: "Controle da equipe operacional",
     render: () => `
-      <div class="panel-box filter-launcher">
-        <button class="primary-btn" id="btn-novo-motorista">+ Cadastrar empregado</button>
+      <div class="page-tabs" style="display:flex;gap:8px;margin-bottom:18px;">
+        <button class="tab-btn active" data-tab="tab-empregados-cadastro" type="button">Cadastro</button>
+        <button class="tab-btn" data-tab="tab-empregados-ferias" type="button">Férias</button>
       </div>
 
-      <div id="form-motorista-container"></div>
-      <div id="folha-pagamento-container"></div>
-      <div id="lista-motoristas" class="table-wrap"></div>
-      <div id="historico-folha-container"></div>
+      <div id="tab-empregados-cadastro">
+        <div class="panel-box filter-launcher">
+          <button class="primary-btn" id="btn-novo-motorista">+ Cadastrar empregado</button>
+        </div>
+
+        <div id="form-motorista-container"></div>
+        <div id="folha-pagamento-container"></div>
+        <div id="lista-motoristas" class="table-wrap"></div>
+        <div id="historico-folha-container"></div>
+      </div>
+
+      <div id="tab-empregados-ferias" style="display:none;">
+        <div class="content-grid">
+          <section class="panel-box">
+            <h3 style="margin-top:0;">Novo período de férias</h3>
+            <div class="form-grid">
+              <div class="field full">
+                <label>Empregado</label>
+                <select id="ferias-motorista"></select>
+              </div>
+
+              <div class="field">
+                <label>Início</label>
+                <input id="ferias-inicio" type="date" />
+              </div>
+
+              <div class="field">
+                <label>Fim</label>
+                <input id="ferias-fim" type="date" />
+              </div>
+
+              <div class="field full btn-row">
+                <button class="primary-btn" id="btn-salvar-ferias" type="button">Adicionar férias</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel-box">
+            <div class="table-toolbar">
+              <div>
+                <h3 style="margin:0;">Resumo de férias</h3>
+                <span>Controle rápido dos períodos programados e realizados</span>
+              </div>
+            </div>
+
+            <div class="kpi-grid" style="margin-bottom:0;">
+              <div class="kpi-card"><div class="kpi-label">Programadas</div><div class="kpi-value" id="ferias-programadas">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Em férias</div><div class="kpi-value" id="ferias-andamento">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Concluídas</div><div class="kpi-value" id="ferias-concluidas">0</div></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel-box" style="margin-top:18px;">
+          <div class="table-toolbar">
+            <div>
+              <h3 style="margin:0;">Controle de férias</h3>
+              <span>Visualize o período, quantidade de dias e status de cada empregado</span>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Empregado</th>
+                  <th>Início</th>
+                  <th>Fim</th>
+                  <th>Dias</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-ferias"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     `
   },
 
@@ -2576,6 +2651,152 @@ window.excluirMotorista = async (id) => {
   await apiDelete(`/motoristas/${id}`);
   await renderizarMotoristas();
 };
+
+const FERIAS_STORAGE_KEY = "gm7_ferias_empregados";
+
+function carregarFeriasEmpregados() {
+  try {
+    const dados = JSON.parse(localStorage.getItem(FERIAS_STORAGE_KEY) || "[]");
+    return Array.isArray(dados) ? dados : [];
+  } catch {
+    return [];
+  }
+}
+
+function salvarFeriasEmpregados(registros) {
+  localStorage.setItem(FERIAS_STORAGE_KEY, JSON.stringify(registros));
+}
+
+function calcularDiasFerias(inicio, fim) {
+  const dataInicio = new Date(`${inicio}T00:00:00`);
+  const dataFim = new Date(`${fim}T00:00:00`);
+  if (Number.isNaN(dataInicio.getTime()) || Number.isNaN(dataFim.getTime()) || dataFim < dataInicio) return 0;
+  return Math.floor((dataFim - dataInicio) / 86400000) + 1;
+}
+
+function obterStatusFerias(inicio, fim) {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dataInicio = new Date(`${inicio}T00:00:00`);
+  const dataFim = new Date(`${fim}T00:00:00`);
+
+  if (hoje < dataInicio) return { texto: "Programada", classe: "pendente" };
+  if (hoje > dataFim) return { texto: "Concluída", classe: "concluido" };
+  return { texto: "Em férias", classe: "ativo" };
+}
+
+async function preencherSelectFeriasEmpregados() {
+  const select = document.getElementById("ferias-motorista");
+  if (!select) return;
+
+  const empregados = await carregarMotoristas();
+  select.innerHTML = empregados.length
+    ? `<option value="">Selecione...</option>${empregados.map((empregado) => `<option value="${empregado.id}">${escapeHtml(empregado.nome)}</option>`).join("")}`
+    : `<option value="">Nenhum empregado cadastrado</option>`;
+}
+
+async function renderizarFeriasEmpregados() {
+  const tabela = document.getElementById("tabela-ferias");
+  if (!tabela) return;
+
+  const ferias = carregarFeriasEmpregados().sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
+  const contadores = { programadas: 0, andamento: 0, concluidas: 0 };
+
+  if (!ferias.length) {
+    tabela.innerHTML = `<tr><td colspan="6" class="empty-row">Nenhum período de férias cadastrado.</td></tr>`;
+  } else {
+    tabela.innerHTML = ferias.map((registro) => {
+      const status = obterStatusFerias(registro.inicio, registro.fim);
+      if (status.texto === "Programada") contadores.programadas += 1;
+      if (status.texto === "Em férias") contadores.andamento += 1;
+      if (status.texto === "Concluída") contadores.concluidas += 1;
+
+      return `
+        <tr>
+          <td>${escapeHtml(registro.empregado_nome || "-")}</td>
+          <td>${formatarDataCurta(registro.inicio)}</td>
+          <td>${formatarDataCurta(registro.fim)}</td>
+          <td>${calcularDiasFerias(registro.inicio, registro.fim)}</td>
+          <td><span class="status-pill ${status.classe}">${status.texto}</span></td>
+          <td><button class="small-btn delete-btn" onclick="excluirFeriasEmpregado('${registro.id}')">Excluir</button></td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  document.getElementById("ferias-programadas").textContent = contadores.programadas;
+  document.getElementById("ferias-andamento").textContent = contadores.andamento;
+  document.getElementById("ferias-concluidas").textContent = contadores.concluidas;
+}
+
+async function salvarFeriasEmpregado() {
+  const select = document.getElementById("ferias-motorista");
+  const inicio = document.getElementById("ferias-inicio")?.value;
+  const fim = document.getElementById("ferias-fim")?.value;
+  const empregadoId = Number(select?.value || 0);
+  const empregadoNome = select?.selectedOptions?.[0]?.textContent || "";
+
+  if (!empregadoId || !inicio || !fim) {
+    mostrarToast("Selecione o empregado e informe início e fim das férias.", "warning");
+    return;
+  }
+
+  if (calcularDiasFerias(inicio, fim) <= 0) {
+    mostrarToast("A data final deve ser igual ou posterior à data inicial.", "error");
+    return;
+  }
+
+  const ferias = carregarFeriasEmpregados();
+  ferias.push({
+    id: `${Date.now()}-${empregadoId}`,
+    empregado_id: empregadoId,
+    empregado_nome: empregadoNome,
+    inicio,
+    fim,
+    criado_em: new Date().toISOString()
+  });
+
+  salvarFeriasEmpregados(ferias);
+  document.getElementById("ferias-inicio").value = "";
+  document.getElementById("ferias-fim").value = "";
+  mostrarToast("Férias adicionadas ao controle.", "success");
+  await renderizarFeriasEmpregados();
+}
+
+window.excluirFeriasEmpregado = async (id) => {
+  if (!confirm("Deseja excluir este período de férias?")) return;
+  salvarFeriasEmpregados(carregarFeriasEmpregados().filter((registro) => registro.id !== id));
+  await renderizarFeriasEmpregados();
+};
+
+async function iniciarModuloEmpregados() {
+  const tabIds = ["tab-empregados-cadastro", "tab-empregados-ferias"];
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.onclick = async () => {
+      document.querySelectorAll(".tab-btn").forEach((item) => item.classList.remove("active"));
+      btn.classList.add("active");
+      tabIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === btn.dataset.tab ? "block" : "none";
+      });
+      if (btn.dataset.tab === "tab-empregados-ferias") {
+        await preencherSelectFeriasEmpregados();
+        await renderizarFeriasEmpregados();
+      }
+    };
+  });
+
+  document.getElementById("btn-novo-motorista").onclick = () => {
+    editandoMotoristaId = null;
+    abrirFormMotorista();
+  };
+
+  document.getElementById("btn-salvar-ferias")?.addEventListener("click", salvarFeriasEmpregado);
+  await renderizarMotoristas();
+  await renderizarHistoricoFolha();
+  await preencherSelectFeriasEmpregados();
+  await renderizarFeriasEmpregados();
+}
 
 // Busca o histórico completo de folhas de pagamento salvas no backend.
 async function carregarFolhasPagamento() {
@@ -7093,13 +7314,7 @@ async function loadPage(pageKey) {
     }
 
     if (pageKey === "motoristas") {
-      document.getElementById("btn-novo-motorista").onclick = () => {
-        editandoMotoristaId = null;
-        abrirFormMotorista();
-      };
-
-      await renderizarMotoristas();
-      await renderizarHistoricoFolha();
+      await iniciarModuloEmpregados();
     }
   } catch (erro) {
     pageContent.innerHTML = `
