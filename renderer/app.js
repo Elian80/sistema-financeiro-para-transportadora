@@ -2991,23 +2991,23 @@ function imprimirHtmlFolhaPagamento(htmlRecibo) {
       display: block;
       width: 200mm;
       min-height: 287mm;
-      padding: 18mm 15mm 10mm 13mm;
+      padding: 18mm 10mm 10mm 10mm;
       margin: 0;
       background: #ffffff;
       color: #000000;
       border: 2px solid #000000;
     }
     .salary-slip-adelia {
-      width: 172mm;
+      width: 180mm;
       max-width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
       font-family: "Times New Roman", Times, serif;
-      font-size: 8.2pt;
+      font-size: 9pt;
       line-height: 1.05;
       color: #000000;
       background: #ffffff;
-      margin: 0 0 8mm 0;
+      margin: 0 0 9mm 0;
       page-break-inside: avoid;
       break-inside: avoid;
     }
@@ -3020,8 +3020,8 @@ function imprimirHtmlFolhaPagamento(htmlRecibo) {
     .salary-slip-adelia col:nth-child(6) { width: 15%; }
     .salary-slip-adelia col:nth-child(7) { width: 17%; }
     .salary-slip-adelia td {
-      height: 4.45mm;
-      padding: 0 1.1mm;
+      height: 5.25mm;
+      padding: 0 1.2mm;
       border: 1px solid #000000;
       background: #ffffff;
       color: #000000;
@@ -3031,10 +3031,10 @@ function imprimirHtmlFolhaPagamento(htmlRecibo) {
     }
     .salary-slip-adelia .slip-model-title,
     .salary-slip-adelia .slip-model-title td {
-      height: 6mm;
+      height: 7mm;
       border: none !important;
       background: #e2f0d9 !important;
-      font-size: 8.5pt;
+      font-size: 9pt;
       font-weight: 700;
       text-align: right;
     }
@@ -3071,8 +3071,8 @@ function imprimirHtmlFolhaPagamento(htmlRecibo) {
       border-left: none;
       border-right: none;
       border-bottom: none;
-      height: 3mm;
-      font-size: 6.5pt;
+      height: 4mm;
+      font-size: 7pt;
     }
   </style>
 </head>
