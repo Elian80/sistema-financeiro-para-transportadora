@@ -8444,6 +8444,7 @@ body[data-theme="dark"] .nav-btn.active {
   margin: 0 auto;
   background: #ffffff;
   color: #000000;
+  box-sizing: border-box;
 }
 
 .salary-slip-adelia {
@@ -8451,12 +8452,13 @@ body[data-theme="dark"] .nav-btn.active {
   border-collapse: collapse;
   table-layout: fixed;
   font-family: "Times New Roman", Times, serif;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.05;
   color: #000000;
   background: #ffffff;
-  margin-bottom: 10mm;
+  margin-bottom: 6mm;
   page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .salary-slip-adelia col:nth-child(1) { width: 12%; }
@@ -8468,7 +8470,7 @@ body[data-theme="dark"] .nav-btn.active {
 .salary-slip-adelia col:nth-child(7) { width: 17%; }
 
 .salary-slip-adelia td {
-  height: 18.75px;
+  height: 15.5px;
   padding: 1px 3px;
   border: 1px solid #000000;
   background: #ffffff;
@@ -8556,21 +8558,30 @@ body[data-theme="dark"] .nav-btn.active {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 7mm;
+    margin: 7mm 7mm;
   }
 
   .payroll-adelia-model {
     width: 196mm !important;
+    min-height: 283mm !important;
     margin: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .salary-slip-adelia {
-    font-size: 10.5pt !important;
-    margin-bottom: 8mm !important;
+    font-size: 8.5pt !important;
+    margin-bottom: 6mm !important;
+  }
+
+  .salary-slip-adelia:last-child {
+    margin-bottom: 0 !important;
   }
 
   .salary-slip-adelia td {
-    height: 18.75px !important;
+    height: 15.5px !important;
     padding: 0 3px !important;
     color: #000000 !important;
     -webkit-print-color-adjust: exact;

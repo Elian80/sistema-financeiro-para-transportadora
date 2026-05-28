@@ -2812,7 +2812,7 @@ function obterOpcoesReciboFolha() {
 }
 
 // Gera o HTML completo do recibo de pagamento de salário (holerite) para impressão.
-// Produz DUAS vias (empregador e empregado) em uma única página A4 horizontal.
+// Produz DUAS vias (empregador e empregado) empilhadas em uma página A4 retrato.
 // A estrutura usa table para garantir alinhamento fiel ao modelo físico do holerite.
 // As seções (proventos, descontos, bases) são filtradas pelas opcoes_recibo da folha.
 // Chamada por imprimirReciboFolha() após recuperar os dados do motorista.
