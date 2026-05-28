@@ -629,13 +629,38 @@ const pages = {
               </div>
 
               <div class="field">
-                <label>Início</label>
+                <label>Início aquisitivo</label>
+                <input id="ferias-aquisitivo-inicio" type="date" />
+              </div>
+
+              <div class="field">
+                <label>Fim aquisitivo</label>
+                <input id="ferias-aquisitivo-fim" type="date" />
+              </div>
+
+              <div class="field">
+                <label>Início das férias</label>
                 <input id="ferias-inicio" type="date" />
               </div>
 
               <div class="field">
-                <label>Fim</label>
+                <label>Fim das férias</label>
                 <input id="ferias-fim" type="date" />
+              </div>
+
+              <div class="field">
+                <label>Dias de direito</label>
+                <input id="ferias-direito" type="number" min="0" step="0.5" value="30" />
+              </div>
+
+              <div class="field">
+                <label>Vencimento concessivo</label>
+                <input id="ferias-vencimento" type="date" />
+              </div>
+
+              <div class="field full">
+                <label>Observações</label>
+                <input id="ferias-observacao" placeholder="Ex.: primeira quinzena, pago em rescisão..." />
               </div>
 
               <div class="field full btn-row">
@@ -648,14 +673,14 @@ const pages = {
             <div class="table-toolbar">
               <div>
                 <h3 style="margin:0;">Resumo de férias</h3>
-                <span>Controle rápido dos períodos programados e realizados</span>
+                <span>Controle rápido dos dias utilizados e restantes</span>
               </div>
             </div>
 
             <div class="kpi-grid" style="margin-bottom:0;">
-              <div class="kpi-card"><div class="kpi-label">Programadas</div><div class="kpi-value" id="ferias-programadas">0</div></div>
-              <div class="kpi-card"><div class="kpi-label">Em férias</div><div class="kpi-value" id="ferias-andamento">0</div></div>
-              <div class="kpi-card"><div class="kpi-label">Concluídas</div><div class="kpi-value" id="ferias-concluidas">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Registros</div><div class="kpi-value" id="ferias-programadas">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Dias utilizados</div><div class="kpi-value" id="ferias-andamento">0</div></div>
+              <div class="kpi-card"><div class="kpi-label">Dias restantes</div><div class="kpi-value" id="ferias-concluidas">0</div></div>
             </div>
           </section>
         </div>
@@ -664,7 +689,7 @@ const pages = {
           <div class="table-toolbar">
             <div>
               <h3 style="margin:0;">Controle de férias</h3>
-              <span>Visualize o período, quantidade de dias e status de cada empregado</span>
+              <span>Visualize direito, dias utilizados, dias restantes e vencimento concessivo</span>
             </div>
           </div>
 
@@ -673,10 +698,13 @@ const pages = {
               <thead>
                 <tr>
                   <th>Empregado</th>
-                  <th>Início</th>
-                  <th>Fim</th>
-                  <th>Dias</th>
-                  <th>Status</th>
+                  <th>Início aquisitivo</th>
+                  <th>Fim aquisitivo</th>
+                  <th>Direito</th>
+                  <th>Dias utilizados</th>
+                  <th>Dias restantes</th>
+                  <th>Vencimento concessivo</th>
+                  <th>Observações</th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -2674,6 +2702,31 @@ function calcularDiasFerias(inicio, fim) {
   return Math.floor((dataFim - dataInicio) / 86400000) + 1;
 }
 
+function somarAnoData(data) {
+  const base = new Date(`${data}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return "";
+  base.setFullYear(base.getFullYear() + 1);
+  return base.toISOString().slice(0, 10);
+}
+
+function chavePeriodoFerias(registro) {
+  return `${registro.empregado_id || ""}|${registro.aquisitivo_inicio || ""}|${registro.aquisitivo_fim || ""}`;
+}
+
+function calcularUsoPeriodoFerias(registro, todosRegistros) {
+  const chave = chavePeriodoFerias(registro);
+  const direito = normalizarNumero(registro.direito || 30);
+  const utilizados = todosRegistros
+    .filter((item) => chavePeriodoFerias(item) === chave)
+    .reduce((total, item) => total + calcularDiasFerias(item.inicio, item.fim), 0);
+
+  return {
+    direito,
+    utilizados,
+    restantes: Math.max(0, direito - utilizados)
+  };
+}
+
 function obterStatusFerias(inicio, fim) {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -2699,45 +2752,77 @@ async function renderizarFeriasEmpregados() {
   const tabela = document.getElementById("tabela-ferias");
   if (!tabela) return;
 
-  const ferias = carregarFeriasEmpregados().sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
-  const contadores = { programadas: 0, andamento: 0, concluidas: 0 };
+  const ferias = carregarFeriasEmpregados().sort((a, b) => (
+    String(a.empregado_nome || "").localeCompare(String(b.empregado_nome || "")) ||
+    String(a.aquisitivo_inicio || a.inicio).localeCompare(String(b.aquisitivo_inicio || b.inicio))
+  ));
+  const totais = { registros: ferias.length, utilizados: 0, restantes: 0 };
+  const periodosContabilizados = new Set();
 
   if (!ferias.length) {
-    tabela.innerHTML = `<tr><td colspan="6" class="empty-row">Nenhum período de férias cadastrado.</td></tr>`;
+    tabela.innerHTML = `<tr><td colspan="9" class="empty-row">Nenhum período de férias cadastrado.</td></tr>`;
   } else {
     tabela.innerHTML = ferias.map((registro) => {
-      const status = obterStatusFerias(registro.inicio, registro.fim);
-      if (status.texto === "Programada") contadores.programadas += 1;
-      if (status.texto === "Em férias") contadores.andamento += 1;
-      if (status.texto === "Concluída") contadores.concluidas += 1;
+      const registroNormalizado = {
+        ...registro,
+        aquisitivo_inicio: registro.aquisitivo_inicio || registro.inicio,
+        aquisitivo_fim: registro.aquisitivo_fim || registro.fim,
+        direito: registro.direito || 30,
+        vencimento_concessivo: registro.vencimento_concessivo || somarAnoData(registro.aquisitivo_fim || registro.fim)
+      };
+      const uso = calcularUsoPeriodoFerias(registroNormalizado, ferias.map((item) => ({
+        ...item,
+        aquisitivo_inicio: item.aquisitivo_inicio || item.inicio,
+        aquisitivo_fim: item.aquisitivo_fim || item.fim,
+        direito: item.direito || 30
+      })));
+      const chave = chavePeriodoFerias(registroNormalizado);
+      if (!periodosContabilizados.has(chave)) {
+        totais.utilizados += uso.utilizados;
+        totais.restantes += uso.restantes;
+        periodosContabilizados.add(chave);
+      }
 
       return `
         <tr>
-          <td>${escapeHtml(registro.empregado_nome || "-")}</td>
-          <td>${formatarDataCurta(registro.inicio)}</td>
-          <td>${formatarDataCurta(registro.fim)}</td>
-          <td>${calcularDiasFerias(registro.inicio, registro.fim)}</td>
-          <td><span class="status-pill ${status.classe}">${status.texto}</span></td>
+          <td>${escapeHtml(registroNormalizado.empregado_nome || "-")}</td>
+          <td>${formatarDataCurta(registroNormalizado.aquisitivo_inicio)}</td>
+          <td>${formatarDataCurta(registroNormalizado.aquisitivo_fim)}</td>
+          <td>${uso.direito}</td>
+          <td>${uso.utilizados}</td>
+          <td>${uso.restantes}</td>
+          <td>${formatarDataCurta(registroNormalizado.vencimento_concessivo)}</td>
+          <td>${escapeHtml(registroNormalizado.observacao || "-")}</td>
           <td><button class="small-btn delete-btn" onclick="excluirFeriasEmpregado('${registro.id}')">Excluir</button></td>
         </tr>
       `;
     }).join("");
   }
 
-  document.getElementById("ferias-programadas").textContent = contadores.programadas;
-  document.getElementById("ferias-andamento").textContent = contadores.andamento;
-  document.getElementById("ferias-concluidas").textContent = contadores.concluidas;
+  document.getElementById("ferias-programadas").textContent = totais.registros;
+  document.getElementById("ferias-andamento").textContent = totais.utilizados;
+  document.getElementById("ferias-concluidas").textContent = totais.restantes;
 }
 
 async function salvarFeriasEmpregado() {
   const select = document.getElementById("ferias-motorista");
+  const aquisitivoInicio = document.getElementById("ferias-aquisitivo-inicio")?.value;
+  const aquisitivoFim = document.getElementById("ferias-aquisitivo-fim")?.value;
   const inicio = document.getElementById("ferias-inicio")?.value;
   const fim = document.getElementById("ferias-fim")?.value;
+  const direito = normalizarNumero(document.getElementById("ferias-direito")?.value) || 30;
+  const vencimentoConcessivo = document.getElementById("ferias-vencimento")?.value || somarAnoData(aquisitivoFim);
+  const observacao = document.getElementById("ferias-observacao")?.value || "";
   const empregadoId = Number(select?.value || 0);
   const empregadoNome = select?.selectedOptions?.[0]?.textContent || "";
 
-  if (!empregadoId || !inicio || !fim) {
-    mostrarToast("Selecione o empregado e informe início e fim das férias.", "warning");
+  if (!empregadoId || !aquisitivoInicio || !aquisitivoFim || !inicio || !fim) {
+    mostrarToast("Selecione o empregado e informe período aquisitivo e férias.", "warning");
+    return;
+  }
+
+  if (calcularDiasFerias(aquisitivoInicio, aquisitivoFim) <= 0) {
+    mostrarToast("O fim aquisitivo deve ser igual ou posterior ao início aquisitivo.", "error");
     return;
   }
 
@@ -2751,14 +2836,24 @@ async function salvarFeriasEmpregado() {
     id: `${Date.now()}-${empregadoId}`,
     empregado_id: empregadoId,
     empregado_nome: empregadoNome,
+    aquisitivo_inicio: aquisitivoInicio,
+    aquisitivo_fim: aquisitivoFim,
     inicio,
     fim,
+    direito,
+    vencimento_concessivo: vencimentoConcessivo,
+    observacao,
     criado_em: new Date().toISOString()
   });
 
   salvarFeriasEmpregados(ferias);
+  document.getElementById("ferias-aquisitivo-inicio").value = "";
+  document.getElementById("ferias-aquisitivo-fim").value = "";
   document.getElementById("ferias-inicio").value = "";
   document.getElementById("ferias-fim").value = "";
+  document.getElementById("ferias-direito").value = "30";
+  document.getElementById("ferias-vencimento").value = "";
+  document.getElementById("ferias-observacao").value = "";
   mostrarToast("Férias adicionadas ao controle.", "success");
   await renderizarFeriasEmpregados();
 }
@@ -2792,6 +2887,12 @@ async function iniciarModuloEmpregados() {
   };
 
   document.getElementById("btn-salvar-ferias")?.addEventListener("click", salvarFeriasEmpregado);
+  document.getElementById("ferias-aquisitivo-fim")?.addEventListener("change", (event) => {
+    const vencimento = document.getElementById("ferias-vencimento");
+    if (vencimento && event.target.value && !vencimento.value) {
+      vencimento.value = somarAnoData(event.target.value);
+    }
+  });
   await renderizarMotoristas();
   await renderizarHistoricoFolha();
   await preencherSelectFeriasEmpregados();
