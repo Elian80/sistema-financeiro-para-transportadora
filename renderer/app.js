@@ -373,7 +373,7 @@ const pages = {
                 <div class="status-line"><span>Ativos</span><strong id="dashboard-veiculos-ativos">0</strong></div>
                 <div class="status-line"><span>Manutencao</span><strong id="dashboard-veiculos-manutencao">0</strong></div>
                 <div class="status-line"><span>Inativos</span><strong id="dashboard-veiculos-inativos">0</strong></div>
-                <div class="status-line"><span>Motoristas</span><strong id="dashboard-motoristas">0</strong></div>
+                <div class="status-line"><span>Empregados</span><strong id="dashboard-motoristas">0</strong></div>
               </div>
             </div>
           </article>
@@ -599,11 +599,11 @@ const pages = {
   },
 
   motoristas: {
-    title: "Motoristas",
+    title: "Empregados",
     subtitle: "Controle da equipe operacional",
     render: () => `
       <div class="panel-box filter-launcher">
-        <button class="primary-btn" id="btn-novo-motorista">+ Cadastrar motorista</button>
+        <button class="primary-btn" id="btn-novo-motorista">+ Cadastrar empregado</button>
       </div>
 
       <div id="form-motorista-container"></div>
@@ -2347,7 +2347,7 @@ async function renderizarMotoristas() {
   const motoristas = await carregarMotoristas();
 
   if (!motoristas.length) {
-    container.innerHTML = `<div class="panel-box"><p>Nenhum motorista cadastrado.</p></div>`;
+    container.innerHTML = `<div class="panel-box"><p>Nenhum empregado cadastrado.</p></div>`;
     return;
   }
 
@@ -2394,7 +2394,7 @@ function abrirFormMotorista(dadosMotorista = {}) {
   const container = document.getElementById("form-motorista-container");
   if (!container) return;
 
-  const titulo = editandoMotoristaId ? "Alterar motorista" : "Novo motorista";
+  const titulo = editandoMotoristaId ? "Alterar empregado" : "Novo empregado";
   const textoBotao = editandoMotoristaId ? "Salvar alteracao" : "Salvar";
   const dados = dadosMotorista || {};
 
@@ -2546,7 +2546,7 @@ function abrirFormMotorista(dadosMotorista = {}) {
       await apiSend(url, method, payload);
       editandoMotoristaId = null;
       container.innerHTML = "";
-      mostrarToast("Motorista salvo com sucesso.", "success");
+      mostrarToast("Empregado salvo com sucesso.", "success");
       await renderizarMotoristas();
     } catch (erro) {
       mensagem.textContent = erro.message;
@@ -2571,7 +2571,7 @@ window.editarMotoristaPorId = async (id) => {
 };
 
 window.excluirMotorista = async (id) => {
-  if (!confirm("Deseja excluir este motorista?")) return;
+  if (!confirm("Deseja excluir este empregado?")) return;
 
   await apiDelete(`/motoristas/${id}`);
   await renderizarMotoristas();
@@ -2716,7 +2716,7 @@ async function renderizarHistoricoFolha() {
               <tr>
                 <th>Periodo</th>
                 <th>Pagamento</th>
-                <th>Motoristas</th>
+                <th>Empregados</th>
                 <th>Bruto</th>
                 <th>Descontos</th>
                 <th>Liquido</th>
@@ -3135,7 +3135,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
     : todosMotoristas;
 
   if (!motoristas.length) {
-    container.innerHTML = `<div class="panel-box"><p>Nenhum motorista cadastrado para gerar folha.</p></div>`;
+    container.innerHTML = `<div class="panel-box"><p>Nenhum empregado cadastrado para gerar folha.</p></div>`;
     return;
   }
 
@@ -3149,7 +3149,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
       <div class="table-toolbar">
         <div>
           <h3 style="margin:0;">Lancamento de folha de pagamento</h3>
-          <span>Informe horas, adicionais e descontos para calcular o salario de cada motorista.</span>
+          <span>Informe horas, adicionais e descontos para calcular o salario de cada empregado.</span>
         </div>
         <button class="ghost-btn" id="btn-fechar-folha" type="button">Fechar</button>
       </div>
@@ -3193,7 +3193,7 @@ async function abrirTelaFolhaPagamento(motoristaId = null) {
               <div class="payroll-driver-head">
                 <div>
                   <h4>${motorista.nome}</h4>
-                  <span>${motorista.cargo || "Motorista"}</span>
+                  <span>${motorista.cargo || "Empregado"}</span>
                 </div>
                 <strong>${formatarValor(salarioBase)}</strong>
               </div>
