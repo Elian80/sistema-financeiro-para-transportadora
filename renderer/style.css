@@ -8438,7 +8438,7 @@ body[data-theme="dark"] .nav-btn.active {
    Impressao folha - modelo compacto da planilha de referencia
    ============================================================ */
 .payroll-adelia-model {
-  width: 297mm;
+  width: 210mm;
   max-width: 100%;
   padding: 0;
   margin: 0 auto;
@@ -8455,23 +8455,17 @@ body[data-theme="dark"] .nav-btn.active {
   line-height: 1.05;
   color: #000000;
   background: #ffffff;
+  margin-bottom: 10mm;
+  page-break-inside: avoid;
 }
 
-.salary-slip-adelia col:nth-child(1),
-.salary-slip-adelia col:nth-child(9) { width: 7.4%; }
-.salary-slip-adelia col:nth-child(2),
-.salary-slip-adelia col:nth-child(10) { width: 5.7%; }
-.salary-slip-adelia col:nth-child(3),
-.salary-slip-adelia col:nth-child(11) { width: 8.4%; }
-.salary-slip-adelia col:nth-child(4),
-.salary-slip-adelia col:nth-child(12) { width: 9.8%; }
-.salary-slip-adelia col:nth-child(5),
-.salary-slip-adelia col:nth-child(13) { width: 10.1%; }
-.salary-slip-adelia col:nth-child(6),
-.salary-slip-adelia col:nth-child(14) { width: 9.6%; }
-.salary-slip-adelia col:nth-child(7),
-.salary-slip-adelia col:nth-child(15) { width: 10.5%; }
-.salary-slip-adelia .slip-separator-col { width: 2.2%; }
+.salary-slip-adelia col:nth-child(1) { width: 12%; }
+.salary-slip-adelia col:nth-child(2) { width: 9%; }
+.salary-slip-adelia col:nth-child(3) { width: 14%; }
+.salary-slip-adelia col:nth-child(4) { width: 16%; }
+.salary-slip-adelia col:nth-child(5) { width: 17%; }
+.salary-slip-adelia col:nth-child(6) { width: 15%; }
+.salary-slip-adelia col:nth-child(7) { width: 17%; }
 
 .salary-slip-adelia td {
   height: 18.75px;
@@ -8491,11 +8485,6 @@ body[data-theme="dark"] .nav-btn.active {
   font-size: 12px;
   font-weight: 700;
   text-align: left;
-}
-
-.salary-slip-adelia .slip-separator {
-  border: none !important;
-  background: #ffffff !important;
 }
 
 .salary-slip-adelia .slip-company-row td:not(.slip-separator),
@@ -8566,17 +8555,18 @@ body[data-theme="dark"] .nav-btn.active {
 
 @media print {
   @page {
-    size: A4 landscape;
-    margin: 8mm;
+    size: A4 portrait;
+    margin: 8mm 7mm;
   }
 
   .payroll-adelia-model {
-    width: 281mm !important;
+    width: 196mm !important;
     margin: 0 !important;
   }
 
   .salary-slip-adelia {
     font-size: 10.5pt !important;
+    margin-bottom: 8mm !important;
   }
 
   .salary-slip-adelia td {

@@ -2868,83 +2868,87 @@ function renderizarReciboPagamento(folha, item, motorista) {
     liquido: item.salario_liquido || 0
   };
   const celula = (html, attrs = "") => `<td ${attrs}>${html ?? ""}</td>`;
-  const via = (html) => `${html}<td class="slip-separator"></td>${html}`;
-  const row = (html, classe = "") => `<tr${classe ? ` class="${classe}"` : ""}>${via(html)}</tr>`;
+  const row = (html, classe = "") => `<tr${classe ? ` class="${classe}"` : ""}>${html}</tr>`;
   const itemRow = (linha) => row(`
     ${celula(escapeHtml(linha?.descricao || ""), 'colspan="4" class="slip-desc"')}
     ${celula(escapeHtml(linha?.referencia || ""), 'class="slip-center"')}
     ${celula(linha?.tipo === "provento" ? formatarValorRecibo(linha.valor) : "", 'class="slip-money"')}
     ${celula(linha?.tipo === "desconto" ? formatarValorRecibo(linha.valor) : "", 'class="slip-money"')}
   `, "slip-item-row");
+  const renderizarVia = (rotuloVia) => `
+    <table class="salary-slip-table salary-slip-adelia">
+      <colgroup>
+        <col><col><col><col><col><col><col>
+      </colgroup>
+      <tbody>
+        <tr class="slip-model-title"><td colspan="7">RECIBO PAGAMENTO</td></tr>
+        ${row(`
+          ${celula("Empresa:", 'class="slip-label"')}
+          ${celula(escapeHtml(nomeEmpresa), 'colspan="4" class="slip-company"')}
+          ${celula("Recibo Pagamento Salário", 'colspan="2" class="slip-doc-title"')}
+        `, "slip-company-row")}
+        ${row(`
+          ${celula("", 'colspan="5" class="slip-blank"')}
+          ${celula(escapeHtml(mesExtenso), 'class="slip-period"')}
+          ${celula(escapeHtml(anoCompetencia || ""), 'class="slip-period"')}
+        `)}
+        ${row(`
+          ${celula("Empregado:", 'class="slip-label"')}
+          ${celula(escapeHtml(item.motorista_nome || motorista.nome || ""), 'colspan="6" class="slip-employee-name"')}
+        `)}
+        ${row(`
+          ${celula("CBO:", 'class="slip-label"')}
+          ${celula(escapeHtml(cbo))}
+          ${celula("Cargo:", 'class="slip-label"')}
+          ${celula(escapeHtml(cargo), 'colspan="2"')}
+          ${celula("Data Admissão:", 'class="slip-label"')}
+          ${celula(escapeHtml(admissao))}
+        `)}
+        ${row(`
+          ${celula("Descrição", 'colspan="4" class="slip-head"')}
+          ${celula("Referencia", 'class="slip-head"')}
+          ${celula("Proventos", 'class="slip-head"')}
+          ${celula("Descontos", 'class="slip-head"')}
+        `, "slip-items-head")}
+        ${linhasRecibo.map(itemRow).join("")}
+        ${row(`
+          ${celula("", 'colspan="5" class="slip-blank"')}
+          ${celula("Total Proventos", 'class="slip-total-head"')}
+          ${celula("Total Descontos", 'class="slip-total-head"')}
+        `)}
+        ${row(`
+          ${celula("", 'colspan="5" class="slip-blank"')}
+          ${celula(formatarValorRecibo(totais.proventos), 'class="slip-money"')}
+          ${celula(formatarValorRecibo(totais.descontos), 'class="slip-money"')}
+        `)}
+        ${row(`
+          ${celula("", 'colspan="4" class="slip-blank"')}
+          ${celula("Total à receber", 'class="slip-net-label"')}
+          ${celula(formatarValorRecibo(totais.liquido), 'colspan="2" class="slip-money slip-net-value"')}
+        `, "slip-net-row")}
+        ${opcoes.bases ? row(`
+          ${celula("Salário base", 'colspan="2" class="slip-head"')}
+          ${celula("Salário Contribuição", 'colspan="2" class="slip-head"')}
+          ${celula("FGTS", 'class="slip-head"')}
+          ${celula("INSS", 'class="slip-head"')}
+          ${celula("IRRF", 'class="slip-head"')}
+        `) : ""}
+        ${opcoes.bases ? row(`
+          ${celula(formatarValorRecibo(item.salario_contratual || motorista.salario_base || 0), 'colspan="2" class="slip-money"')}
+          ${celula(formatarValorRecibo(item.base_inss || 0), 'colspan="2" class="slip-money"')}
+          ${celula(formatarValorRecibo(item.fgts || 0), 'class="slip-money"')}
+          ${celula(formatarValorRecibo(item.desconto_inss || 0), 'class="slip-money"')}
+          ${celula(formatarValorRecibo(item.desconto_irrf || 0), 'class="slip-money"')}
+        `) : ""}
+        <tr class="slip-copy-label"><td colspan="7">${rotuloVia}</td></tr>
+      </tbody>
+    </table>
+  `;
 
   return `
     <section id="recibo-folha-print" class="payroll-receipt payroll-adelia-model print-area">
-      <table class="salary-slip-table salary-slip-adelia">
-        <colgroup>
-          <col><col><col><col><col><col><col><col class="slip-separator-col"><col><col><col><col><col><col><col>
-        </colgroup>
-        <tbody>
-          <tr class="slip-model-title"><td colspan="15">RECIBO PAGAMENTO</td></tr>
-          ${row(`
-            ${celula("Empresa:", 'class="slip-label"')}
-            ${celula(escapeHtml(nomeEmpresa), 'colspan="4" class="slip-company"')}
-            ${celula("Recibo Pagamento Salário", 'colspan="2" class="slip-doc-title"')}
-          `, "slip-company-row")}
-          ${row(`
-            ${celula("", 'colspan="5" class="slip-blank"')}
-            ${celula(escapeHtml(mesExtenso), 'class="slip-period"')}
-            ${celula(escapeHtml(anoCompetencia || ""), 'class="slip-period"')}
-          `)}
-          ${row(`
-            ${celula("Empregado:", 'class="slip-label"')}
-            ${celula(escapeHtml(item.motorista_nome || motorista.nome || ""), 'colspan="6" class="slip-employee-name"')}
-          `)}
-          ${row(`
-            ${celula("CBO:", 'class="slip-label"')}
-            ${celula(escapeHtml(cbo))}
-            ${celula("Cargo:", 'class="slip-label"')}
-            ${celula(escapeHtml(cargo), 'colspan="2"')}
-            ${celula("Data Admissão:", 'class="slip-label"')}
-            ${celula(escapeHtml(admissao))}
-          `)}
-          ${row(`
-            ${celula("Descrição", 'colspan="4" class="slip-head"')}
-            ${celula("Referencia", 'class="slip-head"')}
-            ${celula("Proventos", 'class="slip-head"')}
-            ${celula("Descontos", 'class="slip-head"')}
-          `, "slip-items-head")}
-          ${linhasRecibo.map(itemRow).join("")}
-          ${row(`
-            ${celula("", 'colspan="5" class="slip-blank"')}
-            ${celula("Total Proventos", 'class="slip-total-head"')}
-            ${celula("Total Descontos", 'class="slip-total-head"')}
-          `)}
-          ${row(`
-            ${celula("", 'colspan="5" class="slip-blank"')}
-            ${celula(formatarValorRecibo(totais.proventos), 'class="slip-money"')}
-            ${celula(formatarValorRecibo(totais.descontos), 'class="slip-money"')}
-          `)}
-          ${row(`
-            ${celula("", 'colspan="4" class="slip-blank"')}
-            ${celula("Total à receber", 'class="slip-net-label"')}
-            ${celula(formatarValorRecibo(totais.liquido), 'colspan="2" class="slip-money slip-net-value"')}
-          `, "slip-net-row")}
-          ${opcoes.bases ? row(`
-            ${celula("Salário base", 'colspan="2" class="slip-head"')}
-            ${celula("Salário Contribuição", 'colspan="2" class="slip-head"')}
-            ${celula("FGTS", 'class="slip-head"')}
-            ${celula("INSS", 'class="slip-head"')}
-            ${celula("IRRF", 'class="slip-head"')}
-          `) : ""}
-          ${opcoes.bases ? row(`
-            ${celula(formatarValorRecibo(item.salario_contratual || motorista.salario_base || 0), 'colspan="2" class="slip-money"')}
-            ${celula(formatarValorRecibo(item.base_inss || 0), 'colspan="2" class="slip-money"')}
-            ${celula(formatarValorRecibo(item.fgts || 0), 'class="slip-money"')}
-            ${celula(formatarValorRecibo(item.desconto_inss || 0), 'class="slip-money"')}
-            ${celula(formatarValorRecibo(item.desconto_irrf || 0), 'class="slip-money"')}
-          `) : ""}
-        </tbody>
-      </table>
+      ${renderizarVia("1ª VIA - EMPREGADOR")}
+      ${renderizarVia("2ª VIA - EMPREGADO")}
     </section>
   `;
 }
