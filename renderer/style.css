@@ -8433,3 +8433,157 @@ body[data-theme="dark"] .nav-btn.active {
 .gm7-dashboard-shell .status-pill.erro {
   color: #ffffff !important;
 }
+
+/* ============================================================
+   Impressao folha - modelo compacto da planilha de referencia
+   ============================================================ */
+.payroll-adelia-model {
+  width: 297mm;
+  max-width: 100%;
+  padding: 0;
+  margin: 0 auto;
+  background: #ffffff;
+  color: #000000;
+}
+
+.salary-slip-adelia {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12px;
+  line-height: 1.05;
+  color: #000000;
+  background: #ffffff;
+}
+
+.salary-slip-adelia col:nth-child(1),
+.salary-slip-adelia col:nth-child(9) { width: 7.4%; }
+.salary-slip-adelia col:nth-child(2),
+.salary-slip-adelia col:nth-child(10) { width: 5.7%; }
+.salary-slip-adelia col:nth-child(3),
+.salary-slip-adelia col:nth-child(11) { width: 8.4%; }
+.salary-slip-adelia col:nth-child(4),
+.salary-slip-adelia col:nth-child(12) { width: 9.8%; }
+.salary-slip-adelia col:nth-child(5),
+.salary-slip-adelia col:nth-child(13) { width: 10.1%; }
+.salary-slip-adelia col:nth-child(6),
+.salary-slip-adelia col:nth-child(14) { width: 9.6%; }
+.salary-slip-adelia col:nth-child(7),
+.salary-slip-adelia col:nth-child(15) { width: 10.5%; }
+.salary-slip-adelia .slip-separator-col { width: 2.2%; }
+
+.salary-slip-adelia td {
+  height: 18.75px;
+  padding: 1px 3px;
+  border: 1px solid #000000;
+  background: #ffffff;
+  color: #000000;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.salary-slip-adelia .slip-model-title td,
+.salary-slip-adelia .slip-model-title {
+  border: none !important;
+  background: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.salary-slip-adelia .slip-separator {
+  border: none !important;
+  background: #ffffff !important;
+}
+
+.salary-slip-adelia .slip-company-row td:not(.slip-separator),
+.salary-slip-adelia .slip-label,
+.salary-slip-adelia .slip-company {
+  background: #e7e6e6 !important;
+}
+
+.salary-slip-adelia .slip-doc-title,
+.salary-slip-adelia .slip-period {
+  background: #d0cece !important;
+  text-align: center;
+}
+
+.salary-slip-adelia .slip-period {
+  font-weight: 700;
+}
+
+.salary-slip-adelia .slip-label,
+.salary-slip-adelia .slip-head,
+.salary-slip-adelia .slip-total-head,
+.salary-slip-adelia .slip-net-label {
+  font-weight: 400;
+}
+
+.salary-slip-adelia .slip-head,
+.salary-slip-adelia .slip-total-head {
+  text-align: center;
+}
+
+.salary-slip-adelia .slip-company,
+.salary-slip-adelia .slip-employee-name,
+.salary-slip-adelia .slip-label {
+  text-align: center;
+}
+
+.salary-slip-adelia .slip-desc {
+  text-align: left;
+}
+
+.salary-slip-adelia .slip-center {
+  text-align: center;
+}
+
+.salary-slip-adelia .slip-money {
+  text-align: right;
+}
+
+.salary-slip-adelia .slip-item-row td {
+  border-top: 1px solid #000000;
+  border-bottom: 0;
+}
+
+.salary-slip-adelia .slip-item-row + .slip-item-row td {
+  border-top: 0;
+}
+
+.salary-slip-adelia .slip-blank {
+  border-left: 0 !important;
+  border-right: 0 !important;
+  background: #ffffff !important;
+}
+
+.salary-slip-adelia .slip-net-label,
+.salary-slip-adelia .slip-net-value {
+  background: #92d050 !important;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  .payroll-adelia-model {
+    width: 281mm !important;
+    margin: 0 !important;
+  }
+
+  .salary-slip-adelia {
+    font-size: 10.5pt !important;
+  }
+
+  .salary-slip-adelia td {
+    height: 18.75px !important;
+    padding: 0 3px !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
