@@ -18,3 +18,8 @@ dist/
 ABRIR_LINK_PUBLICO.url
 ABRIR_LINK_PUBLICO.html
 LINK_PUBLICO_CELULAR.txt
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

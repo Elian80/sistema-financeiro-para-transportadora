@@ -6,11 +6,14 @@
   "scripts": {
     "start": "electron .",
     "web": "cd python && python -m uvicorn web:app --host 127.0.0.1 --port 8000 --reload",
-    "web:prod": "cd python && python -m uvicorn web:app --host 0.0.0.0 --port 8000"
+    "web:prod": "cd python && python -m uvicorn web:app --host 0.0.0.0 --port 8000",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^41.2.1"
+    "electron": "^41.2.1",
+    "wrangler": "^4.95.0"
   }
 }
