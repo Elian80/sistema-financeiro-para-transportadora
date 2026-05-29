@@ -3009,6 +3009,11 @@ async function renderizarHistoricoFolha() {
 
   const folhas = await carregarFolhasPagamento();
 
+  // Nomes únicos de empregados presentes em todo o histórico (para o dropdown)
+  const nomesEmpregados = [...new Set(
+    folhas.flatMap((f) => (f.itens || []).map((i) => i.motorista_nome || "").filter(Boolean))
+  )].sort((a, b) => a.localeCompare(b));
+
   // ── Filtros ────────────────────────────────────────────────
   let folhasFiltradas = folhas.filter((folha) => {
     if (filtroPeriodoFolha && folha.periodo !== filtroPeriodoFolha) return false;
@@ -3079,9 +3084,33 @@ async function renderizarHistoricoFolha() {
           <input id="filtro-folha-data-fim" type="date" value="${filtroFolhaDataFim}" />
         </label>
 
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;position:relative;">
           Empregado
-          <input id="filtro-folha-nome" type="search" placeholder="Buscar por nome..." value="${filtroFolhaNome}" style="min-width:170px;" />
+          <div style="position:relative;min-width:190px;">
+            <input id="filtro-folha-nome" type="text" placeholder="Clique ou busque..." value="${filtroFolhaNome}"
+              autocomplete="off" style="width:100%;padding-right:28px;box-sizing:border-box;" />
+            ${filtroFolhaNome
+              ? `<button type="button" id="btn-limpar-nome-folha" title="Limpar"
+                   style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:0;line-height:1;">✕</button>`
+              : `<span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:11px;pointer-events:none;">▾</span>`
+            }
+            <div id="folha-nome-dropdown"
+              style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;
+                     background:var(--surface,#1a1f2e);border:1px solid var(--border,#2a3040);
+                     border-radius:8px;max-height:220px;overflow-y:auto;
+                     box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+              ${nomesEmpregados.length
+                ? nomesEmpregados.map((nome) => `
+                    <div class="folha-nome-opcao"
+                         data-nome="${nome.replace(/"/g, '&quot;')}"
+                         style="padding:9px 14px;cursor:pointer;font-size:13px;
+                                border-bottom:1px solid var(--border,#2a3040);transition:background .15s;">
+                      ${nome}
+                    </div>`).join("")
+                : `<div style="padding:10px 14px;font-size:13px;color:var(--text-muted);">Nenhum empregado encontrado</div>`
+              }
+            </div>
+          </div>
         </label>
 
         <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
@@ -3188,10 +3217,80 @@ async function renderizarHistoricoFolha() {
     filtroFolhaDataFim = e.target.value;
     await renderizarHistoricoFolha();
   };
-  document.getElementById("filtro-folha-nome").oninput = async (e) => {
+  // ── Dropdown de empregados ─────────────────────────────────
+  const nomeInput    = document.getElementById("filtro-folha-nome");
+  const nomeDropdown = document.getElementById("folha-nome-dropdown");
+
+  function atualizarOpcoesFolhaNome(busca) {
+    const val = (busca || "").toLowerCase();
+    nomeDropdown.querySelectorAll(".folha-nome-opcao").forEach((el) => {
+      const match = el.dataset.nome.toLowerCase().includes(val);
+      el.style.display = match ? "" : "none";
+    });
+  }
+
+  function abrirDropdownFolhaNome() {
+    if (!nomesEmpregados.length) return;
+    atualizarOpcoesFolhaNome(nomeInput.value);
+    nomeDropdown.style.display = "";
+  }
+
+  function fecharDropdownFolhaNome() {
+    nomeDropdown.style.display = "none";
+  }
+
+  nomeInput.addEventListener("focus", abrirDropdownFolhaNome);
+  nomeInput.addEventListener("click", abrirDropdownFolhaNome);
+
+  nomeInput.addEventListener("input", (e) => {
     filtroFolhaNome = e.target.value.trim();
+    atualizarOpcoesFolhaNome(filtroFolhaNome);
+    nomeDropdown.style.display = "";
+    // Filtra a tabela sem re-renderizar a página inteira
+    const tbody = container.querySelector(".data-table tbody");
+    if (tbody) {
+      const busca = filtroFolhaNome.toLowerCase();
+      tbody.querySelectorAll("tr").forEach((tr) => {
+        const tooltip = (tr.getAttribute("title") || "").toLowerCase();
+        tr.style.display = (!busca || tooltip.includes(busca)) ? "" : "none";
+      });
+    }
+  });
+
+  nomeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") fecharDropdownFolhaNome();
+    if (e.key === "Enter")  { fecharDropdownFolhaNome(); renderizarHistoricoFolha(); }
+  });
+
+  // Selecionar nome da lista
+  nomeDropdown.querySelectorAll(".folha-nome-opcao").forEach((el) => {
+    el.addEventListener("mousedown", async (e) => {
+      e.preventDefault(); // evita blur antes do click
+      filtroFolhaNome = el.dataset.nome;
+      fecharDropdownFolhaNome();
+      await renderizarHistoricoFolha();
+    });
+    el.addEventListener("mouseenter", () => {
+      el.style.background = "var(--surface-hover, rgba(255,255,255,0.06))";
+    });
+    el.addEventListener("mouseleave", () => {
+      el.style.background = "";
+    });
+  });
+
+  // Fechar ao clicar fora
+  document.addEventListener("click", function fecharFolhaDropdown(e) {
+    if (!nomeInput.contains(e.target) && !nomeDropdown.contains(e.target)) {
+      fecharDropdownFolhaNome();
+      document.removeEventListener("click", fecharFolhaDropdown);
+    }
+  });
+
+  // Botão ✕ para limpar o nome
+  document.getElementById("btn-limpar-nome-folha")?.addEventListener("click", async () => {
+    filtroFolhaNome = "";
     await renderizarHistoricoFolha();
-  };
+  });
   document.getElementById("filtro-folha-ordem").onchange = async (e) => {
     filtroFolhaOrdem = e.target.value;
     await renderizarHistoricoFolha();
