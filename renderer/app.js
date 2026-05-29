@@ -3178,11 +3178,15 @@ async function renderizarHistoricoFolha() {
                        <option value="">Imprimir...</option>
                        ${(folha.itens || []).map((it, idx) => `<option value="${idx}">${it.motorista_nome || `Empregado ${idx + 1}`}</option>`).join("")}
                      </select>`;
+                const nomesHtml = qtd === 1
+                  ? nomes
+                  : (folha.itens || []).map((i) => i.motorista_nome || "").filter(Boolean)
+                      .map((n) => `<span style="display:block;white-space:nowrap;">${n}</span>`).join("");
                 return `
-                  <tr title="${nomes}">
+                  <tr>
                     <td>${folha.periodo}</td>
                     <td>${formatarDataCurta(folha.data_pagamento)}</td>
-                    <td title="${nomes}">${qtd}</td>
+                    <td>${nomesHtml || "-"}</td>
                     <td>${formatarValor(folha.totais?.salario_bruto    || 0)}</td>
                     <td>${formatarValor(folha.totais?.total_descontos  || 0)}</td>
                     <td class="positive">${formatarValor(folha.totais?.salario_liquido || 0)}</td>
@@ -3246,13 +3250,14 @@ async function renderizarHistoricoFolha() {
     filtroFolhaNome = e.target.value.trim();
     atualizarOpcoesFolhaNome(filtroFolhaNome);
     nomeDropdown.style.display = "";
-    // Filtra a tabela sem re-renderizar a página inteira
+    // Filtra as linhas da tabela sem re-renderizar a página inteira
+    // Lê o texto da 3ª célula (coluna Empregados) onde os nomes estão visíveis
     const tbody = container.querySelector(".data-table tbody");
     if (tbody) {
       const busca = filtroFolhaNome.toLowerCase();
       tbody.querySelectorAll("tr").forEach((tr) => {
-        const tooltip = (tr.getAttribute("title") || "").toLowerCase();
-        tr.style.display = (!busca || tooltip.includes(busca)) ? "" : "none";
+        const celulaEmpregados = tr.cells[2]?.textContent?.toLowerCase() || "";
+        tr.style.display = (!busca || celulaEmpregados.includes(busca)) ? "" : "none";
       });
     }
   });
