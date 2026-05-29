@@ -120,8 +120,9 @@ function extrairMensagemErroApi(resultado, padrao = "Erro na operacao.") {
 // cacheVeiculos: lista de veículos carregada uma vez e reutilizada
 //   em múltiplas páginas (lançamentos, contas a receber, relatórios).
 //
-// filtroPeriodoFolha: período (YYYY-MM) selecionado no histórico de
-//   folhas de pagamento. Preservado entre re-renders da seção.
+// filtroPeriodoFolha / filtroFolhaDataInicio / filtroFolhaDataFim /
+// filtroFolhaNome / filtroFolhaOrdem: estado dos filtros do histórico
+//   de folhas de pagamento. Preservados entre re-renders da seção.
 //
 // adminEmpresaFiltro: ID da empresa selecionada no painel admin para
 //   filtrar usuários e logs. String vazia = todas as empresas.
@@ -145,6 +146,10 @@ let editandoPassivoId = null;        // ID do passivo em edição
 let editandoProdutoId = null;        // ID do produto de estoque em edição inline
 let cacheVeiculos = [];              // Cache da lista de veículos (evita múltiplas requisições)
 let filtroPeriodoFolha = "";         // Filtro de período (YYYY-MM) do histórico de folhas
+let filtroFolhaDataInicio = "";      // Filtro de data inicial (data_pagamento) do histórico de folhas
+let filtroFolhaDataFim = "";         // Filtro de data final (data_pagamento) do histórico de folhas
+let filtroFolhaNome = "";            // Filtro de busca por nome de empregado no histórico de folhas
+let filtroFolhaOrdem = "data_desc";  // Ordenação do histórico: data_desc | data_asc | liquido_desc | liquido_asc
 let adminEmpresaFiltro = "";         // Empresa selecionada no painel admin para filtrar dados
 let mapaInstancia = null;            // Instância Leaflet do mapa operacional
 let mapaMarkers = new Map();         // Marcadores dos motoristas no mapa (Map por ID)
@@ -2994,16 +2999,43 @@ function atualizarTotaisFolha() {
 }
 
 // Carrega e exibe o histórico de folhas salvas em tabela.
-// Suporta filtro por período (filtroPeriodoFolha, campo type="month").
-// Botões: Imprimir (abre o recibo para o primeiro motorista) e Excluir.
+// Filtros: competência (YYYY-MM), intervalo de datas de pagamento,
+//          busca por nome de empregado e ordenação.
+// Exibe cards de totais consolidados e permite imprimir recibo
+// por empregado individualmente quando a folha tem mais de um.
 async function renderizarHistoricoFolha() {
   const container = document.getElementById("historico-folha-container");
   if (!container) return;
 
   const folhas = await carregarFolhasPagamento();
-  const folhasFiltradas = filtroPeriodoFolha
-    ? folhas.filter((folha) => folha.periodo === filtroPeriodoFolha)
-    : folhas;
+
+  // ── Filtros ────────────────────────────────────────────────
+  let folhasFiltradas = folhas.filter((folha) => {
+    if (filtroPeriodoFolha && folha.periodo !== filtroPeriodoFolha) return false;
+    if (filtroFolhaDataInicio && (folha.data_pagamento || "") < filtroFolhaDataInicio) return false;
+    if (filtroFolhaDataFim   && (folha.data_pagamento || "") > filtroFolhaDataFim)   return false;
+    if (filtroFolhaNome) {
+      const busca = filtroFolhaNome.toLowerCase();
+      const nomes = (folha.itens || []).map((i) => (i.motorista_nome || "").toLowerCase());
+      if (!nomes.some((n) => n.includes(busca))) return false;
+    }
+    return true;
+  });
+
+  // ── Ordenação ──────────────────────────────────────────────
+  folhasFiltradas.sort((a, b) => {
+    if (filtroFolhaOrdem === "data_asc")     return (a.data_pagamento || "") < (b.data_pagamento || "") ? -1 : 1;
+    if (filtroFolhaOrdem === "liquido_desc") return (b.totais?.salario_liquido || 0) - (a.totais?.salario_liquido || 0);
+    if (filtroFolhaOrdem === "liquido_asc")  return (a.totais?.salario_liquido || 0) - (b.totais?.salario_liquido || 0);
+    return (a.data_pagamento || "") > (b.data_pagamento || "") ? -1 : 1; // data_desc (padrão)
+  });
+
+  // ── Totais consolidados ────────────────────────────────────
+  const totalBruto     = folhasFiltradas.reduce((s, f) => s + (f.totais?.salario_bruto    || 0), 0);
+  const totalDescontos = folhasFiltradas.reduce((s, f) => s + (f.totais?.total_descontos  || 0), 0);
+  const totalLiquido   = folhasFiltradas.reduce((s, f) => s + (f.totais?.salario_liquido  || 0), 0);
+
+  const temFiltro = filtroPeriodoFolha || filtroFolhaDataInicio || filtroFolhaDataFim || filtroFolhaNome;
 
   if (!folhas.length) {
     container.innerHTML = `
@@ -3011,7 +3043,7 @@ async function renderizarHistoricoFolha() {
         <div class="table-toolbar">
           <div>
             <h3 style="margin:0;">Historico de folhas</h3>
-            <span>Nenhuma folha gerada.</span>
+            <span>Nenhuma folha gerada ainda.</span>
           </div>
         </div>
       </section>
@@ -3021,22 +3053,83 @@ async function renderizarHistoricoFolha() {
 
   container.innerHTML = `
     <section class="panel-box">
-      <div class="table-toolbar">
+
+      <div class="table-toolbar" style="margin-bottom:14px;">
         <div>
           <h3 style="margin:0;">Historico de folhas</h3>
           <span>${folhasFiltradas.length} de ${folhas.length} folha(s)</span>
         </div>
-        <div class="action-row">
-          <input id="filtro-periodo-folha" type="month" value="${filtroPeriodoFolha}" />
-          <button class="ghost-btn" id="btn-limpar-filtro-folha" type="button">Limpar</button>
-        </div>
       </div>
+
+      <!-- ── Filtros ── -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;align-items:flex-end;">
+
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+          Competencia
+          <input id="filtro-periodo-folha" type="month" value="${filtroPeriodoFolha}" style="min-width:140px;" />
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+          Pagamento de
+          <input id="filtro-folha-data-inicio" type="date" value="${filtroFolhaDataInicio}" />
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+          ate
+          <input id="filtro-folha-data-fim" type="date" value="${filtroFolhaDataFim}" />
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+          Empregado
+          <input id="filtro-folha-nome" type="search" placeholder="Buscar por nome..." value="${filtroFolhaNome}" style="min-width:170px;" />
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+          Ordenar por
+          <select id="filtro-folha-ordem">
+            <option value="data_desc"    ${filtroFolhaOrdem === "data_desc"    ? "selected" : ""}>Mais recente</option>
+            <option value="data_asc"     ${filtroFolhaOrdem === "data_asc"     ? "selected" : ""}>Mais antiga</option>
+            <option value="liquido_desc" ${filtroFolhaOrdem === "liquido_desc" ? "selected" : ""}>Maior liquido</option>
+            <option value="liquido_asc"  ${filtroFolhaOrdem === "liquido_asc"  ? "selected" : ""}>Menor liquido</option>
+          </select>
+        </label>
+
+        ${temFiltro ? `
+          <button class="ghost-btn" id="btn-limpar-filtro-folha" type="button" style="align-self:flex-end;">
+            Limpar filtros
+          </button>
+        ` : ""}
+      </div>
+
+      <!-- ── Cards de totais (exibe quando há 2+ folhas) ── -->
+      ${folhasFiltradas.length > 1 ? `
+        <div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+          <div class="kpi-card" style="flex:1;min-width:120px;">
+            <div class="kpi-label">Total bruto</div>
+            <div class="kpi-value">${formatarValor(totalBruto)}</div>
+          </div>
+          <div class="kpi-card" style="flex:1;min-width:120px;">
+            <div class="kpi-label">Total descontos</div>
+            <div class="kpi-value negative">${formatarValor(totalDescontos)}</div>
+          </div>
+          <div class="kpi-card" style="flex:1;min-width:120px;">
+            <div class="kpi-label">Total liquido</div>
+            <div class="kpi-value positive">${formatarValor(totalLiquido)}</div>
+          </div>
+          <div class="kpi-card" style="flex:1;min-width:120px;">
+            <div class="kpi-label">Folhas</div>
+            <div class="kpi-value">${folhasFiltradas.length}</div>
+          </div>
+        </div>
+      ` : ""}
+
+      <!-- ── Tabela ── -->
       ${folhasFiltradas.length ? `
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Periodo</th>
+                <th>Competencia</th>
                 <th>Pagamento</th>
                 <th>Empregados</th>
                 <th>Bruto</th>
@@ -3047,39 +3140,85 @@ async function renderizarHistoricoFolha() {
               </tr>
             </thead>
             <tbody>
-              ${folhasFiltradas.map((folha) => `
-                <tr>
-                  <td>${folha.periodo}</td>
-                  <td>${formatarDataCurta(folha.data_pagamento)}</td>
-                  <td>${(folha.itens || []).length}</td>
-                  <td>${formatarValor(folha.totais?.salario_bruto || 0)}</td>
-                  <td>${formatarValor(folha.totais?.total_descontos || 0)}</td>
-                  <td class="positive">${formatarValor(folha.totais?.salario_liquido || 0)}</td>
-                  <td>${folha.lancamento_id ? `#${folha.lancamento_id}` : "-"}</td>
-                  <td>
-                    <div class="action-row">
-                      <button class="small-btn" onclick="imprimirFolhaSalva(${folha.id})">Imprimir</button>
-                      <button class="small-btn delete-btn" onclick="excluirFolhaPagamento(${folha.id})">Excluir</button>
-                    </div>
-                  </td>
-                </tr>
-              `).join("")}
+              ${folhasFiltradas.map((folha) => {
+                const nomes = (folha.itens || []).map((i) => i.motorista_nome || "").filter(Boolean).join(", ");
+                const qtd = (folha.itens || []).length;
+                const printBtn = qtd === 1
+                  ? `<button class="small-btn" onclick="imprimirFolhaSalva(${folha.id})">Imprimir</button>`
+                  : `<select class="small-btn" id="sel-imprimir-folha-${folha.id}" title="Selecione o empregado para imprimir o recibo">
+                       <option value="">Imprimir...</option>
+                       ${(folha.itens || []).map((it, idx) => `<option value="${idx}">${it.motorista_nome || `Empregado ${idx + 1}`}</option>`).join("")}
+                     </select>`;
+                return `
+                  <tr title="${nomes}">
+                    <td>${folha.periodo}</td>
+                    <td>${formatarDataCurta(folha.data_pagamento)}</td>
+                    <td title="${nomes}">${qtd}</td>
+                    <td>${formatarValor(folha.totais?.salario_bruto    || 0)}</td>
+                    <td>${formatarValor(folha.totais?.total_descontos  || 0)}</td>
+                    <td class="positive">${formatarValor(folha.totais?.salario_liquido || 0)}</td>
+                    <td>${folha.lancamento_id ? `#${folha.lancamento_id}` : "-"}</td>
+                    <td>
+                      <div class="action-row">
+                        ${printBtn}
+                        <button class="small-btn delete-btn" onclick="excluirFolhaPagamento(${folha.id})">Excluir</button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
             </tbody>
           </table>
         </div>
-      ` : `<p class="empty-row">Nenhuma folha encontrada para este periodo.</p>`}
+      ` : `<p class="empty-row">Nenhuma folha encontrada com os filtros aplicados.</p>`}
+
     </section>
   `;
 
-  document.getElementById("filtro-periodo-folha").onchange = async (event) => {
-    filtroPeriodoFolha = event.target.value;
+  // ── Listeners dos filtros ──────────────────────────────────
+  document.getElementById("filtro-periodo-folha").onchange = async (e) => {
+    filtroPeriodoFolha = e.target.value;
     await renderizarHistoricoFolha();
   };
+  document.getElementById("filtro-folha-data-inicio").onchange = async (e) => {
+    filtroFolhaDataInicio = e.target.value;
+    await renderizarHistoricoFolha();
+  };
+  document.getElementById("filtro-folha-data-fim").onchange = async (e) => {
+    filtroFolhaDataFim = e.target.value;
+    await renderizarHistoricoFolha();
+  };
+  document.getElementById("filtro-folha-nome").oninput = async (e) => {
+    filtroFolhaNome = e.target.value.trim();
+    await renderizarHistoricoFolha();
+  };
+  document.getElementById("filtro-folha-ordem").onchange = async (e) => {
+    filtroFolhaOrdem = e.target.value;
+    await renderizarHistoricoFolha();
+  };
+  document.getElementById("btn-limpar-filtro-folha")?.addEventListener("click", async () => {
+    filtroPeriodoFolha    = "";
+    filtroFolhaDataInicio = "";
+    filtroFolhaDataFim    = "";
+    filtroFolhaNome       = "";
+    filtroFolhaOrdem      = "data_desc";
+    await renderizarHistoricoFolha();
+  });
 
-  document.getElementById("btn-limpar-filtro-folha").onclick = async () => {
-    filtroPeriodoFolha = "";
-    await renderizarHistoricoFolha();
-  };
+  // ── Select de impressão por empregado (folhas com múltiplos) ──
+  folhasFiltradas.forEach((folha) => {
+    if ((folha.itens || []).length <= 1) return;
+    const sel = document.getElementById(`sel-imprimir-folha-${folha.id}`);
+    if (!sel) return;
+    sel.onchange = async (e) => {
+      const idx = e.target.value;
+      if (idx === "") return;
+      const todasFolhas = await carregarFolhasPagamento();
+      const f = todasFolhas.find((x) => x.id === folha.id);
+      if (f) await imprimirReciboFolha(f, f.itens[Number(idx)]);
+      sel.value = "";
+    };
+  });
 }
 
 // Coleta todos os campos de entrada de uma linha da folha e monta o objeto
